@@ -174,7 +174,7 @@ export default function Home() {
               <div className={styles.planEmoji}>⚡</div>
               <h3 className={styles.planName}>Phantom</h3>
               <div className={styles.planPrice}>
-                <span className={styles.planAmount}>$4</span>
+                <span className={styles.planAmount}>$4.99</span>
                 <span className={styles.planPer}>/month</span>
               </div>
               <ul className={styles.planFeatures}>
@@ -194,7 +194,7 @@ export default function Home() {
               <div className={styles.planEmoji}>🔥</div>
               <h3 className={styles.planName}>Spectre</h3>
               <div className={styles.planPrice}>
-                <span className={styles.planAmount}>$7</span>
+                <span className={styles.planAmount}>$8.99</span>
                 <span className={styles.planPer}>/month</span>
               </div>
               <ul className={styles.planFeatures}>
