@@ -385,16 +385,18 @@
 .planBtnFree:hover { background: rgba(167,139,250,0.25); }
 
 .planBtnPaid {
-  background: rgba(255,255,255,0.05);
-  color: #4a4a5a;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(167,139,250,0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(167,139,250,0.3);
   border-radius: 12px;
   padding: 12px 20px;
   font-size: 14px;
   font-weight: 600;
-  cursor: not-allowed;
+  cursor: pointer;
   font-family: inherit;
+  transition: all 0.15s;
 }
+.planBtnPaid:hover { background: rgba(167,139,250,0.25); }
 
 .footer {
   position: relative; z-index: 1;

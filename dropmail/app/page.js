@@ -8,7 +8,19 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
-
+async function handleUpgrade(plan) {
+  try {
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  } catch (err) {
+    console.error('Checkout error:', err);
+  }
+}
   async function generateMailbox() {
     setLoading(true);
     setError(null);
@@ -183,9 +195,9 @@ export default function Home() {
                 <li>✓ Up to 100 emails</li>
                 <li>✓ Priority delivery</li>
               </ul>
-              <button className={styles.planBtnPaid}>
-                Coming soon
-              </button>
+              <button className={styles.planBtnPaid} onClick={() => handleUpgrade('phantom')}>
+  Get Phantom ⚡
+</button>
             </div>
 
             {/* Spectre */}
@@ -203,9 +215,9 @@ export default function Home() {
                 <li>✓ Unlimited emails</li>
                 <li>✓ Priority support</li>
               </ul>
-              <button className={styles.planBtnPaid}>
-                Coming soon
-              </button>
+              <button className={styles.planBtnPaid} onClick={() => handleUpgrade('spectre')}>
+  Get Spectre 🔥
+</button>
             </div>
 
           </div>
