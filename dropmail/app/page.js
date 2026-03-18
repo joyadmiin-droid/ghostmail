@@ -54,7 +54,7 @@ export default function Home() {
         <div className={styles.headerBadge}>Free · No signup · No tracking</div>
       </header>
 
-      {/* HERO — centered */}
+      {/* HERO */}
       <section className={styles.hero}>
         <div className={styles.tagline}>
           <span className={styles.taglineDot} />
@@ -104,7 +104,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS — below hero */}
+      {/* HOW IT WORKS */}
       <section className={styles.howSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>How it works</h2>
@@ -139,6 +139,75 @@ export default function Home() {
               <span className={styles.statNum}>Free</span>
               <span className={styles.statLabel}>Forever</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING SECTION */}
+      <section className={styles.pricingSection}>
+        <div className={styles.howInner}>
+          <h2 className={styles.howTitle}>Simple pricing</h2>
+          <p className={styles.pricingSub}>No credit card games. Pick what you need.</p>
+          <div className={styles.pricingGrid}>
+
+            {/* Free */}
+            <div className={styles.pricingCard}>
+              <div className={styles.planEmoji}>👻</div>
+              <h3 className={styles.planName}>Ghost</h3>
+              <div className={styles.planPrice}>
+                <span className={styles.planAmount}>$0</span>
+                <span className={styles.planPer}>/forever</span>
+              </div>
+              <ul className={styles.planFeatures}>
+                <li>✓ 1 address at a time</li>
+                <li>✓ 10 minute lifespan</li>
+                <li>✓ Up to 10 emails</li>
+                <li>✓ No signup needed</li>
+              </ul>
+              <button className={styles.planBtnFree} onClick={generateMailbox}>
+                Get started free
+              </button>
+            </div>
+
+            {/* Phantom */}
+            <div className={styles.pricingCard}>
+              <div className={styles.planEmoji}>⚡</div>
+              <h3 className={styles.planName}>Phantom</h3>
+              <div className={styles.planPrice}>
+                <span className={styles.planAmount}>$4</span>
+                <span className={styles.planPer}>/month</span>
+              </div>
+              <ul className={styles.planFeatures}>
+                <li>✓ 5 addresses at a time</li>
+                <li>✓ 24 hour lifespan</li>
+                <li>✓ Up to 100 emails</li>
+                <li>✓ Priority delivery</li>
+              </ul>
+              <button className={styles.planBtnPaid}>
+                Coming soon
+              </button>
+            </div>
+
+            {/* Spectre */}
+            <div className={`${styles.pricingCard} ${styles.pricingCardFeatured}`}>
+              <div className={styles.featuredBadge}>Most Popular</div>
+              <div className={styles.planEmoji}>🔥</div>
+              <h3 className={styles.planName}>Spectre</h3>
+              <div className={styles.planPrice}>
+                <span className={styles.planAmount}>$7</span>
+                <span className={styles.planPer}>/month</span>
+              </div>
+              <ul className={styles.planFeatures}>
+                <li>✓ Unlimited addresses</li>
+                <li>✓ Emails saved forever</li>
+                <li>✓ Unlimited emails</li>
+                <li>✓ Priority support</li>
+              </ul>
+              <button className={styles.planBtnPaid}>
+                Coming soon
+              </button>
+            </div>
+
           </div>
         </div>
       </section>
