@@ -67,19 +67,24 @@ export default function Home() {
   }
 
   async function generateMailbox() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/mailbox/create', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate');
-      setMailbox(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  setError(null);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
     }
+    const res = await fetch('/api/mailbox/create', { method: 'POST', headers });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to generate');
+    setMailbox(data);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
   }
+}
 
   async function copyAddress() {
     if (!mailbox) return;

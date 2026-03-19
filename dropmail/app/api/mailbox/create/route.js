@@ -3,27 +3,54 @@ import { randomBytes } from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY  // use service role here (server-only)
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Adjectives + nouns for readable random usernames
 const ADJECTIVES = ['swift', 'quiet', 'lucky', 'brave', 'sharp', 'calm', 'wild', 'cool', 'slim', 'bold'];
 const NOUNS      = ['fox', 'hawk', 'wolf', 'bear', 'lynx', 'crow', 'dart', 'ember', 'flux', 'storm'];
 
 function generateUsername() {
   const adj  = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  const num  = Math.floor(100 + Math.random() * 900); // 3-digit number
+  const num  = Math.floor(100 + Math.random() * 900);
   return `${adj}${noun}${num}`;
 }
 
 function generateToken() {
-  return randomBytes(32).toString('hex'); // 64-char hex string
+  return randomBytes(32).toString('hex');
 }
 
-export async function POST() {
+function getExpiryForPlan(plan) {
+  switch (plan) {
+    case 'spectre': return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+    case 'phantom': return new Date(Date.now() + 24 * 60 * 60 * 1000);       // 24 hours
+    default:        return new Date(Date.now() + 10 * 60 * 1000);             // 10 minutes
+  }
+}
+
+export async function POST(request) {
   try {
-    // 1. Pick an active domain from DB
+    // 1. Check if user is logged in and get their plan
+    let plan = 'free';
+    try {
+      const authHeader = request.headers.get('Authorization');
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('plan')
+            .eq('id', user.id)
+            .single();
+          if (profile) plan = profile.plan;
+        }
+      }
+    } catch (e) {
+      // not logged in, use free plan
+    }
+
+    // 2. Pick an active domain from DB
     const { data: domains, error: domainErr } = await supabase
       .from('domains')
       .select('id, name')
@@ -34,23 +61,19 @@ export async function POST() {
       return Response.json({ error: 'No active domains available' }, { status: 503 });
     }
 
-    // Pick a random domain from the list
     const domain = domains[Math.floor(Math.random() * domains.length)];
 
-    // 2. Generate unique username (retry up to 5 times on collision)
+    // 3. Generate unique username
     let username, address, existing;
     let attempts = 0;
-
     do {
       username = generateUsername();
       address  = `${username}@${domain.name}`;
-
       const { data } = await supabase
         .from('mailboxes')
         .select('id')
         .eq('address', address)
         .maybeSingle();
-
       existing = data;
       attempts++;
     } while (existing && attempts < 5);
@@ -59,9 +82,9 @@ export async function POST() {
       return Response.json({ error: 'Could not generate unique address, try again' }, { status: 500 });
     }
 
-    // 3. Create the mailbox
+    // 4. Create the mailbox with plan-based expiry
     const token     = generateToken();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // +10 minutes
+    const expiresAt = getExpiryForPlan(plan);
 
     const { data: mailbox, error: insertErr } = await supabase
       .from('mailboxes')
@@ -81,13 +104,13 @@ export async function POST() {
       return Response.json({ error: 'Failed to create mailbox' }, { status: 500 });
     }
 
-    // 4. Return only what the client needs
     return Response.json({
       id:         mailbox.id,
       address:    mailbox.address,
       token:      mailbox.token,
       expires_at: mailbox.expires_at,
       created_at: mailbox.created_at,
+      plan,
     });
 
   } catch (err) {
@@ -96,7 +119,6 @@ export async function POST() {
   }
 }
 
-// Only POST is allowed
 export async function GET() {
   return Response.json({ error: 'Method not allowed' }, { status: 405 });
 }
