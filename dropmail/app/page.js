@@ -10,6 +10,7 @@ const supabase = createClient(
 );
 
 export default function Home() {
+  const [plan, setPlan] = useState('free');
   const [mailbox, setMailbox] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -18,11 +19,29 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('addresses');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) setPlan(profile.plan);
+      }
+    };
+    init();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) setPlan(profile.plan);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -30,6 +49,7 @@ export default function Home() {
   async function handleSignOut() {
     await supabase.auth.signOut();
     setUser(null);
+    setPlan('free');
   }
 
   async function handleUpgrade(plan) {
@@ -80,28 +100,26 @@ export default function Home() {
 
   const username = user?.email?.split('@')[0];
 
+  const planLabel = plan === 'spectre' ? '🔥 Spectre' : plan === 'phantom' ? '⚡ Phantom' : '👻 Ghost';
+  const planHint = plan === 'spectre' ? 'Unlimited everything' : plan === 'phantom' ? '$4.99/mo' : 'Free forever';
+
   // ─── DASHBOARD ───────────────────────────────────────────────
   if (user) return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0d0d14', fontFamily: 'inherit' }}>
 
       {/* SIDEBAR */}
       <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        {/* Logo */}
-        <div style={{ padding: '20px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ color: '#a78bfa', fontSize: '16px' }}>✦</span>
           <span style={{ color: '#fff', fontSize: '15px', fontWeight: '700' }}>GhostMail</span>
         </div>
-
-        {/* User */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(167,139,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#a78bfa', marginBottom: '8px' }}>
             {username?.slice(0, 2).toUpperCase()}
           </div>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{username}</div>
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>👻 Ghost — Free</div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{planLabel}</div>
         </div>
-
-        {/* Nav */}
         <nav style={{ flex: 1, padding: '12px 0' }}>
           {[
             { id: 'addresses', icon: '📬', label: 'Addresses' },
@@ -115,8 +133,6 @@ export default function Home() {
             </div>
           ))}
         </nav>
-
-        {/* Sign out */}
         <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button onClick={handleSignOut} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
             Sign out
@@ -126,8 +142,6 @@ export default function Home() {
 
       {/* MAIN */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Topbar */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>👋 Welcome back, {username}</div>
@@ -138,7 +152,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Content */}
         <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
 
           {/* ADDRESSES */}
@@ -146,9 +159,9 @@ export default function Home() {
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
                 {[
-                  { label: 'Active addresses', value: mailbox ? '1' : '0', hint: '1 max on free plan' },
+                  { label: 'Active addresses', value: mailbox ? '1' : '0', hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
                   { label: 'Emails received', value: '0', hint: 'today' },
-                  { label: 'Plan', value: '👻 Ghost', hint: 'Free forever' },
+                  { label: 'Plan', value: planLabel, hint: planHint },
                 ].map(s => (
                   <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
                     <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
@@ -209,25 +222,38 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Current plan</div>
               <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px', marginBottom: '8px' }}>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>👻 Ghost — Free</div>
-                <div style={{ fontSize: '12px', color: '#666' }}>1 address · 10 min lifespan · 10 emails max</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>{planLabel}</div>
+                <div style={{ fontSize: '12px', color: '#666' }}>{planHint}</div>
               </div>
-              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Upgrade</div>
-              <div style={{ background: 'rgba(167,139,250,0.08)', border: '2px solid rgba(167,139,250,0.3)', borderRadius: '12px', padding: '16px' }}>
-                <div style={{ fontSize: '11px', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 8px', borderRadius: '99px', display: 'inline-block', marginBottom: '8px' }}>Most popular</div>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>⚡ Phantom — $4.99/mo</div>
-                <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>5 addresses · 24hr lifespan · 100 emails</div>
-                <button onClick={() => handleUpgrade('phantom')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Upgrade to Phantom ⚡
-                </button>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>🔥 Spectre — $8.99/mo</div>
-                <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>Unlimited addresses · Forever · Unlimited emails</div>
-                <button onClick={() => handleUpgrade('spectre')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Upgrade to Spectre 🔥
-                </button>
-              </div>
+              {plan !== 'spectre' && (
+                <>
+                  <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Upgrade</div>
+                  {plan !== 'phantom' && (
+                    <div style={{ background: 'rgba(167,139,250,0.08)', border: '2px solid rgba(167,139,250,0.3)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '11px', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 8px', borderRadius: '99px', display: 'inline-block', marginBottom: '8px' }}>Most popular</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>⚡ Phantom — $4.99/mo</div>
+                      <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>5 addresses · 24hr lifespan · 100 emails</div>
+                      <button onClick={() => handleUpgrade('phantom')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Upgrade to Phantom ⚡
+                      </button>
+                    </div>
+                  )}
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>🔥 Spectre — $8.99/mo</div>
+                    <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>Unlimited addresses · Forever · Unlimited emails</div>
+                    <button onClick={() => handleUpgrade('spectre')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Upgrade to Spectre 🔥
+                    </button>
+                  </div>
+                </>
+              )}
+              {plan === 'spectre' && (
+                <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔥</div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>You're on Spectre!</div>
+                  <div style={{ fontSize: '12px', color: '#888' }}>You have the best plan. Enjoy unlimited everything!</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -273,7 +299,6 @@ export default function Home() {
     <main className={styles.main}>
       <div className={styles.bg} aria-hidden="true" />
       <div className={styles.grid} aria-hidden="true" />
-
       <header className={styles.header}>
         <div className={styles.logo}>
           <span className={styles.logoIcon}>✦</span>
@@ -286,7 +311,6 @@ export default function Home() {
           </a>
         </div>
       </header>
-
       <section className={styles.hero}>
         <div className={styles.tagline}>
           <span className={styles.taglineDot} />
@@ -332,7 +356,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
       <section className={styles.howSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>How it works</h2>
@@ -360,7 +383,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <section className={styles.forSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>Perfect for...</h2>
@@ -383,7 +405,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <section className={styles.pricingSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>Simple pricing</h2>
@@ -429,7 +450,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <footer className={styles.footer}>
         <span>✦ GhostMail — private by design</span>
         <span>No logs. No tracking. No BS.</span>
