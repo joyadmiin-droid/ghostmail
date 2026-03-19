@@ -80,160 +80,195 @@ export default function Home() {
 
   const username = user?.email?.split('@')[0];
 
-  const tabStyle = (tab) => ({
-    padding: '8px 18px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    border: 'none',
-    background: 'none',
-    color: activeTab === tab ? '#fff' : '#888',
-    borderBottom: activeTab === tab ? '2px solid #a78bfa' : '2px solid transparent',
-    fontFamily: 'inherit',
-    fontWeight: activeTab === tab ? '600' : '400',
-    marginBottom: '-1px',
-  });
-
-  // DASHBOARD VIEW — shown when user is logged in
+  // ─── DASHBOARD ───────────────────────────────────────────────
   if (user) return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#fff', fontFamily: 'inherit' }}>
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <a href="/" onClick={(e) => { e.preventDefault(); handleSignOut(); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#fff', fontSize: '18px', fontWeight: '700' }}>
-          ✦ GhostMail
-        </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: '#a78bfa' }}>👻 {username}</span>
-          <button onClick={handleSignOut} style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '99px', padding: '6px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0d0d14', fontFamily: 'inherit' }}>
+
+      {/* SIDEBAR */}
+      <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* Logo */}
+        <div style={{ padding: '20px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#a78bfa', fontSize: '16px' }}>✦</span>
+          <span style={{ color: '#fff', fontSize: '15px', fontWeight: '700' }}>GhostMail</span>
+        </div>
+
+        {/* User */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(167,139,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#a78bfa', marginBottom: '8px' }}>
+            {username?.slice(0, 2).toUpperCase()}
+          </div>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{username}</div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>👻 Ghost — Free</div>
+        </div>
+
+        {/* Nav */}
+        <nav style={{ flex: 1, padding: '12px 0' }}>
+          {[
+            { id: 'addresses', icon: '📬', label: 'Addresses' },
+            { id: 'inbox', icon: '📥', label: 'Inbox' },
+            { id: 'plan', icon: '⚡', label: 'Upgrade' },
+            { id: 'settings', icon: '⚙️', label: 'Settings' },
+          ].map(item => (
+            <div key={item.id} onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: activeTab === item.id ? '#a78bfa' : '#666', background: activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent', borderLeft: activeTab === item.id ? '2px solid #a78bfa' : '2px solid transparent' }}>
+              <span style={{ fontSize: '14px', width: '18px', textAlign: 'center' }}>{item.icon}</span>
+              {item.label}
+            </div>
+          ))}
+        </nav>
+
+        {/* Sign out */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button onClick={handleSignOut} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
             Sign out
           </button>
         </div>
-      </header>
+      </div>
 
-      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>👋 Welcome back, {username}</h1>
-          <p style={{ fontSize: '14px', color: '#888' }}>{user?.email} · Ghost plan (Free)</p>
+      {/* MAIN */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+        {/* Topbar */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>👋 Welcome back, {username}</div>
+            <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{user?.email}</div>
+          </div>
+          <button onClick={generateMailbox} disabled={loading} style={{ padding: '8px 18px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+            {loading ? '...' : '⚡ Generate address'}
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '24px', display: 'flex', gap: '4px' }}>
-          {['addresses', 'inbox', 'plan', 'settings'].map(tab => (
-            <button key={tab} style={tabStyle(tab)} onClick={() => setActiveTab(tab)}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* Content */}
+        <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
 
-        {/* ADDRESSES TAB */}
-        {activeTab === 'addresses' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-              {[
-                { label: 'Active addresses', value: '0' },
-                { label: 'Emails received', value: '0' },
-                { label: 'Plan limit', value: '1 max' },
-              ].map(s => (
-                <div key={s.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '16px' }}>
-                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{s.label}</div>
-                  <div style={{ fontSize: '22px', fontWeight: '700' }}>{s.value}</div>
-                </div>
-              ))}
-            </div>
-            <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>
-              No active addresses. <a href="/" onClick={(e) => { e.preventDefault(); setUser(null); }} style={{ color: '#a78bfa' }}>Generate one here!</a>
-            </p>
-          </div>
-        )}
-
-        {/* INBOX TAB */}
-        {activeTab === 'inbox' && (
-          <div>
-            <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>
-              No emails yet. Generate an address and use it somewhere to receive emails!
-            </p>
-          </div>
-        )}
-
-        {/* PLAN TAB */}
-        {activeTab === 'plan' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '20px' }}>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current plan</div>
-              <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>👻 Ghost</div>
-              <div style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>Free forever</div>
-              <ul style={{ listStyle: 'none', fontSize: '13px', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <li>✓ 1 address at a time</li>
-                <li>✓ 10 minute lifespan</li>
-                <li>✓ Up to 10 emails</li>
-              </ul>
-            </div>
-            <div style={{ background: 'rgba(167,139,250,0.08)', border: '2px solid rgba(167,139,250,0.4)', borderRadius: '16px', padding: '20px' }}>
-              <div style={{ fontSize: '11px', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '3px 10px', borderRadius: '99px', display: 'inline-block', marginBottom: '8px' }}>Most popular</div>
-              <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>⚡ Phantom</div>
-              <div style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>$4.99 / month</div>
-              <ul style={{ listStyle: 'none', fontSize: '13px', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-                <li>✓ 5 addresses at a time</li>
-                <li>✓ 24 hour lifespan</li>
-                <li>✓ Up to 100 emails</li>
-                <li>✓ Priority delivery</li>
-              </ul>
-              <button onClick={() => handleUpgrade('phantom')} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.15)', color: '#a78bfa', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Upgrade to Phantom ⚡
-              </button>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '20px' }}>
-              <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>🔥 Spectre</div>
-              <div style={{ fontSize: '14px', color: '#888', marginBottom: '16px' }}>$8.99 / month</div>
-              <ul style={{ listStyle: 'none', fontSize: '13px', color: '#aaa', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-                <li>✓ Unlimited addresses</li>
-                <li>✓ Emails saved forever</li>
-                <li>✓ Unlimited emails</li>
-                <li>✓ Priority support</li>
-              </ul>
-              <button onClick={() => handleUpgrade('spectre')} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Upgrade to Spectre 🔥
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* SETTINGS TAB */}
-        {activeTab === 'settings' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px' }}>
-              {[
-                { label: 'Email', value: user?.email },
-                { label: 'Username', value: username },
-                { label: 'Password', value: '••••••••' },
-              ].map((row, i, arr) => (
-                <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: '500' }}>{row.label}</div>
-                    <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{row.value}</div>
+          {/* ADDRESSES */}
+          {activeTab === 'addresses' && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
+                {[
+                  { label: 'Active addresses', value: mailbox ? '1' : '0', hint: '1 max on free plan' },
+                  { label: 'Emails received', value: '0', hint: 'today' },
+                  { label: 'Plan', value: '👻 Ghost', hint: 'Free forever' },
+                ].map(s => (
+                  <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
+                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                    <div style={{ fontSize: s.label === 'Plan' ? '16px' : '24px', fontWeight: '700', color: '#fff', marginTop: s.label === 'Plan' ? '4px' : '0' }}>{s.value}</div>
+                    <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>{s.hint}</div>
                   </div>
-                  <button style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#aaa', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Edit
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div style={{ background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: '16px', padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                ))}
+              </div>
+
+              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', fontWeight: '600' }}>Quick generate</div>
+              <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#f87171' }}>Delete account</div>
-                  <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>Permanently remove your account</div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Create a throwaway address</div>
+                  <div style={{ fontSize: '12px', color: '#888' }}>Instant · No trace · Auto-deletes in 10 min</div>
                 </div>
-                <button onClick={() => { if(confirm('Are you sure? This cannot be undone.')) handleSignOut(); }} style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={generateMailbox} disabled={loading} style={{ padding: '10px 20px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  ⚡ Generate now
+                </button>
+              </div>
+
+              {mailbox && (
+                <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active address</span>
+                    <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>⏱ Expires in {getExpiryMinutes()} min</span>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{mailbox.address}</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={copyAddress} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.3)', background: 'rgba(167,139,250,0.1)', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {copied ? '✓ Copied' : 'Copy'}
+                    </button>
+                    <button onClick={goToInbox} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Open Inbox →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!mailbox && (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: '13px' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>👻</div>
+                  No addresses yet — generate your first one above!
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INBOX */}
+          {activeTab === 'inbox' && (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#444', fontSize: '13px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>📭</div>
+              No emails yet. Use a generated address somewhere to receive emails here.
+            </div>
+          )}
+
+          {/* PLAN */}
+          {activeTab === 'plan' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Current plan</div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px', marginBottom: '8px' }}>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>👻 Ghost — Free</div>
+                <div style={{ fontSize: '12px', color: '#666' }}>1 address · 10 min lifespan · 10 emails max</div>
+              </div>
+              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Upgrade</div>
+              <div style={{ background: 'rgba(167,139,250,0.08)', border: '2px solid rgba(167,139,250,0.3)', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ fontSize: '11px', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 8px', borderRadius: '99px', display: 'inline-block', marginBottom: '8px' }}>Most popular</div>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>⚡ Phantom — $4.99/mo</div>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>5 addresses · 24hr lifespan · 100 emails</div>
+                <button onClick={() => handleUpgrade('phantom')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Upgrade to Phantom ⚡
+                </button>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>🔥 Spectre — $8.99/mo</div>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>Unlimited addresses · Forever · Unlimited emails</div>
+                <button onClick={() => handleUpgrade('spectre')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Upgrade to Spectre 🔥
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SETTINGS */}
+          {activeTab === 'settings' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Account</div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
+                {[
+                  { label: 'Email', value: user?.email },
+                  { label: 'Username', value: username },
+                  { label: 'Password', value: '••••••••' },
+                ].map((row, i, arr) => (
+                  <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                    <div>
+                      <div style={{ fontSize: '13px', color: '#fff', fontWeight: '500' }}>{row.label}</div>
+                      <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{row.value}</div>
+                    </div>
+                    <button style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Danger zone</div>
+              <div style={{ background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '13px', color: '#f87171', fontWeight: '500' }}>Delete account</div>
+                  <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>Permanently remove everything</div>
+                </div>
+                <button onClick={() => { if(confirm('Are you sure? This cannot be undone.')) handleSignOut(); }} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Delete
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+        </div>
       </div>
     </div>
   );
 
-  // HOMEPAGE — shown when user is NOT logged in
+  // ─── HOMEPAGE ────────────────────────────────────────────────
   return (
     <main className={styles.main}>
       <div className={styles.bg} aria-hidden="true" />
@@ -252,7 +287,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* HERO */}
       <section className={styles.hero}>
         <div className={styles.tagline}>
           <span className={styles.taglineDot} />
@@ -299,7 +333,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
       <section className={styles.howSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>How it works</h2>
@@ -328,7 +361,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PERFECT FOR */}
       <section className={styles.forSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>Perfect for...</h2>
@@ -352,7 +384,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PRICING */}
       <section className={styles.pricingSection}>
         <div className={styles.howInner}>
           <h2 className={styles.howTitle}>Simple pricing</h2>
