@@ -22,22 +22,24 @@ function generateToken() {
 
 function getExpiryForPlan(plan) {
   switch (plan) {
-    case 'spectre': return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
-    case 'phantom': return new Date(Date.now() + 24 * 60 * 60 * 1000);       // 24 hours
-    default:        return new Date(Date.now() + 10 * 60 * 1000);             // 10 minutes
+    case 'spectre': return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    case 'phantom': return new Date(Date.now() + 24 * 60 * 60 * 1000);
+    default:        return new Date(Date.now() + 10 * 60 * 1000);
   }
 }
 
 export async function POST(request) {
   try {
-    // 1. Check if user is logged in and get their plan
     let plan = 'free';
+    let userId = null;
+
     try {
       const authHeader = request.headers.get('Authorization');
       if (authHeader) {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user } } = await supabase.auth.getUser(token);
         if (user) {
+          userId = user.id;
           const { data: profile } = await supabase
             .from('profiles')
             .select('plan')
@@ -50,7 +52,6 @@ export async function POST(request) {
       // not logged in, use free plan
     }
 
-    // 2. Pick an active domain from DB
     const { data: domains, error: domainErr } = await supabase
       .from('domains')
       .select('id, name')
@@ -63,7 +64,6 @@ export async function POST(request) {
 
     const domain = domains[Math.floor(Math.random() * domains.length)];
 
-    // 3. Generate unique username
     let username, address, existing;
     let attempts = 0;
     do {
@@ -82,7 +82,6 @@ export async function POST(request) {
       return Response.json({ error: 'Could not generate unique address, try again' }, { status: 500 });
     }
 
-    // 4. Create the mailbox with plan-based expiry
     const token     = generateToken();
     const expiresAt = getExpiryForPlan(plan);
 
@@ -95,6 +94,7 @@ export async function POST(request) {
         token,
         expires_at: expiresAt.toISOString(),
         is_active:  true,
+        user_id:    userId || null,
       })
       .select('id, address, token, expires_at, created_at')
       .single();
