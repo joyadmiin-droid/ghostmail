@@ -154,7 +154,29 @@ async function handleUpgrade(plan) {
           </div>
         </div>
       </section>
-
+{/* PERFECT FOR SECTION */}
+<section className={styles.forSection}>
+  <div className={styles.howInner}>
+    <h2 className={styles.howTitle}>Perfect for...</h2>
+    <div className={styles.forGrid}>
+      {[
+        { emoji: '🛍️', label: 'Online shopping' },
+        { emoji: '🎮', label: 'Gaming accounts' },
+        { emoji: '👨‍💻', label: 'App testing' },
+        { emoji: '📰', label: 'Content access' },
+        { emoji: '🔐', label: 'Staying private' },
+        { emoji: '🎓', label: 'Free trials' },
+        { emoji: '💼', label: 'Competitor research' },
+        { emoji: '📱', label: 'App signups' },
+      ].map(item => (
+        <div className={styles.forItem} key={item.label}>
+          <span className={styles.forEmoji}>{item.emoji}</span>
+          <span className={styles.forLabel}>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
       {/* PRICING SECTION */}
       <section className={styles.pricingSection}>
         <div className={styles.howInner}>

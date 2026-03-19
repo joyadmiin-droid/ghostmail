@@ -417,3 +417,44 @@
 @media (max-width: 480px) {
   .stepsGrid { grid-template-columns: 1fr; }
 }
+/* ── Perfect for ── */
+.forSection {
+  position: relative;
+  z-index: 1;
+  padding: 0 24px 80px;
+}
+
+.forGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.forItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 16px 20px;
+  transition: all 0.2s;
+}
+.forItem:hover {
+  border-color: rgba(167,139,250,0.3);
+  background: rgba(167,139,250,0.05);
+  transform: translateY(-2px);
+}
+
+.forEmoji { font-size: 22px; }
+.forLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #c8c6bf;
+}
+
+@media (max-width: 768px) {
+  .forGrid { grid-template-columns: repeat(2, 1fr); }
+}
