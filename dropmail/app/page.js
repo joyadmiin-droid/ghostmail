@@ -1,26 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import styles from './page.module.css';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function Home() {
   const [mailbox, setMailbox] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
-async function handleUpgrade(plan) {
-  try {
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan }),
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
     });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-  } catch (err) {
-    console.error('Checkout error:', err);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setUser(null);
   }
-}
+
+  async function handleUpgrade(plan) {
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      console.error('Checkout error:', err);
+    }
+  }
+
   async function generateMailbox() {
     setLoading(true);
     setError(null);
@@ -64,21 +88,41 @@ async function handleUpgrade(plan) {
           <span className={styles.logoText}>GhostMail</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-  <div className={styles.headerBadge}>Free · No signup · No tracking</div>
-  <a href="/login" style={{
-    background: 'rgba(167,139,250,0.15)',
-    color: '#a78bfa',
-    border: '1px solid rgba(167,139,250,0.3)',
-    borderRadius: '99px',
-    padding: '6px 16px',
-    fontSize: '13px',
-    fontWeight: '600',
-    textDecoration: 'none',
-    transition: 'all 0.15s',
-  }}>
-    Sign in
-  </a>
-</div>
+          <div className={styles.headerBadge}>Free · No signup · No tracking</div>
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', color: '#a78bfa' }}>
+                👻 {user.email?.split('@')[0]}
+              </span>
+              <button onClick={handleSignOut} style={{
+                background: 'rgba(248,113,113,0.15)',
+                color: '#f87171',
+                border: '1px solid rgba(248,113,113,0.3)',
+                borderRadius: '99px',
+                padding: '6px 16px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}>
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <a href="/login" style={{
+              background: 'rgba(167,139,250,0.15)',
+              color: '#a78bfa',
+              border: '1px solid rgba(167,139,250,0.3)',
+              borderRadius: '99px',
+              padding: '6px 16px',
+              fontSize: '13px',
+              fontWeight: '600',
+              textDecoration: 'none',
+            }}>
+              Sign in
+            </a>
+          )}
+        </div>
       </header>
 
       {/* HERO */}
@@ -169,29 +213,31 @@ async function handleUpgrade(plan) {
           </div>
         </div>
       </section>
-{/* PERFECT FOR SECTION */}
-<section className={styles.forSection}>
-  <div className={styles.howInner}>
-    <h2 className={styles.howTitle}>Perfect for...</h2>
-    <div className={styles.forGrid}>
-      {[
-        { emoji: '🛍️', label: 'Online shopping' },
-        { emoji: '🎮', label: 'Gaming accounts' },
-        { emoji: '👨‍💻', label: 'App testing' },
-        { emoji: '📰', label: 'Content access' },
-        { emoji: '🔐', label: 'Staying private' },
-        { emoji: '🎓', label: 'Free trials' },
-        { emoji: '💼', label: 'Competitor research' },
-        { emoji: '📱', label: 'App signups' },
-      ].map(item => (
-        <div className={styles.forItem} key={item.label}>
-          <span className={styles.forEmoji}>{item.emoji}</span>
-          <span className={styles.forLabel}>{item.label}</span>
+
+      {/* PERFECT FOR SECTION */}
+      <section className={styles.forSection}>
+        <div className={styles.howInner}>
+          <h2 className={styles.howTitle}>Perfect for...</h2>
+          <div className={styles.forGrid}>
+            {[
+              { emoji: '🛍️', label: 'Online shopping' },
+              { emoji: '🎮', label: 'Gaming accounts' },
+              { emoji: '👨‍💻', label: 'App testing' },
+              { emoji: '📰', label: 'Content access' },
+              { emoji: '🔐', label: 'Staying private' },
+              { emoji: '🎓', label: 'Free trials' },
+              { emoji: '💼', label: 'Competitor research' },
+              { emoji: '📱', label: 'App signups' },
+            ].map(item => (
+              <div className={styles.forItem} key={item.label}>
+                <span className={styles.forEmoji}>{item.emoji}</span>
+                <span className={styles.forLabel}>{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-</section>
+      </section>
+
       {/* PRICING SECTION */}
       <section className={styles.pricingSection}>
         <div className={styles.howInner}>
@@ -233,8 +279,8 @@ async function handleUpgrade(plan) {
                 <li>✓ Priority delivery</li>
               </ul>
               <button className={styles.planBtnPaid} onClick={() => handleUpgrade('phantom')}>
-  Get Phantom ⚡
-</button>
+                Get Phantom ⚡
+              </button>
             </div>
 
             {/* Spectre */}
@@ -253,8 +299,8 @@ async function handleUpgrade(plan) {
                 <li>✓ Priority support</li>
               </ul>
               <button className={styles.planBtnPaid} onClick={() => handleUpgrade('spectre')}>
-  Get Spectre 🔥
-</button>
+                Get Spectre 🔥
+              </button>
             </div>
 
           </div>
