@@ -63,7 +63,22 @@ async function handleUpgrade(plan) {
           <span className={styles.logoIcon}>✦</span>
           <span className={styles.logoText}>GhostMail</span>
         </div>
-        <div className={styles.headerBadge}>Free · No signup · No tracking</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+  <div className={styles.headerBadge}>Free · No signup · No tracking</div>
+  <a href="/login" style={{
+    background: 'rgba(167,139,250,0.15)',
+    color: '#a78bfa',
+    border: '1px solid rgba(167,139,250,0.3)',
+    borderRadius: '99px',
+    padding: '6px 16px',
+    fontSize: '13px',
+    fontWeight: '600',
+    textDecoration: 'none',
+    transition: 'all 0.15s',
+  }}>
+    Sign in
+  </a>
+</div>
       </header>
 
       {/* HERO */}
