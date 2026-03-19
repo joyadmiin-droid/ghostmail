@@ -186,7 +186,32 @@ function InboxContent() {
               </div>
               <div className={styles.emailBody}>
                 {selected.body_html ? (
-                  <iframe srcDoc={selected.body_html} className={styles.emailFrame} sandbox="allow-same-origin" title="Email content" />
+                  <iframe
+  srcDoc={`
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        background: #0a0a0f !important;
+        color: #e8e6df !important;
+        font-family: 'DM Sans', sans-serif;
+        padding: 24px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      a { color: #a78bfa !important; }
+      img { max-width: 100%; height: auto; }
+      p, div, span, td, th { 
+        color: #e8e6df !important; 
+        background: transparent !important;
+      }
+      table { width: 100%; }
+    </style>
+    ${selected.body_html}
+  `}
+  className={styles.emailFrame}
+  sandbox="allow-same-origin"
+  title="Email content"
+/>
                 ) : (
                   <pre className={styles.emailText}>{selected.body_text || '(empty email)'}</pre>
                 )}
