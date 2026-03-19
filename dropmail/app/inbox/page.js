@@ -189,22 +189,24 @@ function InboxContent() {
                   <iframe
   srcDoc={`
     <style>
-      * { box-sizing: border-box; }
-      body {
-        background: #0a0a0f !important;
+      html, body, div, table, td, th, p, span, a, strong, em, h1, h2, h3, h4, h5, h6, ul, li, ol, blockquote, pre, center * {
+        background-color: #0a0a0f !important;
         color: #e8e6df !important;
-        font-family: 'DM Sans', sans-serif;
-        padding: 24px;
-        margin: 0;
-        line-height: 1.6;
+      }
+      * {
+        box-sizing: border-box;
+        background-color: #0a0a0f !important;
+        color: #e8e6df !important;
+      }
+      body {
+        font-family: 'DM Sans', sans-serif !important;
+        padding: 24px !important;
+        margin: 0 !important;
+        line-height: 1.6 !important;
+        background: #0a0a0f !important;
       }
       a { color: #a78bfa !important; }
-      img { max-width: 100%; height: auto; }
-      p, div, span, td, th { 
-        color: #e8e6df !important; 
-        background: transparent !important;
-      }
-      table { width: 100%; }
+      img { max-width: 100% !important; height: auto !important; }
     </style>
     ${selected.body_html}
   `}
