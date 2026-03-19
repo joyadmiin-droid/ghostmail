@@ -114,6 +114,14 @@ export default function Home() {
     setCopied(addr);
     setTimeout(() => setCopied(null), 2000);
   }
+  async function deleteAddress(id) {
+  if (!confirm('Delete this address?')) return;
+  await supabase
+    .from('mailboxes')
+    .update({ is_active: false })
+    .eq('id', id);
+  setAddresses(prev => prev.filter(a => a.id !== id));
+}
 
   function getExpiryLabel(expiresAt) {
     const diff = new Date(expiresAt) - new Date();
@@ -211,23 +219,63 @@ export default function Home() {
               {addresses.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {addresses.map(addr => (
-                    <div key={addr.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</span>
-                        <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>⏱ {getExpiryLabel(addr.expires_at)}</span>
-                      </div>
-                      <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{addr.address}</div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => copyAddress(addr.address)} style={{ padding: '7px 16px', borderRadius: '8px', border: `1px solid ${copied === addr.address ? 'rgba(34,197,94,0.3)' : 'rgba(167,139,250,0.3)'}`, background: copied === addr.address ? 'rgba(34,197,94,0.1)' : 'rgba(167,139,250,0.1)', color: copied === addr.address ? '#22c55e' : '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {copied === addr.address ? '✓ Copied' : 'Copy'}
-                        </button>
-                        <a href={`/inbox?token=${addr.token}`} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
-                          Open Inbox →
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    <div key={addr.id} style={{
+  background: 'rgba(255,255,255,0.04)',
+  border: `1px solid ${
+    new Date(addr.expires_at) < new Date(Date.now() + 30 * 60 * 1000)
+      ? 'rgba(248,113,113,0.4)'  // red - expiring soon
+      : addr.email_count > 0
+        ? 'rgba(251,191,36,0.4)'  // yellow - has emails
+        : 'rgba(34,197,94,0.4)'   // green - fresh
+  }`,
+  borderRadius: '12px',
+  padding: '16px',
+  position: 'relative',
+}}>
+  {/* Status dot */}
+  <div style={{
+    position: 'absolute', top: '12px', right: '12px',
+    width: '8px', height: '8px', borderRadius: '50%',
+    background: new Date(addr.expires_at) < new Date(Date.now() + 30 * 60 * 1000)
+      ? '#f87171'
+      : addr.email_count > 0 ? '#fbbf24' : '#22c55e'
+  }} />
+
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+    <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</span>
+    <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>⏱ {getExpiryLabel(addr.expires_at)}</span>
+  </div>
+  <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{addr.address}</div>
+  <div style={{ display: 'flex', gap: '8px' }}>
+    <button onClick={() => copyAddress(addr.address)} style={{
+      padding: '7px 16px', borderRadius: '8px',
+      border: `1px solid ${copied === addr.address ? 'rgba(34,197,94,0.3)' : 'rgba(167,139,250,0.3)'}`,
+      background: copied === addr.address ? 'rgba(34,197,94,0.1)' : 'rgba(167,139,250,0.1)',
+      color: copied === addr.address ? '#22c55e' : '#a78bfa',
+      fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit'
+    }}>
+      {copied === addr.address ? '✓ Copied' : 'Copy'}
+    </button>
+    <a href={`/inbox?token=${addr.token}`} style={{
+      padding: '7px 16px', borderRadius: '8px',
+      border: '1px solid rgba(255,255,255,0.1)',
+      background: 'none', color: '#fff',
+      fontSize: '13px', fontWeight: '600', textDecoration: 'none'
+    }}>
+      Open Inbox →
+    </a>
+    <button onClick={() => deleteAddress(addr.id)} style={{
+      padding: '7px 12px', borderRadius: '8px',
+      border: '1px solid rgba(248,113,113,0.3)',
+      background: 'rgba(248,113,113,0.08)',
+      color: '#f87171', fontSize: '13px',
+      fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+      marginLeft: 'auto'
+    }}>
+      🗑️
+    </button>
+  </div>
+</div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: '13px' }}>
                   <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>👻</div>
