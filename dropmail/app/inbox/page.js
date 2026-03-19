@@ -189,24 +189,50 @@ function InboxContent() {
                   <iframe
   srcDoc={`
     <style>
-      html, body, div, table, td, th, p, span, a, strong, em, h1, h2, h3, h4, h5, h6, ul, li, ol, blockquote, pre, center * {
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+      html, body, div, table, td, th, p, span, a, strong, em, h1, h2, h3, h4, h5, h6, ul, li, ol, blockquote, pre, center, * {
         background-color: #0a0a0f !important;
         color: #e8e6df !important;
-      }
-      * {
-        box-sizing: border-box;
-        background-color: #0a0a0f !important;
-        color: #e8e6df !important;
+        font-family: 'DM Sans', sans-serif !important;
       }
       body {
-        font-family: 'DM Sans', sans-serif !important;
-        padding: 24px !important;
+        padding: 32px 40px !important;
         margin: 0 !important;
-        line-height: 1.6 !important;
+        line-height: 1.8 !important;
+        font-size: 16px !important;
         background: #0a0a0f !important;
       }
-      a { color: #a78bfa !important; }
-      img { max-width: 100% !important; height: auto !important; }
+      p {
+        font-size: 16px !important;
+        line-height: 1.8 !important;
+        margin-bottom: 16px !important;
+      }
+      h1, h2, h3 {
+        font-size: 22px !important;
+        font-weight: 600 !important;
+        margin-bottom: 16px !important;
+        color: #ffffff !important;
+      }
+      a { 
+        color: #a78bfa !important; 
+        text-decoration: underline !important;
+      }
+      img { 
+        max-width: 100% !important; 
+        height: auto !important;
+        border-radius: 8px !important;
+      }
+      hr {
+        border: none !important;
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
+        margin: 24px 0 !important;
+      }
+      blockquote {
+        border-left: 3px solid #a78bfa !important;
+        padding-left: 16px !important;
+        margin: 16px 0 !important;
+        color: #9b99b0 !important;
+      }
     </style>
     ${selected.body_html}
   `}
