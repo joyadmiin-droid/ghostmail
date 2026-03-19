@@ -16,11 +16,17 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  async function handleGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'https://www.ghostmails.org' }
+    });
+  }
+
   async function handleSubmit() {
     setLoading(true);
     setError('');
     setMessage('');
-
     try {
       if (isSignup) {
         const { error } = await supabase.auth.signUp({ email, password });
@@ -50,20 +56,17 @@ export default function LoginPage() {
       padding: '24px',
       position: 'relative',
     }}>
-      {/* Background grid */}
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none',
         backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
         backgroundSize: '48px 48px',
       }} />
 
-      {/* Logo */}
       <a href="/" style={{ textDecoration: 'none', marginBottom: '40px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ color: '#a78bfa', fontSize: '20px' }}>✦</span>
         <span style={{ color: '#fff', fontSize: '18px', fontWeight: '700' }}>GhostMail</span>
       </a>
 
-      {/* Card */}
       <div style={{
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.1)',
@@ -81,6 +84,33 @@ export default function LoginPage() {
         <p style={{ color: '#6b6b7a', fontSize: '14px', textAlign: 'center', marginBottom: '32px' }}>
           {isSignup ? 'Join GhostMail today' : 'Sign in to your account'}
         </p>
+
+        {/* Google Button */}
+        <button onClick={handleGoogle} style={{
+          width: '100%', padding: '14px',
+          background: '#fff', color: '#1a1a1a',
+          border: 'none', borderRadius: '12px',
+          fontSize: '15px', fontWeight: '600',
+          cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: '10px',
+          marginBottom: '20px',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 20-9 20-20 0-1.3-.1-2.7-.4-4z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.6-2.9-11.8-7.2l-6.6 5.1C9.5 39.6 16.3 44 24 44z"/>
+            <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.5-2.6 4.6-4.8 6l6.2 5.2C40.7 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+          <span style={{ color: '#4a4a5a', fontSize: '12px' }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+        </div>
 
         {/* Email */}
         <div style={{ marginBottom: '16px' }}>
@@ -121,33 +151,24 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Error / Success */}
         {error && <p style={{ color: '#f87171', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>{error}</p>}
         {message && <p style={{ color: '#22c55e', fontSize: '13px', marginBottom: '16px', textAlign: 'center' }}>{message}</p>}
 
-        {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            width: '100%', padding: '16px',
-            background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
-            color: '#fff', border: 'none', borderRadius: '14px',
-            fontSize: '16px', fontWeight: '700', cursor: 'pointer',
-            fontFamily: 'inherit', marginBottom: '20px',
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
+        <button onClick={handleSubmit} disabled={loading} style={{
+          width: '100%', padding: '16px',
+          background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
+          color: '#fff', border: 'none', borderRadius: '14px',
+          fontSize: '16px', fontWeight: '700', cursor: 'pointer',
+          fontFamily: 'inherit', marginBottom: '20px',
+          opacity: loading ? 0.7 : 1,
+        }}>
           {loading ? '...' : isSignup ? 'Create account' : 'Sign in'}
         </button>
 
-        {/* Toggle */}
         <p style={{ textAlign: 'center', fontSize: '14px', color: '#6b6b7a' }}>
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button
-            onClick={() => { setIsSignup(!isSignup); setError(''); setMessage(''); }}
-            style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
-          >
+          <button onClick={() => { setIsSignup(!isSignup); setError(''); setMessage(''); }}
+            style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
             {isSignup ? 'Sign in' : 'Sign up'}
           </button>
         </p>
