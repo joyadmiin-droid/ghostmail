@@ -17,20 +17,45 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('addresses');
+  const [addresses, setAddresses] = useState([]);
+const [emailsCount, setEmailsCount] = useState(0);
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('plan')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) setPlan(profile.plan);
-      }
-    };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    setUser(session.user);
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', session.user.id)
+      .single();
+    if (profile) setPlan(profile.plan);
+    
+    // Fetch saved addresses
+    const { data: addrs } = await supabase
+      .from('mailboxes')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    if (addrs?.length) {
+      setAddresses(addrs);
+      setMailbox(addrs[0]);
+      
+      // Count today's emails
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const mailboxIds = addrs.map(m => m.id);
+      const { count } = await supabase
+        .from('emails')
+        .select('id', { count: 'exact' })
+        .in('mailbox_id', mailboxIds)
+        .gte('received_at', today.toISOString());
+      setEmailsCount(count || 0);
+    }
+  }
+};
     init();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
@@ -164,8 +189,8 @@ export default function Home() {
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
                 {[
-                  { label: 'Active addresses', value: mailbox ? '1' : '0', hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
-                  { label: 'Emails received', value: '0', hint: 'today' },
+                  { label: 'Active addresses', value: addresses.length || (mailbox ? 1 : 0), hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
+{ label: 'Emails received', value: emailsCount, hint: 'today' },
                   { label: 'Plan', value: planLabel, hint: planHint },
                 ].map(s => (
                   <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
