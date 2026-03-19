@@ -13,49 +13,46 @@ export default function Home() {
   const [plan, setPlan] = useState('free');
   const [mailbox, setMailbox] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(null);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('addresses');
   const [addresses, setAddresses] = useState([]);
-const [emailsCount, setEmailsCount] = useState(0);
+  const [emailsCount, setEmailsCount] = useState(0);
 
   useEffect(() => {
     const init = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    setUser(session.user);
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', session.user.id)
-      .single();
-    if (profile) setPlan(profile.plan);
-    
-    // Fetch saved addresses
-    const { data: addrs } = await supabase
-      .from('mailboxes')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-    if (addrs?.length) {
-      setAddresses(addrs);
-      setMailbox(addrs[0]);
-      
-      // Count today's emails
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const mailboxIds = addrs.map(m => m.id);
-      const { count } = await supabase
-        .from('emails')
-        .select('id', { count: 'exact' })
-        .in('mailbox_id', mailboxIds)
-        .gte('received_at', today.toISOString());
-      setEmailsCount(count || 0);
-    }
-  }
-};
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) setPlan(profile.plan);
+
+        const { data: addrs } = await supabase
+          .from('mailboxes')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        if (addrs?.length) {
+          setAddresses(addrs);
+          setMailbox(addrs[0]);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const mailboxIds = addrs.map(m => m.id);
+          const { count } = await supabase
+            .from('emails')
+            .select('id', { count: 'exact' })
+            .in('mailbox_id', mailboxIds)
+            .gte('received_at', today.toISOString());
+          setEmailsCount(count || 0);
+        }
+      }
+    };
     init();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
@@ -77,12 +74,12 @@ const [emailsCount, setEmailsCount] = useState(0);
     setPlan('free');
   }
 
-  async function handleUpgrade(plan) {
+  async function handleUpgrade(planName) {
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan: planName }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -92,44 +89,42 @@ const [emailsCount, setEmailsCount] = useState(0);
   }
 
   async function generateMailbox() {
-  setLoading(true);
-  setError(null);
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers = { 'Content-Type': 'application/json' };
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/mailbox/create', { method: 'POST', headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate');
+      setMailbox(data);
+      setAddresses(prev => [data, ...prev]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    const res = await fetch('/api/mailbox/create', { method: 'POST', headers });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to generate');
-    setMailbox(data);
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-}
-
-  async function copyAddress() {
-    if (!mailbox) return;
-    await navigator.clipboard.writeText(mailbox.address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
-  function goToInbox() {
-    window.location.href = `/inbox?token=${mailbox.token}`;
+  async function copyAddress(addr) {
+    await navigator.clipboard.writeText(addr);
+    setCopied(addr);
+    setTimeout(() => setCopied(null), 2000);
   }
 
-  function getExpiryMinutes() {
-    if (!mailbox) return 10;
-    const diff = new Date(mailbox.expires_at) - new Date();
-    return Math.max(0, Math.round(diff / 60000));
+  function getExpiryLabel(expiresAt) {
+    const diff = new Date(expiresAt) - new Date();
+    if (diff <= 0) return 'Expired';
+    const mins = Math.round(diff / 60000);
+    if (mins > 60 * 24) return `${Math.round(mins / 60 / 24)}d left`;
+    if (mins > 60) return `${Math.round(mins / 60)}h left`;
+    return `${mins}m left`;
   }
 
   const username = user?.email?.split('@')[0];
-
   const planLabel = plan === 'spectre' ? '🔥 Spectre' : plan === 'phantom' ? '⚡ Phantom' : '👻 Ghost';
   const planHint = plan === 'spectre' ? 'Unlimited everything' : plan === 'phantom' ? '$4.99/mo' : 'Free forever';
 
@@ -189,8 +184,8 @@ const [emailsCount, setEmailsCount] = useState(0);
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
                 {[
-                  { label: 'Active addresses', value: addresses.length || (mailbox ? 1 : 0), hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
-{ label: 'Emails received', value: emailsCount, hint: 'today' },
+                  { label: 'Active addresses', value: addresses.length, hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
+                  { label: 'Emails received', value: emailsCount, hint: 'today' },
                   { label: 'Plan', value: planLabel, hint: planHint },
                 ].map(s => (
                   <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
@@ -201,41 +196,45 @@ const [emailsCount, setEmailsCount] = useState(0);
                 ))}
               </div>
 
-              <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', fontWeight: '600' }}>Quick generate</div>
+              {/* Generate button */}
               <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Create a throwaway address</div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>Instant · No trace · Auto-deletes in 10 min</div>
+                  <div style={{ fontSize: '12px', color: '#888' }}>Instant · No trace · {plan === 'spectre' ? 'Saved forever' : plan === 'phantom' ? '24hr lifespan' : 'Auto-deletes in 10 min'}</div>
                 </div>
                 <button onClick={generateMailbox} disabled={loading} style={{ padding: '10px 20px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                  ⚡ Generate now
+                  {loading ? '...' : '⚡ Generate now'}
                 </button>
               </div>
 
-              {mailbox && (
-                <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active address</span>
-                    <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>⏱ Expires in {getExpiryMinutes()} min</span>
-                  </div>
-                  <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{mailbox.address}</div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={copyAddress} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(167,139,250,0.3)', background: 'rgba(167,139,250,0.1)', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {copied ? '✓ Copied' : 'Copy'}
-                    </button>
-                    <button onClick={goToInbox} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Open Inbox →
-                    </button>
-                  </div>
+              {/* Address list */}
+              {addresses.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {addresses.map(addr => (
+                    <div key={addr.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</span>
+                        <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>⏱ {getExpiryLabel(addr.expires_at)}</span>
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{addr.address}</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => copyAddress(addr.address)} style={{ padding: '7px 16px', borderRadius: '8px', border: `1px solid ${copied === addr.address ? 'rgba(34,197,94,0.3)' : 'rgba(167,139,250,0.3)'}`, background: copied === addr.address ? 'rgba(34,197,94,0.1)' : 'rgba(167,139,250,0.1)', color: copied === addr.address ? '#22c55e' : '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {copied === addr.address ? '✓ Copied' : 'Copy'}
+                        </button>
+                        <a href={`/inbox?token=${addr.token}`} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+                          Open Inbox →
+                        </a>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-
-              {!mailbox && (
+              ) : (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: '13px' }}>
                   <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>👻</div>
                   No addresses yet — generate your first one above!
                 </div>
               )}
+              {error && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
             </div>
           )}
 
@@ -295,14 +294,13 @@ const [emailsCount, setEmailsCount] = useState(0);
                 {[
                   { label: 'Email', value: user?.email },
                   { label: 'Username', value: username },
-                  { label: 'Password', value: '••••••••' },
+                  { label: 'Plan', value: planLabel },
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                     <div>
                       <div style={{ fontSize: '13px', color: '#fff', fontWeight: '500' }}>{row.label}</div>
                       <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{row.value}</div>
                     </div>
-                    <button style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
                   </div>
                 ))}
               </div>
@@ -312,7 +310,7 @@ const [emailsCount, setEmailsCount] = useState(0);
                   <div style={{ fontSize: '13px', color: '#f87171', fontWeight: '500' }}>Delete account</div>
                   <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>Permanently remove everything</div>
                 </div>
-                <button onClick={() => { if(confirm('Are you sure? This cannot be undone.')) handleSignOut(); }} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => { if (confirm('Are you sure? This cannot be undone.')) handleSignOut(); }} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Delete
                 </button>
               </div>
@@ -368,17 +366,17 @@ const [emailsCount, setEmailsCount] = useState(0);
                 <span className={styles.addressLabel}>Your temp address</span>
                 <div className={styles.addressBox}>
                   <span className={styles.addressText}>{mailbox.address}</span>
-                  <button className={`${styles.copyBtn} ${copied ? styles.copied : ''}`} onClick={copyAddress}>
-                    {copied ? '✓ Copied' : 'Copy'}
+                  <button className={`${styles.copyBtn} ${copied === mailbox.address ? styles.copied : ''}`} onClick={() => copyAddress(mailbox.address)}>
+                    {copied === mailbox.address ? '✓ Copied' : 'Copy'}
                   </button>
                 </div>
               </div>
               <div className={styles.metaRow}>
                 <span className={styles.activePill}>● Active</span>
-                <span className={styles.expiryText}>⏱ Expires in {getExpiryMinutes()} min</span>
+                <span className={styles.expiryText}>⏱ {getExpiryLabel(mailbox.expires_at)}</span>
               </div>
               <div className={styles.actionRow}>
-                <button className={styles.btnPrimary} onClick={goToInbox}>Open Inbox →</button>
+                <button className={styles.btnPrimary} onClick={() => window.location.href = `/inbox?token=${mailbox.token}`}>Open Inbox →</button>
                 <button className={styles.btnSecondary} onClick={generateMailbox}>New Address</button>
               </div>
               <p className={styles.tokenNote}>Bookmark your inbox URL — it's your only way back in.</p>
