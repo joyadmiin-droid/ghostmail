@@ -221,12 +221,7 @@ export default function Home() {
                   {addresses.map(addr => (
                     <div key={addr.id} style={{
   background: 'rgba(255,255,255,0.04)',
-  border: `1px solid ${
-    new Date(addr.expires_at) < new Date(Date.now() + 30 * 60 * 1000)
-      ? 'rgba(248,113,113,0.4)'  // red - expiring soon
-      : addr.email_count > 0
-        ? 'rgba(251,191,36,0.4)'  // yellow - has emails
-        : 'rgba(34,197,94,0.4)'   // green - fresh
+  border: '1px solid rgba(34,197,94,0.4)',
   }`,
   borderRadius: '12px',
   padding: '16px',
