@@ -251,7 +251,7 @@ export default function Home() {
     }}>
       {copied === addr.address ? '✓ Copied' : 'Copy'}
     </button>
-    <a href={`/inbox?token=${addr.token}`} style={{
+    <a href={'/inbox?token=' + addr.token} style={{
       padding: '7px 16px', borderRadius: '8px',
       border: '1px solid rgba(255,255,255,0.1)',
       background: 'none', color: '#fff',
