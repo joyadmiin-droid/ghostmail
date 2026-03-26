@@ -172,6 +172,11 @@ export default function LoginPage() {
             {isSignup ? 'Sign in' : 'Sign up'}
           </button>
         </p>
+        <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '12px', color: '#444' }}>
+  <a href="/terms" style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}>Terms</a>
+  <a href="/privacy" style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}>Privacy</a>
+  <a href="mailto:support@ghostmails.org" style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}>Contact</a>
+</div>
       </div>
     </main>
   );

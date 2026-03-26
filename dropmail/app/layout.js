@@ -23,8 +23,8 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: 'DropMail — Instant Throwaway Email',
-  description: 'Generate a temporary email address instantly. No signup. Self-destructs in 10 minutes.',
+  title: 'GhostMail — Instant Throwaway Email',
+  description: 'Generate a real working email in one click. Vanishes automatically — no trace, no spam.',
 };
 
 export default function RootLayout({ children }) {
