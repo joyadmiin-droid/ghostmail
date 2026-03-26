@@ -244,7 +244,7 @@ export default function Home() {
   <div style={{ display: 'flex', gap: '8px' }}>
     <button onClick={() => copyAddress(addr.address)} style={{
       padding: '7px 16px', borderRadius: '8px',
-      border: `1px solid ${copied === addr.address ? 'rgba(34,197,94,0.3)' : 'rgba(167,139,250,0.3)'}`,
+      border: copied === addr.address ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(167,139,250,0.3)',
       background: copied === addr.address ? 'rgba(34,197,94,0.1)' : 'rgba(167,139,250,0.1)',
       color: copied === addr.address ? '#22c55e' : '#a78bfa',
       fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit'
