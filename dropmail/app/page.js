@@ -19,6 +19,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('addresses');
   const [addresses, setAddresses] = useState([]);
   const [emailsCount, setEmailsCount] = useState(0);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -74,7 +76,10 @@ export default function Home() {
     setPlan('free');
   }
 
+  // ✅ PADDLE checkout — replaces Stripe
   async function handleUpgrade(planName) {
+    setUpgradeLoading(true);
+    setUpgradeError('');
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -82,9 +87,17 @@ export default function Home() {
         body: JSON.stringify({ plan: planName }),
       });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
+      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
     } catch (err) {
       console.error('Checkout error:', err);
+      setUpgradeError(err.message);
+    } finally {
+      setUpgradeLoading(false);
     }
   }
 
@@ -298,6 +311,14 @@ export default function Home() {
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>{planEmoji} {planLabel}</div>
                 <div style={{ fontSize: '12px', color: '#666' }}>{planHint}</div>
               </div>
+
+              {/* ✅ Upgrade error message */}
+              {upgradeError && (
+                <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '13px' }}>
+                  {upgradeError}
+                </div>
+              )}
+
               {plan !== 'spectre' && (
                 <>
                   <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Upgrade</div>
@@ -306,16 +327,24 @@ export default function Home() {
                       <div style={{ fontSize: '11px', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 8px', borderRadius: '99px', display: 'inline-block', marginBottom: '8px' }}>Most popular</div>
                       <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Phantom — $4.99/mo</div>
                       <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>5 addresses · 24hr lifespan · 100 emails</div>
-                      <button onClick={() => handleUpgrade('phantom')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
-                        Upgrade to Phantom
+                      <button
+                        onClick={() => handleUpgrade('phantom')}
+                        disabled={upgradeLoading}
+                        style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: upgradeLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: upgradeLoading ? 0.7 : 1 }}
+                      >
+                        {upgradeLoading ? 'Redirecting...' : 'Upgrade to Phantom'}
                       </button>
                     </div>
                   )}
                   <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
                     <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Spectre — $8.99/mo</div>
                     <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>Unlimited addresses · Forever · Unlimited emails</div>
-                    <button onClick={() => handleUpgrade('spectre')} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Upgrade to Spectre
+                    <button
+                      onClick={() => handleUpgrade('spectre')}
+                      disabled={upgradeLoading}
+                      style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: upgradeLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: upgradeLoading ? 0.7 : 1 }}
+                    >
+                      {upgradeLoading ? 'Redirecting...' : 'Upgrade to Spectre'}
                     </button>
                   </div>
                 </>
@@ -375,7 +404,6 @@ export default function Home() {
       <div className={styles.bg} aria-hidden="true" />
       <div className={styles.grid} aria-hidden="true" />
 
-      {/* HEADER — no "Free · No signup · No tracking" badge */}
       <header className={styles.header}>
         <div className={styles.logo}>
           <span className={styles.logoIcon}>&#10022;</span>
@@ -390,7 +418,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* HERO */}
       <section className={styles.hero}>
         <div className={styles.tagline}>
           <span className={styles.taglineDot} />
@@ -443,8 +470,6 @@ export default function Home() {
       {/* HOW IT WORKS (left) + PERFECT FOR (right) */}
       <section style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem 5rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', alignItems: 'start' }}>
-
-          {/* LEFT */}
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '20px', padding: '2rem' }}>
             <p style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.75rem' }}>The process</p>
             <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#fff', marginBottom: '1.5rem' }}>How it works</h2>
@@ -467,8 +492,6 @@ export default function Home() {
               ))}
             </div>
           </div>
-
-          {/* RIGHT */}
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '20px', padding: '2rem' }}>
             <p style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.75rem' }}>Use cases</p>
             <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#fff', marginBottom: '1.5rem' }}>Perfect for...</h2>
@@ -490,10 +513,7 @@ export default function Home() {
               ))}
             </div>
           </div>
-
         </div>
-
-        {/* Stats */}
         <div className={styles.stats} style={{ marginTop: '2rem' }}>
           <div className={styles.stat}><span className={styles.statNum}>10min</span><span className={styles.statLabel}>Auto-delete</span></div>
           <div className={styles.statDivider} />
