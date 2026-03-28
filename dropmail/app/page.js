@@ -19,6 +19,7 @@ export default function Home() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
+  const [totalEmails, setTotalEmails] = useState(null);
 
   useEffect(() => {
     const init = async () => {
@@ -32,8 +33,18 @@ export default function Home() {
           .single();
         if (profile) setPlan(profile.plan);
       }
+
+      // ✅ Social proof — count total emails received today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const { count } = await supabase
+        .from('emails')
+        .select('id', { count: 'exact' })
+        .gte('received_at', today.toISOString());
+      if (count !== null) setTotalEmails(count);
     };
     init();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -85,6 +96,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate');
       setMailbox(data);
+      if (totalEmails !== null) setTotalEmails(prev => prev + 1);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -107,50 +119,30 @@ export default function Home() {
     return mins + 'm left';
   }
 
+  function formatCount(n) {
+    if (n === null) return '...';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return n.toString();
+  }
+
   const username = user?.email?.split('@')[0];
 
   const faqs = [
-    {
-      q: 'Is GhostMail really free?',
-      a: 'Yes — the Ghost plan is completely free forever. No credit card, no signup, no catch. Generate an address in one click and use it immediately. Paid plans (Phantom and Spectre) unlock longer lifespans and more addresses.',
-    },
-    {
-      q: 'How long does a temp email address last?',
-      a: 'On the free Ghost plan, addresses last 10 minutes. Phantom plan addresses last 24 hours. Spectre plan addresses are saved forever and never expire.',
-    },
-    {
-      q: 'Can I receive any email with GhostMail?',
-      a: 'Yes — GhostMail generates a real working email address. You can use it to sign up for websites, receive verification codes, newsletters, and any other emails. Some services may block known temporary email domains, but most work fine.',
-    },
-    {
-      q: 'Is GhostMail safe and private?',
-      a: 'Absolutely. We store zero personal data for free users. No logs, no tracking, no ads. Emails are permanently deleted when your address expires. Paid users only share their login email which is never sold or shared.',
-    },
-    {
-      q: 'Can I send emails from GhostMail?',
-      a: 'No — GhostMail is receive-only. It is designed for receiving verification emails and avoiding spam, not for sending. If you need to send emails, use a regular email provider.',
-    },
-    {
-      q: 'What happens when my address expires?',
-      a: 'When your address expires, the address itself and all emails received to it are permanently and irreversibly deleted from our servers. There is no way to recover them — this is by design.',
-    },
-    {
-      q: 'Can I get my money back?',
-      a: 'Yes — we offer a full refund within 14 days of any purchase, no questions asked. Email support@ghostmails.org with your order details.',
-    },
-    {
-      q: 'Do I need to create an account?',
-      a: 'No account is needed for the free plan. Just click Generate and you have a working email address instantly. Creating an account is only required for paid plans.',
-    },
+    { q: 'Is GhostMail really free?', a: 'Yes — the Ghost plan is completely free forever. No credit card, no signup, no catch. Generate an address in one click and use it immediately. Paid plans (Phantom and Spectre) unlock longer lifespans and more addresses.' },
+    { q: 'How long does a temp email address last?', a: 'On the free Ghost plan, addresses last 10 minutes. Phantom plan addresses last 24 hours. Spectre plan addresses are saved forever and never expire.' },
+    { q: 'Can I receive any email with GhostMail?', a: 'Yes — GhostMail generates a real working email address. You can use it to sign up for websites, receive verification codes, newsletters, and any other emails. Some services may block known temporary email domains, but most work fine.' },
+    { q: 'Is GhostMail safe and private?', a: 'Absolutely. We store zero personal data for free users. No logs, no tracking, no ads. Emails are permanently deleted when your address expires. Paid users only share their login email which is never sold or shared.' },
+    { q: 'Can I send emails from GhostMail?', a: 'No — GhostMail is receive-only. It is designed for receiving verification emails and avoiding spam, not for sending. If you need to send emails, use a regular email provider.' },
+    { q: 'What happens when my address expires?', a: 'When your address expires, the address itself and all emails received to it are permanently and irreversibly deleted from our servers. There is no way to recover them — this is by design.' },
+    { q: 'Can I get my money back?', a: 'Yes — we offer a full refund within 14 days of any purchase, no questions asked. Email support@ghostmails.org with your order details.' },
+    { q: 'Do I need to create an account?', a: 'No account is needed for the free plan. Just click Generate and you have a working email address instantly. Creating an account is only required for paid plans.' },
   ];
 
-  // ─── HOMEPAGE (shown to everyone, logged in or not) ───────────
   return (
     <main className={styles.main}>
       <div className={styles.bg} aria-hidden="true" />
       <div className={styles.grid} aria-hidden="true" />
 
-      {/* HEADER */}
       <header className={styles.header}>
         <div className={styles.logo}>
           <span className={styles.logoIcon}>&#10022;</span>
@@ -160,18 +152,13 @@ export default function Home() {
           <a href="/terms" style={{ color: '#555', fontSize: '13px', textDecoration: 'none' }}>Terms</a>
           <a href="/privacy" style={{ color: '#555', fontSize: '13px', textDecoration: 'none' }}>Privacy</a>
           {user ? (
-            <a href="/dashboard" style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', borderRadius: '99px', padding: '6px 16px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
-              Dashboard
-            </a>
+            <a href="/dashboard" style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', borderRadius: '99px', padding: '6px 16px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>Dashboard</a>
           ) : (
-            <a href="/login" style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', borderRadius: '99px', padding: '6px 16px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
-              Sign in
-            </a>
+            <a href="/login" style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', borderRadius: '99px', padding: '6px 16px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>Sign in</a>
           )}
         </div>
       </header>
 
-      {/* HERO */}
       <section className={styles.hero}>
         <div className={styles.tagline}>
           <span className={styles.taglineDot} />
@@ -185,6 +172,17 @@ export default function Home() {
           Generate a <strong>real working email</strong> in one click.
           Use it anywhere. Vanishes automatically — no trace, no spam, no BS.
         </p>
+
+        {/* ✅ SOCIAL PROOF COUNTER */}
+        {totalEmails !== null && totalEmails > 0 && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '999px', padding: '5px 14px', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+            <span style={{ fontSize: '12px', color: '#86efac', fontWeight: '600' }}>
+              {formatCount(totalEmails)} emails received today
+            </span>
+          </div>
+        )}
+
         <div className={styles.card}>
           {!mailbox ? (
             <div className={styles.cardInner}>
@@ -232,9 +230,7 @@ export default function Home() {
                 { n: '04', title: 'Self-destructs', desc: 'After 10 minutes — address and emails gone forever.' },
               ].map((s, i) => (
                 <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(167,139,250,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: '#a78bfa', flexShrink: 0, fontFamily: 'monospace' }}>
-                    {s.n}
-                  </div>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(167,139,250,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: '#a78bfa', flexShrink: 0, fontFamily: 'monospace' }}>{s.n}</div>
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#fff', marginBottom: '0.2rem' }}>{s.title}</div>
                     <div style={{ fontSize: '0.83rem', color: '#666', lineHeight: '1.5' }}>{s.desc}</div>
@@ -285,10 +281,7 @@ export default function Home() {
               <h3 className={styles.planName}>Ghost</h3>
               <div className={styles.planPrice}><span className={styles.planAmount}>$0</span><span className={styles.planPer}>/forever</span></div>
               <ul className={styles.planFeatures}>
-                <li>1 address at a time</li>
-                <li>10 minute lifespan</li>
-                <li>Up to 10 emails</li>
-                <li>No signup needed</li>
+                <li>1 address at a time</li><li>10 minute lifespan</li><li>Up to 10 emails</li><li>No signup needed</li>
               </ul>
               <button className={styles.planBtnFree} onClick={generateMailbox}>Get started free</button>
             </div>
@@ -297,10 +290,7 @@ export default function Home() {
               <h3 className={styles.planName}>Phantom</h3>
               <div className={styles.planPrice}><span className={styles.planAmount}>$4.99</span><span className={styles.planPer}>/month</span></div>
               <ul className={styles.planFeatures}>
-                <li>5 addresses at a time</li>
-                <li>24 hour lifespan</li>
-                <li>Up to 100 emails</li>
-                <li>Priority delivery</li>
+                <li>5 addresses at a time</li><li>24 hour lifespan</li><li>Up to 100 emails</li><li>Priority delivery</li>
               </ul>
               <button className={styles.planBtnPaid} onClick={() => handleUpgrade('phantom')}>Get Phantom</button>
             </div>
@@ -310,10 +300,7 @@ export default function Home() {
               <h3 className={styles.planName}>Spectre</h3>
               <div className={styles.planPrice}><span className={styles.planAmount}>$8.99</span><span className={styles.planPer}>/month</span></div>
               <ul className={styles.planFeatures}>
-                <li>Unlimited addresses</li>
-                <li>Emails saved forever</li>
-                <li>Unlimited emails</li>
-                <li>Priority support</li>
+                <li>Unlimited addresses</li><li>Emails saved forever</li><li>Unlimited emails</li><li>Priority support</li>
               </ul>
               <button className={styles.planBtnPaid} onClick={() => handleUpgrade('spectre')}>Get Spectre</button>
             </div>
@@ -334,9 +321,7 @@ export default function Home() {
                 <span style={{ color: '#a78bfa', fontSize: '1.1rem', flexShrink: 0, transform: openFaq === i ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>+</span>
               </button>
               {openFaq === i && (
-                <div style={{ padding: '0 1.25rem 1.1rem', color: '#777', fontSize: '0.88rem', lineHeight: '1.7' }}>
-                  {faq.a}
-                </div>
+                <div style={{ padding: '0 1.25rem 1.1rem', color: '#777', fontSize: '0.88rem', lineHeight: '1.7' }}>{faq.a}</div>
               )}
             </div>
           ))}

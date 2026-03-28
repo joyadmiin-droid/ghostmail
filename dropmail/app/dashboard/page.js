@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -20,6 +20,39 @@ export default function Dashboard() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const knownEmailIds = useRef(new Set());
+
+  // ── Toast helpers ─────────────────────────────────────────────
+  function addToast(message) {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  }
+
+  // ── Poll for new emails every 10 seconds ─────────────────────
+  async function checkForNewEmails(addrs) {
+    if (!addrs || addrs.length === 0) return;
+    const mailboxIds = addrs.map(m => m.id);
+    const { data: emails } = await supabase
+      .from('emails')
+      .select('id, subject, from_address, mailbox_id')
+      .in('mailbox_id', mailboxIds)
+      .order('received_at', { ascending: false })
+      .limit(20);
+
+    if (!emails) return;
+    emails.forEach(email => {
+      if (!knownEmailIds.current.has(email.id)) {
+        if (knownEmailIds.current.size > 0) {
+          const from = email.from_address || 'Someone';
+          const subject = email.subject || '(no subject)';
+          addToast('New email from ' + from + ': ' + subject);
+        }
+        knownEmailIds.current.add(email.id);
+      }
+    });
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -42,6 +75,7 @@ export default function Dashboard() {
         .eq('user_id', session.user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
+
       if (addrs?.length) {
         setAddresses(addrs);
         const today = new Date();
@@ -53,6 +87,7 @@ export default function Dashboard() {
           .in('mailbox_id', mailboxIds)
           .gte('received_at', today.toISOString());
         setEmailsCount(count || 0);
+        await checkForNewEmails(addrs);
       }
       setAuthChecked(true);
     };
@@ -74,9 +109,18 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Poll every 10 seconds
+  useEffect(() => {
+    if (!authChecked) return;
+    const interval = setInterval(() => {
+      checkForNewEmails(addresses);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [authChecked, addresses]);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
-    window.location.href = '/dashboard';
+    window.location.href = '/';
   }
 
   async function handleUpgrade(planName) {
@@ -149,7 +193,6 @@ export default function Dashboard() {
   const planEmoji = plan === 'spectre' ? '\uD83D\uDD25' : plan === 'phantom' ? '\u26A1' : '\uD83D\uDC7B';
   const planHint = plan === 'spectre' ? 'Unlimited everything' : plan === 'phantom' ? '$4.99/mo' : 'Free forever';
 
-  // Loading state while checking auth
   if (!authChecked) return (
     <div style={{ minHeight: '100vh', background: '#0d0d14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#a78bfa', fontSize: '14px', fontFamily: 'sans-serif' }}>Loading...</div>
@@ -158,6 +201,42 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0d0d14', fontFamily: 'inherit' }}>
+
+      {/* ✅ TOAST NOTIFICATIONS */}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '360px' }}>
+        {toasts.map(toast => (
+          <div key={toast.id} style={{
+            background: '#13131f',
+            border: '1px solid rgba(167,139,250,0.4)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            color: '#e2e2f0',
+            fontSize: '13px',
+            fontFamily: 'sans-serif',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            animation: 'slideIn 0.3s ease',
+          }}>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}>&#128236;</span>
+            <div>
+              <div style={{ fontWeight: '600', color: '#a78bfa', marginBottom: '2px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New email</div>
+              <div style={{ color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>{toast.message}</div>
+            </div>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', marginLeft: 'auto', flexShrink: 0, padding: '0' }}>
+              &#10005;
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
 
       {/* SIDEBAR */}
       <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -181,17 +260,7 @@ export default function Dashboard() {
             { id: 'plan', icon: '&#9889;', label: 'Upgrade' },
             { id: 'settings', icon: '&#9881;', label: 'Settings' },
           ].map(item => (
-            <div
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px',
-                cursor: 'pointer', fontSize: '13px', fontWeight: '500',
-                color: activeTab === item.id ? '#a78bfa' : '#666',
-                background: activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent',
-                borderLeft: activeTab === item.id ? '2px solid #a78bfa' : '2px solid transparent',
-              }}
-            >
+            <div key={item.id} onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: activeTab === item.id ? '#a78bfa' : '#666', background: activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent', borderLeft: activeTab === item.id ? '2px solid #a78bfa' : '2px solid transparent' }}>
               <span style={{ fontSize: '14px', width: '18px', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: item.icon }} />
               {item.label}
             </div>
@@ -218,7 +287,6 @@ export default function Dashboard() {
 
         <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
 
-          {/* ADDRESSES TAB */}
           {activeTab === 'addresses' && (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
@@ -287,7 +355,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* INBOX TAB */}
           {activeTab === 'inbox' && (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#444', fontSize: '13px' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>&#128205;</div>
@@ -295,7 +362,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* PLAN TAB */}
           {activeTab === 'plan' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Current plan</div>
@@ -340,7 +406,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* SETTINGS TAB */}
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Account</div>
