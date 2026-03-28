@@ -21,8 +21,8 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: 'GhostMail — Instant Throwaway Email',
-  description: 'Generate a real working email in one click. Use it anywhere. Vanishes automatically — no trace, no spam, no BS.',
+  title: 'GhostMail — Disposable Temp Email, Gone in 10 Minutes',
+description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Vanishes automatically — no trace, no BS.',
   keywords: ['temp mail', 'throwaway email', 'disposable email', 'temporary email', 'fake email', 'anonymous email', 'ghostmail'],
   authors: [{ name: 'GhostMail' }],
   metadataBase: new URL('https://www.ghostmails.org'),
