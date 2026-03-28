@@ -21,6 +21,7 @@ export default function Home() {
   const [emailsCount, setEmailsCount] = useState(0);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
+  const [openFaq, setOpenFaq] = useState(null);
 
   useEffect(() => {
     const init = async () => {
@@ -76,7 +77,6 @@ export default function Home() {
     setPlan('free');
   }
 
-  // ✅ PADDLE checkout — replaces Stripe
   async function handleUpgrade(planName) {
     setUpgradeLoading(true);
     setUpgradeError('');
@@ -148,11 +148,44 @@ export default function Home() {
   const planEmoji = plan === 'spectre' ? '\uD83D\uDD25' : plan === 'phantom' ? '\u26A1' : '\uD83D\uDC7B';
   const planHint = plan === 'spectre' ? 'Unlimited everything' : plan === 'phantom' ? '$4.99/mo' : 'Free forever';
 
+  const faqs = [
+    {
+      q: 'Is GhostMail really free?',
+      a: 'Yes — the Ghost plan is completely free forever. No credit card, no signup, no catch. Generate an address in one click and use it immediately. Paid plans (Phantom and Spectre) unlock longer lifespans and more addresses.',
+    },
+    {
+      q: 'How long does a temp email address last?',
+      a: 'On the free Ghost plan, addresses last 10 minutes. Phantom plan addresses last 24 hours. Spectre plan addresses are saved forever and never expire.',
+    },
+    {
+      q: 'Can I receive any email with GhostMail?',
+      a: 'Yes — GhostMail generates a real working email address. You can use it to sign up for websites, receive verification codes, newsletters, and any other emails. Some services may block known temporary email domains, but most work fine.',
+    },
+    {
+      q: 'Is GhostMail safe and private?',
+      a: 'Absolutely. We store zero personal data for free users. No logs, no tracking, no ads. Emails are permanently deleted when your address expires. Paid users only share their login email which is never sold or shared.',
+    },
+    {
+      q: 'Can I send emails from GhostMail?',
+      a: 'No — GhostMail is receive-only. It is designed for receiving verification emails and avoiding spam, not for sending. If you need to send emails, use a regular email provider.',
+    },
+    {
+      q: 'What happens when my address expires?',
+      a: 'When your address expires, the address itself and all emails received to it are permanently and irreversibly deleted from our servers. There is no way to recover them — this is by design.',
+    },
+    {
+      q: 'Can I get my money back?',
+      a: 'Yes — we offer a full refund within 14 days of any purchase, no questions asked. Email support@ghostmails.org with your order details.',
+    },
+    {
+      q: 'Do I need to create an account?',
+      a: 'No account is needed for the free plan. Just click Generate and you have a working email address instantly. Creating an account is only required for paid plans.',
+    },
+  ];
+
   // ─── DASHBOARD ────────────────────────────────────────────────
   if (user) return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0d0d14', fontFamily: 'inherit' }}>
-
-      {/* SIDEBAR */}
       <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ color: '#a78bfa', fontSize: '16px' }}>&#10022;</span>
@@ -195,7 +228,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* MAIN */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -208,8 +240,6 @@ export default function Home() {
         </div>
 
         <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
-
-          {/* ADDRESSES TAB */}
           {activeTab === 'addresses' && (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
@@ -225,8 +255,6 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-
-              {/* Generate CTA */}
               <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Create a throwaway address</div>
@@ -238,8 +266,6 @@ export default function Home() {
                   {loading ? '...' : 'Generate now'}
                 </button>
               </div>
-
-              {/* Address list */}
               {addresses.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {addresses.map(addr => {
@@ -249,7 +275,6 @@ export default function Home() {
                     const copyBorder = copied === addr.address ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(167,139,250,0.3)';
                     const copyBg = copied === addr.address ? 'rgba(34,197,94,0.1)' : 'rgba(167,139,250,0.1)';
                     const copyColor = copied === addr.address ? '#22c55e' : '#a78bfa';
-
                     return (
                       <div key={addr.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid ' + borderColor, borderRadius: '12px', padding: '16px', position: 'relative' }}>
                         <div style={{ position: 'absolute', top: '12px', right: '12px', width: '8px', height: '8px', borderRadius: '50%', background: dotColor }} />
@@ -257,27 +282,15 @@ export default function Home() {
                           <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</span>
                           <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>&#9203; {getExpiryLabel(addr.expires_at)}</span>
                         </div>
-                        <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>
-                          {addr.address}
-                        </div>
+                        <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{addr.address}</div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => copyAddress(addr.address)}
-                            style={{ padding: '7px 16px', borderRadius: '8px', border: copyBorder, background: copyBg, color: copyColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
+                          <button onClick={() => copyAddress(addr.address)} style={{ padding: '7px 16px', borderRadius: '8px', border: copyBorder, background: copyBg, color: copyColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
                             {copied === addr.address ? 'Copied' : 'Copy'}
                           </button>
-                          <a
-                            href={'/inbox?token=' + addr.token}
-                            style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}
-                          >
+                          <a href={'/inbox?token=' + addr.token} style={{ padding: '7px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
                             Open Inbox
                           </a>
-                          <button
-                            onClick={() => deleteAddress(addr.id)}
-                            style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}
-                            title="Delete this address"
-                          >
+                          <button onClick={() => deleteAddress(addr.id)} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>
                             Delete
                           </button>
                         </div>
@@ -295,7 +308,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* INBOX TAB */}
           {activeTab === 'inbox' && (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#444', fontSize: '13px' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>&#128205;</div>
@@ -303,7 +315,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* PLAN TAB */}
           {activeTab === 'plan' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Current plan</div>
@@ -311,14 +322,11 @@ export default function Home() {
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>{planEmoji} {planLabel}</div>
                 <div style={{ fontSize: '12px', color: '#666' }}>{planHint}</div>
               </div>
-
-              {/* ✅ Upgrade error message */}
               {upgradeError && (
                 <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '13px' }}>
                   {upgradeError}
                 </div>
               )}
-
               {plan !== 'spectre' && (
                 <>
                   <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Upgrade</div>
@@ -327,11 +335,7 @@ export default function Home() {
                       <div style={{ fontSize: '11px', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 8px', borderRadius: '99px', display: 'inline-block', marginBottom: '8px' }}>Most popular</div>
                       <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Phantom — $4.99/mo</div>
                       <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>5 addresses · 24hr lifespan · 100 emails</div>
-                      <button
-                        onClick={() => handleUpgrade('phantom')}
-                        disabled={upgradeLoading}
-                        style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: upgradeLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: upgradeLoading ? 0.7 : 1 }}
-                      >
+                      <button onClick={() => handleUpgrade('phantom')} disabled={upgradeLoading} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: upgradeLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: upgradeLoading ? 0.7 : 1 }}>
                         {upgradeLoading ? 'Redirecting...' : 'Upgrade to Phantom'}
                       </button>
                     </div>
@@ -339,11 +343,7 @@ export default function Home() {
                   <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
                     <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Spectre — $8.99/mo</div>
                     <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>Unlimited addresses · Forever · Unlimited emails</div>
-                    <button
-                      onClick={() => handleUpgrade('spectre')}
-                      disabled={upgradeLoading}
-                      style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: upgradeLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: upgradeLoading ? 0.7 : 1 }}
-                    >
+                    <button onClick={() => handleUpgrade('spectre')} disabled={upgradeLoading} style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'none', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: upgradeLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: upgradeLoading ? 0.7 : 1 }}>
                       {upgradeLoading ? 'Redirecting...' : 'Upgrade to Spectre'}
                     </button>
                   </div>
@@ -359,7 +359,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* SETTINGS TAB */}
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: '600' }}>Account</div>
@@ -383,22 +382,18 @@ export default function Home() {
                   <div style={{ fontSize: '13px', color: '#f87171', fontWeight: '500' }}>Delete account</div>
                   <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>Permanently remove everything</div>
                 </div>
-                <button
-                  onClick={() => { if (confirm('Are you sure? This cannot be undone.')) handleSignOut(); }}
-                  style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <button onClick={() => { if (confirm('Are you sure? This cannot be undone.')) handleSignOut(); }} style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.1)', color: '#f87171', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Delete
                 </button>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
   );
 
-  // ─── HOMEPAGE (not logged in) ─────────────────────────────────
+  // ─── HOMEPAGE ─────────────────────────────────────────────────
   return (
     <main className={styles.main}>
       <div className={styles.bg} aria-hidden="true" />
@@ -445,10 +440,7 @@ export default function Home() {
                 <span className={styles.addressLabel}>Your temp address</span>
                 <div className={styles.addressBox}>
                   <span className={styles.addressText}>{mailbox.address}</span>
-                  <button
-                    className={styles.copyBtn + (copied === mailbox.address ? ' ' + styles.copied : '')}
-                    onClick={() => copyAddress(mailbox.address)}
-                  >
+                  <button className={styles.copyBtn + (copied === mailbox.address ? ' ' + styles.copied : '')} onClick={() => copyAddress(mailbox.address)}>
                     {copied === mailbox.address ? 'Copied' : 'Copy'}
                   </button>
                 </div>
@@ -467,7 +459,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS (left) + PERFECT FOR (right) */}
+      {/* HOW IT WORKS + PERFECT FOR */}
       <section style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 2rem 5rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', alignItems: 'start' }}>
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '20px', padding: '2rem' }}>
@@ -567,6 +559,35 @@ export default function Home() {
               <button className={styles.planBtnPaid} onClick={() => handleUpgrade('spectre')}>Get Spectre</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ✅ FAQ SECTION */}
+      <section style={{ maxWidth: '720px', margin: '0 auto', padding: '0 2rem 6rem' }}>
+        <p style={{ fontSize: '11px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.75rem', textAlign: 'center' }}>Got questions</p>
+        <h2 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#fff', marginBottom: '0.5rem', textAlign: 'center' }}>Frequently asked</h2>
+        <p style={{ color: '#555', fontSize: '0.9rem', textAlign: 'center', marginBottom: '2.5rem' }}>Everything you need to know about GhostMail</p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {faqs.map((faq, i) => (
+            <div
+              key={i}
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid ' + (openFaq === i ? 'rgba(167,139,250,0.3)' : 'rgba(255,255,255,0.07)'), borderRadius: '12px', overflow: 'hidden', transition: 'border-color 0.2s' }}
+            >
+              <button
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                style={{ width: '100%', padding: '1.1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', gap: '1rem' }}
+              >
+                <span style={{ fontSize: '0.95rem', fontWeight: '600', color: '#e2e2f0' }}>{faq.q}</span>
+                <span style={{ color: '#a78bfa', fontSize: '1.1rem', flexShrink: 0, transform: openFaq === i ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>+</span>
+              </button>
+              {openFaq === i && (
+                <div style={{ padding: '0 1.25rem 1.1rem', color: '#777', fontSize: '0.88rem', lineHeight: '1.7' }}>
+                  {faq.a}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

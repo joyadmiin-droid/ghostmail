@@ -73,7 +73,7 @@ export async function POST(request) {
       }
     }
 
-    return Response.json({ received: true });
+    return Response.json({ received: true });   
   } catch (err) {
     console.error('Webhook error:', err);
     return Response.json({ error: err.message }, { status: 500 });
