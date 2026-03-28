@@ -150,40 +150,6 @@ export default function Home() {
       <div className={styles.bg} aria-hidden="true" />
       <div className={styles.grid} aria-hidden="true" />
 
-      {/* ✅ LOGGED-IN BANNER — shows instead of redirecting to dashboard */}
-      {user && (
-        <div style={{
-          background: 'rgba(167,139,250,0.08)',
-          borderBottom: '1px solid rgba(167,139,250,0.2)',
-          padding: '0.6rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontFamily: 'sans-serif',
-          fontSize: '13px',
-          flexWrap: 'wrap',
-          gap: '0.5rem',
-        }}>
-          <span style={{ color: '#c4b5fd' }}>
-            &#128123; Welcome back, <strong>{username}</strong>!
-          </span>
-          <a
-            href="/dashboard"
-            style={{
-              background: 'rgba(167,139,250,0.25)',
-              color: '#e9d5ff',
-              padding: '0.3rem 1rem',
-              borderRadius: '999px',
-              textDecoration: 'none',
-              fontWeight: '600',
-              border: '1px solid rgba(167,139,250,0.4)',
-            }}
-          >
-            Go to Dashboard &#8594;
-          </a>
-        </div>
-      )}
-
       {/* HEADER */}
       <header className={styles.header}>
         <div className={styles.logo}>
