@@ -21,37 +21,27 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: 'GhostMail — Disposable Temp Email, Gone in 10 Minutes',
-description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Vanishes automatically — no trace, no BS.',
+  title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
+  description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
   keywords: ['temp mail', 'throwaway email', 'disposable email', 'temporary email', 'fake email', 'anonymous email', 'ghostmail'],
   authors: [{ name: 'GhostMail' }],
   metadataBase: new URL('https://www.ghostmails.org'),
   openGraph: {
-    title: 'GhostMail — Instant Throwaway Email',
-    description: 'Generate a real working email in one click. Vanishes automatically — no trace, no spam, no BS.',
+    title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
+    description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
     url: 'https://www.ghostmails.org',
     siteName: 'GhostMail',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'GhostMail — Instant Throwaway Email',
-      },
-    ],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'GhostMail — Instant Throwaway Email' }],
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'GhostMail — Instant Throwaway Email',
-    description: 'Generate a real working email in one click. Vanishes automatically — no trace, no spam, no BS.',
+    title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
+    description: 'Generate a real working throwaway email address in one click. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
     images: ['/og-image.png'],
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }) {
