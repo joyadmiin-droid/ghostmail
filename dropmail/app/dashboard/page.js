@@ -22,15 +22,14 @@ export default function Dashboard() {
   const [authChecked, setAuthChecked] = useState(false);
   const [toasts, setToasts] = useState([]);
   const knownEmailIds = useRef(new Set());
+  const initialized = useRef(false);
 
-  // ── Toast helpers ─────────────────────────────────────────────
   function addToast(message) {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }
 
-  // ── Poll for new emails every 10 seconds ─────────────────────
   async function checkForNewEmails(addrs) {
     if (!addrs || addrs.length === 0) return;
     const mailboxIds = addrs.map(m => m.id);
@@ -40,87 +39,76 @@ export default function Dashboard() {
       .in('mailbox_id', mailboxIds)
       .order('received_at', { ascending: false })
       .limit(20);
-
     if (!emails) return;
     emails.forEach(email => {
       if (!knownEmailIds.current.has(email.id)) {
         if (knownEmailIds.current.size > 0) {
-          const from = email.from_address || 'Someone';
-          const subject = email.subject || '(no subject)';
-          addToast('New email from ' + from + ': ' + subject);
+          addToast('New email from ' + (email.from_address || 'Someone') + ': ' + (email.subject || '(no subject)'));
         }
         knownEmailIds.current.add(email.id);
       }
     });
   }
 
+  async function loadUserData(userId) {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const { data: profile } = await supabase
+      .from('profiles').select('plan').eq('id', userId).single();
+    if (profile) setPlan(profile.plan);
+
+    const { data: addrs } = await supabase
+      .from('mailboxes').select('*')
+      .eq('user_id', userId).eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (addrs?.length) {
+      setAddresses(addrs);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const mailboxIds = addrs.map(m => m.id);
+      const { count } = await supabase.from('emails')
+        .select('id', { count: 'exact' })
+        .in('mailbox_id', mailboxIds)
+        .gte('received_at', today.toISOString());
+      setEmailsCount(count || 0);
+      await checkForNewEmails(addrs);
+    }
+    setAuthChecked(true);
+  }
+
   useEffect(() => {
-    const init = async () => {
-      // Wait for OAuth session to be established
-await new Promise(r => setTimeout(r, 1000));
-const { data: { session } } = await supabase.auth.getSession();
-if (!session?.user) {
-  window.location.href = '/login';
-  return;
-}
-      setUser(session.user);
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', session.user.id)
-        .single();
-      if (profile) setPlan(profile.plan);
+    // ✅ THE FIX: Use onAuthStateChange as the single source of truth
+    // This fires correctly after OAuth redirects, email logins, and page loads
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, 'User:', session?.user?.email);
 
-      const { data: addrs } = await supabase
-        .from('mailboxes')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (addrs?.length) {
-        setAddresses(addrs);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const mailboxIds = addrs.map(m => m.id);
-        const { count } = await supabase
-          .from('emails')
-          .select('id', { count: 'exact' })
-          .in('mailbox_id', mailboxIds)
-          .gte('received_at', today.toISOString());
-        setEmailsCount(count || 0);
-        await checkForNewEmails(addrs);
-      }
-      setAuthChecked(true);
-    };
-    init();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
+      if (event === 'SIGNED_OUT') {
         window.location.href = '/login';
         return;
       }
-      setUser(session.user);
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', session.user.id)
-        .single();
-      if (profile) setPlan(profile.plan);
+
+      if (session?.user) {
+        setUser(session.user);
+        await loadUserData(session.user.id);
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // No session on initial load — redirect to login
+        window.location.href = '/login';
+      }
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
-  // Poll every 10 seconds
   useEffect(() => {
     if (!authChecked) return;
-    const interval = setInterval(() => {
-      checkForNewEmails(addresses);
-    }, 10000);
+    const interval = setInterval(() => checkForNewEmails(addresses), 10000);
     return () => clearInterval(interval);
   }, [authChecked, addresses]);
 
   async function handleSignOut() {
+    initialized.current = false;
     await supabase.auth.signOut();
     window.location.href = '/';
   }
@@ -136,13 +124,9 @@ if (!session?.user) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL received');
-      }
+      if (data.url) window.location.href = data.url;
+      else throw new Error('No checkout URL received');
     } catch (err) {
-      console.error('Checkout error:', err);
       setUpgradeError(err.message);
     } finally {
       setUpgradeLoading(false);
@@ -155,9 +139,7 @@ if (!session?.user) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { 'Content-Type': 'application/json' };
-      if (session?.access_token) {
-        headers['Authorization'] = 'Bearer ' + session.access_token;
-      }
+      if (session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
       const res = await fetch('/api/mailbox/create', { method: 'POST', headers });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate');
@@ -196,53 +178,37 @@ if (!session?.user) {
   const planHint = plan === 'spectre' ? 'Unlimited everything' : plan === 'phantom' ? '$4.99/mo' : 'Free forever';
 
   if (!authChecked) return (
-    <div style={{ minHeight: '100vh', background: '#0d0d14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#a78bfa', fontSize: '14px', fontFamily: 'sans-serif' }}>Loading...</div>
+    <div style={{ minHeight: '100vh', background: '#0d0d14', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ width: '32px', height: '32px', border: '3px solid rgba(167,139,250,0.2)', borderTop: '3px solid #a78bfa', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ color: '#a78bfa', fontSize: '14px', fontFamily: 'sans-serif' }}>Loading your dashboard...</div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0d0d14', fontFamily: 'inherit' }}>
+      <style>{`
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
 
-      {/* ✅ TOAST NOTIFICATIONS */}
+      {/* TOASTS */}
       <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '360px' }}>
         {toasts.map(toast => (
-          <div key={toast.id} style={{
-            background: '#13131f',
-            border: '1px solid rgba(167,139,250,0.4)',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            color: '#e2e2f0',
-            fontSize: '13px',
-            fontFamily: 'sans-serif',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '10px',
-            animation: 'slideIn 0.3s ease',
-          }}>
+          <div key={toast.id} style={{ background: '#13131f', border: '1px solid rgba(167,139,250,0.4)', borderRadius: '12px', padding: '12px 16px', color: '#e2e2f0', fontSize: '13px', fontFamily: 'sans-serif', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', gap: '10px', animation: 'slideIn 0.3s ease' }}>
             <span style={{ fontSize: '16px', flexShrink: 0 }}>&#128236;</span>
             <div>
               <div style={{ fontWeight: '600', color: '#a78bfa', marginBottom: '2px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New email</div>
               <div style={{ color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>{toast.message}</div>
             </div>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', marginLeft: 'auto', flexShrink: 0, padding: '0' }}>
-              &#10005;
-            </button>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', marginLeft: 'auto', flexShrink: 0, padding: '0' }}>&#10005;</button>
           </div>
         ))}
       </div>
 
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-
       {/* SIDEBAR */}
       <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
             <span style={{ color: '#a78bfa', fontSize: '16px' }}>&#10022;</span>
             <span style={{ color: '#fff', fontSize: '15px', fontWeight: '700' }}>GhostMail</span>
@@ -372,9 +338,7 @@ if (!session?.user) {
                 <div style={{ fontSize: '12px', color: '#666' }}>{planHint}</div>
               </div>
               {upgradeError && (
-                <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '13px' }}>
-                  {upgradeError}
-                </div>
+                <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '13px' }}>{upgradeError}</div>
               )}
               {plan !== 'spectre' && (
                 <>
