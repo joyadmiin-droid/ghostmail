@@ -18,11 +18,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   async function handleGoogle() {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: 'https://www.ghostmails.org/dashboard' }
-    });
-  }
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { 
+      redirectTo: 'https://www.ghostmails.org/dashboard',
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      }
+    }
+  });
+}
 
   async function handleSubmit() {
     setLoading(true);
