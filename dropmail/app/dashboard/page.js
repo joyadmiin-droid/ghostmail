@@ -21,16 +21,22 @@ export default function Dashboard() {
   const [upgradeError, setUpgradeError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
   const knownEmailIds = useRef(new Set());
 
-  // ── Toast helpers ─────────────────────────────────────────────
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   function addToast(message) {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }
 
-  // ── Poll for new emails every 10 seconds ─────────────────────
   async function checkForNewEmails(addrs) {
     if (!addrs || addrs.length === 0) return;
     const mailboxIds = addrs.map(m => m.id);
@@ -40,14 +46,11 @@ export default function Dashboard() {
       .in('mailbox_id', mailboxIds)
       .order('received_at', { ascending: false })
       .limit(20);
-
     if (!emails) return;
     emails.forEach(email => {
       if (!knownEmailIds.current.has(email.id)) {
         if (knownEmailIds.current.size > 0) {
-          const from = email.from_address || 'Someone';
-          const subject = email.subject || '(no subject)';
-          addToast('New email from ' + from + ': ' + subject);
+          addToast('New email from ' + (email.from_address || 'Someone') + ': ' + (email.subject || '(no subject)'));
         }
         knownEmailIds.current.add(email.id);
       }
@@ -63,17 +66,12 @@ export default function Dashboard() {
       }
       setUser(session.user);
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', session.user.id)
-        .single();
+        .from('profiles').select('plan').eq('id', session.user.id).single();
       if (profile) setPlan(profile.plan);
 
       const { data: addrs } = await supabase
-        .from('mailboxes')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('is_active', true)
+        .from('mailboxes').select('*')
+        .eq('user_id', session.user.id).eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (addrs?.length) {
@@ -81,8 +79,7 @@ export default function Dashboard() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const mailboxIds = addrs.map(m => m.id);
-        const { count } = await supabase
-          .from('emails')
+        const { count } = await supabase.from('emails')
           .select('id', { count: 'exact' })
           .in('mailbox_id', mailboxIds)
           .gte('received_at', today.toISOString());
@@ -94,27 +91,18 @@ export default function Dashboard() {
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!session?.user) { window.location.href = '/login'; return; }
       setUser(session.user);
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', session.user.id)
-        .single();
+        .from('profiles').select('plan').eq('id', session.user.id).single();
       if (profile) setPlan(profile.plan);
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  // Poll every 10 seconds
   useEffect(() => {
     if (!authChecked) return;
-    const interval = setInterval(() => {
-      checkForNewEmails(addresses);
-    }, 10000);
+    const interval = setInterval(() => checkForNewEmails(addresses), 10000);
     return () => clearInterval(interval);
   }, [authChecked, addresses]);
 
@@ -134,13 +122,9 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL received');
-      }
+      if (data.url) window.location.href = data.url;
+      else throw new Error('No checkout URL received');
     } catch (err) {
-      console.error('Checkout error:', err);
       setUpgradeError(err.message);
     } finally {
       setUpgradeLoading(false);
@@ -153,9 +137,7 @@ export default function Dashboard() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { 'Content-Type': 'application/json' };
-      if (session?.access_token) {
-        headers['Authorization'] = 'Bearer ' + session.access_token;
-      }
+      if (session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
       const res = await fetch('/api/mailbox/create', { method: 'POST', headers });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate');
@@ -193,126 +175,165 @@ export default function Dashboard() {
   const planEmoji = plan === 'spectre' ? '\uD83D\uDD25' : plan === 'phantom' ? '\u26A1' : '\uD83D\uDC7B';
   const planHint = plan === 'spectre' ? 'Unlimited everything' : plan === 'phantom' ? '$4.99/mo' : 'Free forever';
 
+  const navItems = [
+    { id: 'addresses', icon: '&#128236;', label: 'Addresses' },
+    { id: 'inbox', icon: '&#128229;', label: 'Inbox' },
+    { id: 'plan', icon: '&#9889;', label: 'Upgrade' },
+    { id: 'settings', icon: '&#9881;', label: 'Settings' },
+  ];
+
   if (!authChecked) return (
     <div style={{ minHeight: '100vh', background: '#0d0d14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#a78bfa', fontSize: '14px', fontFamily: 'sans-serif' }}>Loading...</div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: '32px', height: '32px', border: '3px solid rgba(167,139,250,0.2)', borderTop: '3px solid #a78bfa', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+        <div style={{ color: '#a78bfa', fontSize: '14px', fontFamily: 'sans-serif' }}>Loading...</div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0d0d14', fontFamily: 'inherit' }}>
+      <style>{`
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
 
-      {/* ✅ TOAST NOTIFICATIONS */}
-      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '360px' }}>
+      {/* TOAST */}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '320px', width: 'calc(100vw - 40px)' }}>
         {toasts.map(toast => (
-          <div key={toast.id} style={{
-            background: '#13131f',
-            border: '1px solid rgba(167,139,250,0.4)',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            color: '#e2e2f0',
-            fontSize: '13px',
-            fontFamily: 'sans-serif',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '10px',
-            animation: 'slideIn 0.3s ease',
-          }}>
+          <div key={toast.id} style={{ background: '#13131f', border: '1px solid rgba(167,139,250,0.4)', borderRadius: '12px', padding: '12px 16px', color: '#e2e2f0', fontSize: '13px', fontFamily: 'sans-serif', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', gap: '10px', animation: 'slideIn 0.3s ease' }}>
             <span style={{ fontSize: '16px', flexShrink: 0 }}>&#128236;</span>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: '600', color: '#a78bfa', marginBottom: '2px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>New email</div>
-              <div style={{ color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>{toast.message}</div>
+              <div style={{ color: '#aaa', fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toast.message}</div>
             </div>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', marginLeft: 'auto', flexShrink: 0, padding: '0' }}>
-              &#10005;
-            </button>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0' }}>&#10005;</button>
           </div>
         ))}
       </div>
 
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-
-      {/* SIDEBAR */}
-      <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <span style={{ color: '#a78bfa', fontSize: '16px' }}>&#10022;</span>
-            <span style={{ color: '#fff', fontSize: '15px', fontWeight: '700' }}>GhostMail</span>
-          </a>
-        </div>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(167,139,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#a78bfa', marginBottom: '8px' }}>
-            {username?.slice(0, 2).toUpperCase()}
+      {/* DESKTOP SIDEBAR */}
+      {!isMobile && (
+        <div style={{ width: '220px', background: '#0a0a10', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+              <span style={{ color: '#a78bfa', fontSize: '16px' }}>&#10022;</span>
+              <span style={{ color: '#fff', fontSize: '15px', fontWeight: '700' }}>GhostMail</span>
+            </a>
           </div>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{username}</div>
-          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{planEmoji} {planLabel}</div>
-        </div>
-        <nav style={{ flex: 1, padding: '12px 0' }}>
-          {[
-            { id: 'addresses', icon: '&#128236;', label: 'Addresses' },
-            { id: 'inbox', icon: '&#128229;', label: 'Inbox' },
-            { id: 'plan', icon: '&#9889;', label: 'Upgrade' },
-            { id: 'settings', icon: '&#9881;', label: 'Settings' },
-          ].map(item => (
-            <div key={item.id} onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: activeTab === item.id ? '#a78bfa' : '#666', background: activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent', borderLeft: activeTab === item.id ? '2px solid #a78bfa' : '2px solid transparent' }}>
-              <span style={{ fontSize: '14px', width: '18px', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: item.icon }} />
-              {item.label}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(167,139,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#a78bfa', marginBottom: '8px' }}>
+              {username?.slice(0, 2).toUpperCase()}
             </div>
-          ))}
-        </nav>
-        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={handleSignOut} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-            Sign out
-          </button>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{username}</div>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{planEmoji} {planLabel}</div>
+          </div>
+          <nav style={{ flex: 1, padding: '12px 0' }}>
+            {navItems.map(item => (
+              <div key={item.id} onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: '500', color: activeTab === item.id ? '#a78bfa' : '#666', background: activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent', borderLeft: activeTab === item.id ? '2px solid #a78bfa' : '2px solid transparent' }}>
+                <span style={{ fontSize: '14px', width: '18px', textAlign: 'center' }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                {item.label}
+              </div>
+            ))}
+          </nav>
+          <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <button onClick={handleSignOut} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Sign out
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* MAIN */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Welcome back, {username}</div>
-            <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{user?.email}</div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+        {/* MOBILE TOP BAR */}
+        {isMobile && (
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0a0a10' }}>
+            <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+              <span style={{ color: '#a78bfa', fontSize: '14px' }}>&#10022;</span>
+              <span style={{ color: '#fff', fontSize: '14px', fontWeight: '700' }}>GhostMail</span>
+            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '12px', color: '#555' }}>{planEmoji} {planLabel}</span>
+              <button onClick={handleSignOut} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(248,113,113,0.25)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Out
+              </button>
+            </div>
           </div>
-          <button onClick={generateMailbox} disabled={loading} style={{ padding: '8px 18px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
-            {loading ? '...' : 'Generate address'}
-          </button>
-        </div>
+        )}
 
-        <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+        {/* DESKTOP TOP BAR */}
+        {!isMobile && (
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Welcome back, {username}</div>
+              <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{user?.email}</div>
+            </div>
+            <button onClick={generateMailbox} disabled={loading} style={{ padding: '8px 18px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>
+              {loading ? '...' : 'Generate address'}
+            </button>
+          </div>
+        )}
 
+        {/* CONTENT */}
+        <div style={{ flex: 1, padding: isMobile ? '16px' : '24px', overflowY: 'auto', paddingBottom: isMobile ? '80px' : '24px' }}>
+
+          {/* MOBILE: Generate button at top */}
+          {isMobile && activeTab === 'addresses' && (
+            <button onClick={generateMailbox} disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', marginBottom: '16px' }}>
+              {loading ? '...' : '&#9889; Generate new address'}
+            </button>
+          )}
+
+          {/* ADDRESSES TAB */}
           {activeTab === 'addresses' && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
-                {[
-                  { label: 'Active addresses', value: addresses.length, hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
-                  { label: 'Emails received', value: emailsCount, hint: 'today' },
-                  { label: 'Plan', value: planEmoji + ' ' + planLabel, hint: planHint },
-                ].map(s => (
-                  <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
-                    <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-                    <div style={{ fontSize: s.label === 'Plan' ? '16px' : '24px', fontWeight: '700', color: '#fff' }}>{s.value}</div>
-                    <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>{s.hint}</div>
+              {!isMobile && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '24px' }}>
+                  {[
+                    { label: 'Active addresses', value: addresses.length, hint: plan === 'spectre' ? 'Unlimited' : plan === 'phantom' ? '5 max' : '1 max' },
+                    { label: 'Emails received', value: emailsCount, hint: 'today' },
+                    { label: 'Plan', value: planEmoji + ' ' + planLabel, hint: planHint },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '11px', color: '#555', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                      <div style={{ fontSize: s.label === 'Plan' ? '16px' : '24px', fontWeight: '700', color: '#fff' }}>{s.value}</div>
+                      <div style={{ fontSize: '11px', color: '#444', marginTop: '4px' }}>{s.hint}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Mobile stats row */}
+              {isMobile && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '12px' }}>
+                    <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Addresses</div>
+                    <div style={{ fontSize: '20px', fontWeight: '700', color: '#fff' }}>{addresses.length}</div>
                   </div>
-                ))}
-              </div>
-              <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-                <div>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Create a throwaway address</div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>
-                    {plan === 'spectre' ? 'Instant · Saved forever' : plan === 'phantom' ? 'Instant · 24hr lifespan' : 'Instant · Auto-deletes in 10 min'}
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '12px' }}>
+                    <div style={{ fontSize: '10px', color: '#555', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Emails today</div>
+                    <div style={{ fontSize: '20px', fontWeight: '700', color: '#fff' }}>{emailsCount}</div>
                   </div>
                 </div>
-                <button onClick={generateMailbox} disabled={loading} style={{ padding: '10px 20px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                  {loading ? '...' : 'Generate now'}
-                </button>
-              </div>
+              )}
+
+              {!isMobile && (
+                <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: '16px', padding: '20px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Create a throwaway address</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>
+                      {plan === 'spectre' ? 'Instant · Saved forever' : plan === 'phantom' ? 'Instant · 24hr lifespan' : 'Instant · Auto-deletes in 10 min'}
+                    </div>
+                  </div>
+                  <button onClick={generateMailbox} disabled={loading} style={{ padding: '10px 20px', borderRadius: '99px', border: 'none', background: '#a78bfa', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                    {loading ? '...' : 'Generate now'}
+                  </button>
+                </div>
+              )}
+
               {addresses.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {addresses.map(addr => {
@@ -329,7 +350,7 @@ export default function Dashboard() {
                           <span style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</span>
                           <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>&#9203; {getExpiryLabel(addr.expires_at)}</span>
                         </div>
-                        <div style={{ fontFamily: 'monospace', fontSize: '14px', color: '#a78bfa', marginBottom: '12px' }}>{addr.address}</div>
+                        <div style={{ fontFamily: 'monospace', fontSize: isMobile ? '12px' : '14px', color: '#a78bfa', marginBottom: '12px', wordBreak: 'break-all' }}>{addr.address}</div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           <button onClick={() => copyAddress(addr.address)} style={{ padding: '7px 16px', borderRadius: '8px', border: copyBorder, background: copyBg, color: copyColor, fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
                             {copied === addr.address ? 'Copied' : 'Copy'}
@@ -348,7 +369,7 @@ export default function Dashboard() {
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: '13px' }}>
                   <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>&#128123;</div>
-                  No addresses yet — generate your first one above!
+                  No addresses yet — tap Generate above!
                 </div>
               )}
               {error && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
@@ -370,9 +391,7 @@ export default function Dashboard() {
                 <div style={{ fontSize: '12px', color: '#666' }}>{planHint}</div>
               </div>
               {upgradeError && (
-                <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '13px' }}>
-                  {upgradeError}
-                </div>
+                <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', padding: '10px 14px', color: '#f87171', fontSize: '13px' }}>{upgradeError}</div>
               )}
               {plan !== 'spectre' && (
                 <>
@@ -438,6 +457,27 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* MOBILE BOTTOM NAV */}
+      {isMobile && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0a0a10', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', zIndex: 100 }}>
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              style={{
+                flex: 1, padding: '10px 4px 12px', background: 'none', border: 'none',
+                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                color: activeTab === item.id ? '#a78bfa' : '#555',
+                borderTop: activeTab === item.id ? '2px solid #a78bfa' : '2px solid transparent',
+              }}
+            >
+              <span style={{ fontSize: '18px' }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+              <span style={{ fontSize: '10px', fontWeight: '600', fontFamily: 'sans-serif' }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
