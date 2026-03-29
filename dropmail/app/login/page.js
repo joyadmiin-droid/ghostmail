@@ -21,11 +21,11 @@ export default function LoginPage() {
   await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { 
-      redirectTo: 'https://www.ghostmails.org/dashboard',
+      redirectTo: 'https://www.ghostmails.org/auth/callback',
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
-      }
+      } 
     }
   });
 }
