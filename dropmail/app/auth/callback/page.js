@@ -10,54 +10,38 @@ const supabase = createClient(
 
 export default function AuthCallback() {
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        // Exchange the code in URL for a session
-        const { data, error } = await supabase.auth.exchangeCodeForSession(
-          window.location.href
-        );
-
-        if (error) {
-          console.error('OAuth callback error:', error);
-          window.location.href = '/login?error=oauth_failed';
-          return;
-        }
-
-        if (data?.session) {
-          window.location.href = '/dashboard';
-        } else {
-          window.location.href = '/login';
-        }
-      } catch (err) {
-        console.error('Callback error:', err);
+    // Supabase automatically processes the OAuth code/hash from the URL
+    // We just need to wait for it to complete via onAuthStateChange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        window.location.href = '/dashboard';
+      } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
         window.location.href = '/login';
       }
-    };
+    });
 
-    handleCallback();
+    // Also check if session already exists (page refresh case)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.href = '/dashboard';
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: '#080010',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '16px',
-      fontFamily: 'sans-serif',
+      minHeight: '100vh', background: '#080010',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      gap: '16px', fontFamily: 'sans-serif',
     }}>
       <div style={{
         width: '36px', height: '36px',
         border: '3px solid rgba(167,139,250,0.2)',
         borderTop: '3px solid #a78bfa',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
+        borderRadius: '50%', animation: 'spin 0.8s linear infinite',
       }} />
-      <div style={{ color: '#a78bfa', fontSize: '14px' }}>
-        Signing you in...
-      </div>
+      <div style={{ color: '#a78bfa', fontSize: '14px' }}>Signing you in...</div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
