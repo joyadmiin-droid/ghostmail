@@ -15,7 +15,7 @@ export async function POST(request) {
       return Response.json({ error: 'Paddle not configured' }, { status: 500 });
     }
 
-    const successUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.ghostmails.org') + '/success';
+    const successUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://ghostmails.org') + '/success';
 
     // Use Paddle sandbox API
     const paddleRes = await fetch('https://sandbox-api.paddle.com/transactions', {

@@ -8,6 +8,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export default function Dashboard() {
   const [plan, setPlan] = useState('free');
   const [loading, setLoading] = useState(false);
@@ -24,8 +28,15 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);
 
   const knownEmailIds = useRef(new Set());
-  const initialized = useRef(false);
-  const authTimeoutRef = useRef(null);
+  const initializedForUser = useRef(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -35,9 +46,10 @@ export default function Dashboard() {
   }, []);
 
   function addToast(message) {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message }]);
     setTimeout(() => {
+      if (!isMounted.current) return;
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
   }
@@ -47,14 +59,14 @@ export default function Dashboard() {
 
     const mailboxIds = addrs.map(m => m.id);
 
-    const { data: emails } = await supabase
+    const { data: emails, error: emailsError } = await supabase
       .from('emails')
       .select('id, subject, from_address, mailbox_id')
       .in('mailbox_id', mailboxIds)
       .order('received_at', { ascending: false })
       .limit(20);
 
-    if (!emails) return;
+    if (emailsError || !emails) return;
 
     emails.forEach(email => {
       if (!knownEmailIds.current.has(email.id)) {
@@ -72,32 +84,49 @@ export default function Dashboard() {
   }
 
   async function loadUserData(userId) {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (initializedForUser.current === userId) {
+      setAuthChecked(true);
+      return;
+    }
+
+    initializedForUser.current = userId;
+    setError(null);
 
     try {
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profile) setPlan(profile.plan);
+      if (profile?.plan && isMounted.current) {
+        setPlan(profile.plan);
+      } else if (isMounted.current) {
+        setPlan('free');
+      }
 
-      const { data: addrs } = await supabase
+      const { data: addrs, error: addrsError } = await supabase
         .from('mailboxes')
         .select('*')
         .eq('user_id', userId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (addrs?.length) {
-        setAddresses(addrs);
+      if (addrsError) {
+        throw addrsError;
+      }
 
+      const safeAddrs = addrs || [];
+
+      if (isMounted.current) {
+        setAddresses(safeAddrs);
+      }
+
+      if (safeAddrs.length > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const mailboxIds = addrs.map(m => m.id);
+        const mailboxIds = safeAddrs.map(m => m.id);
 
         const { count } = await supabase
           .from('emails')
@@ -105,94 +134,100 @@ export default function Dashboard() {
           .in('mailbox_id', mailboxIds)
           .gte('received_at', today.toISOString());
 
-        setEmailsCount(count || 0);
-        await checkForNewEmails(addrs);
-      } else {
-        setAddresses([]);
+        if (isMounted.current) {
+          setEmailsCount(count || 0);
+        }
+
+        await checkForNewEmails(safeAddrs);
+      } else if (isMounted.current) {
         setEmailsCount(0);
       }
     } catch (err) {
       console.error('Dashboard load error:', err);
-      setError('Failed to load dashboard.');
+      if (isMounted.current) {
+        setError('Failed to load dashboard.');
+        setAddresses([]);
+        setEmailsCount(0);
+      }
     } finally {
-      setAuthChecked(true);
-      if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
+      if (isMounted.current) {
+        setAuthChecked(true);
+      }
     }
   }
 
   useEffect(() => {
-    let mounted = true;
+    let unsubscribed = false;
 
-    authTimeoutRef.current = setTimeout(() => {
-      if (mounted && !authChecked) {
-        window.location.href = '/login';
+    async function resolveSessionWithRetries() {
+      for (let i = 0; i < 6; i++) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (unsubscribed || !isMounted.current) return;
+
+        if (session?.user) {
+          setUser(session.user);
+          await loadUserData(session.user.id);
+          return;
+        }
+
+        await sleep(500);
       }
-    }, 5000);
 
-    const initAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!mounted) return;
-
-      if (session?.user) {
-        setUser(session.user);
-        await loadUserData(session.user.id);
-      } else {
+      if (!unsubscribed && isMounted.current) {
         setAuthChecked(true);
-        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-        window.location.href = '/login';
+        window.location.replace('/login');
       }
-    };
+    }
 
-    initAuth();
+    resolveSessionWithRetries();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+      if (unsubscribed || !isMounted.current) return;
 
       if (event === 'SIGNED_OUT') {
-        initialized.current = false;
+        initializedForUser.current = null;
+        knownEmailIds.current.clear();
         setUser(null);
+        setAddresses([]);
+        setEmailsCount(0);
         setAuthChecked(true);
-        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-        window.location.href = '/login';
+        window.location.replace('/login');
         return;
       }
 
       if (session?.user) {
         setUser(session.user);
-        if (!initialized.current) {
-          await loadUserData(session.user.id);
-        } else {
-          setAuthChecked(true);
-          if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-        }
-      } else if (event === 'INITIAL_SESSION') {
+        await loadUserData(session.user.id);
+        return;
+      }
+
+      if (event === 'INITIAL_SESSION' && !session) {
         setAuthChecked(true);
-        if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
       }
     });
 
     return () => {
-      mounted = false;
+      unsubscribed = true;
       subscription.unsubscribe();
-      if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (!authChecked || addresses.length === 0) return;
+    if (!authChecked || !user || addresses.length === 0) return;
     const interval = setInterval(() => checkForNewEmails(addresses), 10000);
     return () => clearInterval(interval);
-  }, [authChecked, addresses]);
+  }, [authChecked, user, addresses]);
 
   async function handleSignOut() {
-    initialized.current = false;
+    initializedForUser.current = null;
+    knownEmailIds.current.clear();
     await supabase.auth.signOut();
-    window.location.href = '/';
+    window.location.replace('/');
   }
 
   async function handleUpgrade(planName) {
@@ -209,10 +244,13 @@ export default function Dashboard() {
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
-      if (data.url) window.location.href = data.url;
-      else throw new Error('No checkout URL received');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
     } catch (err) {
-      setUpgradeError(err.message);
+      setUpgradeError(err.message || 'Upgrade failed');
     } finally {
       setUpgradeLoading(false);
     }
@@ -221,6 +259,9 @@ export default function Dashboard() {
   async function generateMailbox() {
     setLoading(true);
     setError(null);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     try {
       const {
@@ -235,16 +276,24 @@ export default function Dashboard() {
       const res = await fetch('/api/mailbox/create', {
         method: 'POST',
         headers,
+        signal: controller.signal,
       });
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Failed to generate');
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate');
+      }
 
       setAddresses(prev => [data, ...prev]);
     } catch (err) {
-      setError(err.message);
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err.message || 'Failed to generate');
+      }
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }
@@ -257,7 +306,17 @@ export default function Dashboard() {
 
   async function deleteAddress(id) {
     if (!confirm('Delete this address? All emails will be gone forever.')) return;
-    await supabase.from('mailboxes').update({ is_active: false }).eq('id', id);
+
+    const { error: deleteError } = await supabase
+      .from('mailboxes')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (deleteError) {
+      setError(deleteError.message || 'Failed to delete address');
+      return;
+    }
+
     setAddresses(prev => prev.filter(a => a.id !== id));
   }
 
@@ -319,6 +378,10 @@ export default function Dashboard() {
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
+  }
+
+  if (authChecked && !user) {
+    return null;
   }
 
   return (
@@ -390,9 +453,7 @@ export default function Dashboard() {
               </div>
             </div>
             <button
-              onClick={() =>
-                setToasts(prev => prev.filter(t => t.id !== toast.id))
-              }
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
               style={{
                 background: 'none',
                 border: 'none',
@@ -515,8 +576,7 @@ export default function Dashboard() {
                 fontSize: '13px',
                 fontWeight: '500',
                 color: activeTab === item.id ? '#a78bfa' : '#666',
-                background:
-                  activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent',
+                background: activeTab === item.id ? 'rgba(167,139,250,0.08)' : 'transparent',
                 borderLeft:
                   !isMobile && activeTab === item.id
                     ? '2px solid #a78bfa'
@@ -639,9 +699,7 @@ export default function Dashboard() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile
-                    ? '1fr'
-                    : 'repeat(3, minmax(0, 1fr))',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
                   gap: '12px',
                   marginBottom: '24px',
                 }}

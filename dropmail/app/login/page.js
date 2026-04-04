@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -16,6 +16,43 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (session?.user) {
+        window.location.replace('/dashboard');
+        return;
+      }
+
+      setCheckingSession(false);
+    };
+
+    init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+
+      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        window.location.replace('/dashboard');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleSubmit() {
     setLoading(true);
@@ -35,39 +72,29 @@ export default function LoginPage() {
       }
 
       if (isSignup) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
 
         if (error) throw error;
 
-        setMessage('Check your email to confirm your account!');
+        if (data?.user && !data?.session) {
+          setMessage('Check your email to confirm your account!');
+        } else {
+          window.location.replace('/dashboard');
+        }
         return;
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
-      if (!data?.session) {
-        throw new Error('Login succeeded, but no session was created.');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('Session was not ready yet. Please try again.');
-      }
-
-      window.location.replace('/dashboard');
+      setMessage('Signed in. Redirecting...');
     } catch (err) {
       setError(err.message || 'Something went wrong.');
     } finally {
@@ -98,6 +125,24 @@ export default function LoginPage() {
     padding: 0,
     fontFamily: 'inherit',
   };
+
+  if (checkingSession) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          background: '#080010',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#a78bfa',
+          fontFamily: 'DM Sans, sans-serif',
+        }}
+      >
+        Loading...
+      </main>
+    );
+  }
 
   return (
     <main

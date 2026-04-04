@@ -25,11 +25,11 @@ export const metadata = {
   description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
   keywords: ['temp mail', 'throwaway email', 'disposable email', 'temporary email', 'fake email', 'anonymous email', 'ghostmail'],
   authors: [{ name: 'GhostMail' }],
-  metadataBase: new URL('https://www.ghostmails.org'),
+  metadataBase: new URL('https://ghostmails.org'),
   openGraph: {
     title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
     description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
-    url: 'https://www.ghostmails.org',
+    url: 'https://ghostmails.org',
     siteName: 'GhostMail',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'GhostMail — Instant Throwaway Email' }],
     locale: 'en_US',
