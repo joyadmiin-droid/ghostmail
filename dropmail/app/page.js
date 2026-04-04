@@ -22,104 +22,144 @@ export default function Home() {
   const [totalEmails, setTotalEmails] = useState(null);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('plan')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) setPlan(profile.plan);
-      }
+    let mounted = true;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const { count } = await supabase
-        .from('emails')
-        .select('id', { count: 'exact' })
-        .gte('received_at', today.toISOString());
-      if (count !== null) setTotalEmails(count);
+    const init = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (session?.user) {
+          setUser(session.user);
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('plan')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (profile?.plan && mounted) {
+            setPlan(profile.plan);
+          }
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { count } = await supabase
+          .from('emails')
+          .select('id', { count: 'exact', head: true })
+          .gte('received_at', today.toISOString());
+
+        if (mounted && count !== null) {
+          setTotalEmails(count);
+        }
+      } catch (err) {
+        console.error('Homepage init error:', err);
+      }
     };
+
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+
       setUser(session?.user ?? null);
+
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('plan')
           .eq('id', session.user.id)
-          .single();
-        if (profile) setPlan(profile.plan);
+          .maybeSingle();
+
+        if (profile?.plan && mounted) {
+          setPlan(profile.plan);
+        }
+      } else {
+        setPlan('free');
       }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function handleUpgrade(planName) {
     setUpgradeLoading(true);
     setUpgradeError('');
+
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: planName }),
       });
+
       const data = await res.json();
+
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
+
       if (data.url) {
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL received');
       }
     } catch (err) {
-      setUpgradeError(err.message);
+      setUpgradeError(err.message || 'Upgrade failed');
     } finally {
       setUpgradeLoading(false);
     }
   }
 
   async function generateMailbox() {
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const headers = { 'Content-Type': 'application/json' };
-    if (session?.access_token) {
-      headers['Authorization'] = 'Bearer ' + session.access_token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers.Authorization = 'Bearer ' + session.access_token;
+      }
+
+      const res = await fetch('/api/mailbox/create', {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate address');
+      }
+
+      setMailbox(data);
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err.message || 'Something went wrong');
+      }
+    } finally {
+      clearTimeout(timeout);
+      setLoading(false);
     }
-
-    const res = await fetch('/api/mailbox/create', {
-      method: 'POST',
-      headers,
-      signal: controller.signal,
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to generate address');
-    }
-
-    setMailbox(data);
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      setError('Request timed out. Please try again.');
-    } else {
-      setError(err.message || 'Something went wrong');
-    }
-  } finally {
-    clearTimeout(timeout);
-    setLoading(false);
   }
-}
 
   async function copyAddress(addr) {
     await navigator.clipboard.writeText(addr);
@@ -142,13 +182,6 @@ export default function Home() {
     return n.toString();
   }
 
-  const faqs = [
-    { q: 'Is GhostMail really free?', a: 'Yes — the Ghost plan is free. Paid plans unlock longer lifespans and more addresses.' },
-    { q: 'How long does a temp email address last?', a: 'Free plan: 10 minutes. Paid plans extend lifespan.' },
-    { q: 'Can I receive emails?', a: 'Yes — real working email addresses for testing and verification.' },
-    { q: 'Is GhostMail safe?', a: 'Yes. Designed for privacy and responsible use with abuse prevention systems.' },
-  ];
-
   return (
     <main className={styles.main}>
       <div className={styles.bg} />
@@ -159,10 +192,13 @@ export default function Home() {
           <span className={styles.logoIcon}>&#10022;</span>
           <span className={styles.logoText}>GhostMail</span>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
-          <a href="/dashboard">Dashboard</a>
+          <a href={user ? '/dashboard' : '/login'}>
+            {user ? 'Dashboard' : 'Sign in'}
+          </a>
         </div>
       </header>
 
@@ -172,18 +208,20 @@ export default function Home() {
         </div>
 
         <h1 className={styles.headline}>
-          Your inbox.<br />
+          Your inbox.
+          <br />
           <span className={styles.accentLine}>Gone in minutes.</span>
         </h1>
 
         <p className={styles.sub}>
           Generate <strong>temporary email addresses</strong> instantly.
           Perfect for developers, QA testing, and protecting your inbox from spam.
-          <br /><br />
+          <br />
+          <br />
           Automatically deleted after expiration. Built for responsible use with abuse prevention.
         </p>
 
-        {totalEmails && (
+        {totalEmails !== null && (
           <p style={{ color: '#22c55e' }}>
             {formatCount(totalEmails)} emails received today
           </p>
@@ -191,16 +229,49 @@ export default function Home() {
 
         <div className={styles.card}>
           {!mailbox ? (
-            <button className={styles.btnPrimary} onClick={generateMailbox}>
-              {loading ? 'Loading...' : 'Generate My Address'}
-            </button>
+            <div>
+              <button
+                className={styles.btnPrimary}
+                onClick={generateMailbox}
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : 'Generate My Address'}
+              </button>
+
+              {error && (
+                <p style={{ color: '#f87171', marginTop: '12px', textAlign: 'center' }}>
+                  {error}
+                </p>
+              )}
+            </div>
           ) : (
             <div>
               <p>{mailbox.address}</p>
-              <button onClick={() => copyAddress(mailbox.address)}>Copy</button>
-              <button onClick={() => window.location.href = '/inbox?token=' + mailbox.token}>
-                Open Inbox
-              </button>
+              <p style={{ marginTop: '8px', opacity: 0.7 }}>
+                {getExpiryLabel(mailbox.expires_at)}
+              </p>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  marginTop: '12px',
+                }}
+              >
+                <button onClick={() => copyAddress(mailbox.address)}>
+                  {copied === mailbox.address ? 'Copied' : 'Copy'}
+                </button>
+
+                <button
+                  onClick={() =>
+                    (window.location.href = '/inbox?token=' + mailbox.token)
+                  }
+                >
+                  Open Inbox
+                </button>
+              </div>
             </div>
           )}
         </div>
