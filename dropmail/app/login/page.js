@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   
-}{
+}
 
   async function handleSubmit() {
     setLoading(true);
@@ -26,6 +26,7 @@ export default function LoginPage() {
     setMessage('');
     try {
       if (isReset) {
+        const [isReset, setIsReset] = useState(false);
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: 'https://www.ghostmails.org/dashboard',
         });
