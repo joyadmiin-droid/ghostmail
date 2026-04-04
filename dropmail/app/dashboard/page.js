@@ -24,10 +24,8 @@ export default function Dashboard() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
-  const [toasts, setToasts] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
 
-  const knownEmailIds = useRef(new Set());
   const initializedForUser = useRef(null);
   const isMounted = useRef(true);
 
@@ -45,47 +43,9 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  function addToast(message) {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message }]);
-    setTimeout(() => {
-      if (!isMounted.current) return;
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
-  }
-
-  async function checkForNewEmails(addrs) {
-    if (!addrs || addrs.length === 0) return;
-
-    const mailboxIds = addrs.map(m => m.id);
-
-    const { data: emails, error: emailsError } = await supabase
-      .from('emails')
-      .select('id, subject, from_address, mailbox_id')
-      .in('mailbox_id', mailboxIds)
-      .order('received_at', { ascending: false })
-      .limit(20);
-
-    if (emailsError || !emails) return;
-
-    emails.forEach(email => {
-      if (!knownEmailIds.current.has(email.id)) {
-        if (knownEmailIds.current.size > 0) {
-          addToast(
-            'New email from ' +
-              (email.from_address || 'Someone') +
-              ': ' +
-              (email.subject || '(no subject)')
-          );
-        }
-        knownEmailIds.current.add(email.id);
-      }
-    });
-  }
-
   async function loadUserData(userId) {
     if (initializedForUser.current === userId) {
-      setAuthChecked(true);
+      if (isMounted.current) setAuthChecked(true);
       return;
     }
 
@@ -93,16 +53,18 @@ export default function Dashboard() {
     setError(null);
 
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('plan')
         .eq('id', userId)
         .maybeSingle();
 
-      if (profile?.plan && isMounted.current) {
-        setPlan(profile.plan);
-      } else if (isMounted.current) {
-        setPlan('free');
+      if (profileError) {
+        console.error('Profile error:', profileError);
+      }
+
+      if (isMounted.current) {
+        setPlan(profile?.plan || 'free');
       }
 
       const { data: addrs, error: addrsError } = await supabase
@@ -116,38 +78,15 @@ export default function Dashboard() {
         throw addrsError;
       }
 
-      const safeAddrs = addrs || [];
-
       if (isMounted.current) {
-        setAddresses(safeAddrs);
-      }
-
-      if (safeAddrs.length > 0) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const mailboxIds = safeAddrs.map(m => m.id);
-
-        const { count } = await supabase
-          .from('emails')
-          .select('id', { count: 'exact', head: true })
-          .in('mailbox_id', mailboxIds)
-          .gte('received_at', today.toISOString());
-
-        if (isMounted.current) {
-          setEmailsCount(count || 0);
-        }
-
-        await checkForNewEmails(safeAddrs);
-      } else if (isMounted.current) {
+        setAddresses(addrs || []);
         setEmailsCount(0);
       }
     } catch (err) {
       console.error('Dashboard load error:', err);
       if (isMounted.current) {
-        setError('Failed to load dashboard.');
+        setError(err.message || 'Failed to load dashboard.');
         setAddresses([]);
-        setEmailsCount(0);
       }
     } finally {
       if (isMounted.current) {
@@ -191,7 +130,6 @@ export default function Dashboard() {
 
       if (event === 'SIGNED_OUT') {
         initializedForUser.current = null;
-        knownEmailIds.current.clear();
         setUser(null);
         setAddresses([]);
         setEmailsCount(0);
@@ -217,15 +155,8 @@ export default function Dashboard() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!authChecked || !user || addresses.length === 0) return;
-    const interval = setInterval(() => checkForNewEmails(addresses), 10000);
-    return () => clearInterval(interval);
-  }, [authChecked, user, addresses]);
-
   async function handleSignOut() {
     initializedForUser.current = null;
-    knownEmailIds.current.clear();
     await supabase.auth.signOut();
     window.location.replace('/');
   }
@@ -394,83 +325,6 @@ export default function Dashboard() {
         fontFamily: 'inherit',
       }}
     >
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-
-      <div
-        style={{
-          position: 'fixed',
-          top: isMobile ? '10px' : '20px',
-          right: isMobile ? '10px' : '20px',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          maxWidth: isMobile ? 'calc(100vw - 20px)' : '360px',
-        }}
-      >
-        {toasts.map(toast => (
-          <div
-            key={toast.id}
-            style={{
-              background: '#13131f',
-              border: '1px solid rgba(167,139,250,0.4)',
-              borderRadius: '12px',
-              padding: '12px 16px',
-              color: '#e2e2f0',
-              fontSize: '13px',
-              fontFamily: 'sans-serif',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '10px',
-              animation: 'slideIn 0.3s ease',
-            }}
-          >
-            <span style={{ fontSize: '16px', flexShrink: 0 }}>📬</span>
-            <div>
-              <div
-                style={{
-                  fontWeight: '600',
-                  color: '#a78bfa',
-                  marginBottom: '2px',
-                  fontSize: '11px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                New email
-              </div>
-              <div style={{ color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>
-                {toast.message}
-              </div>
-            </div>
-            <button
-              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#555',
-                cursor: 'pointer',
-                fontSize: '14px',
-                marginLeft: 'auto',
-                flexShrink: 0,
-                padding: '0',
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
-
       <div
         style={{
           width: isMobile ? '100%' : '220px',
@@ -817,12 +671,7 @@ export default function Dashboard() {
                       new Date(addr.expires_at) <
                       new Date(Date.now() + 30 * 60 * 1000);
 
-                    const dotColor = isExpiringSoon
-                      ? '#f87171'
-                      : addr.email_count > 0
-                      ? '#fbbf24'
-                      : '#22c55e';
-
+                    const dotColor = isExpiringSoon ? '#f87171' : '#22c55e';
                     const borderColor = isExpiringSoon
                       ? 'rgba(248,113,113,0.35)'
                       : 'rgba(34,197,94,0.25)';
@@ -1010,7 +859,7 @@ export default function Dashboard() {
               <div style={{ fontSize: '32px', marginBottom: '12px', opacity: '0.4' }}>
                 📍
               </div>
-              No emails yet. Use a generated address somewhere to receive emails here.
+              No emails yet.
             </div>
           )}
 
