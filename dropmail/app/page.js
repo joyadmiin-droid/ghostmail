@@ -166,11 +166,12 @@ export default function Home() {
         </div>
         <h1 className={styles.headline}>
           Your inbox.<br />
-          <span className={styles.accentLine}>Gone in 10.</span>
+          <span className={styles.accentLine}>Gone in minutes.</span>
         </h1>
         <p className={styles.sub}>
-          Generate a <strong>real working email</strong> in one click.
-          Use it anywhere. Vanishes automatically — no trace, no spam, no BS.
+          Generate a <strong>temporary email addresses</strong> instantly.
+          Perfect for developers, QA testing, and protecting your primary inbox from spam. 
+          Automatically deleted after expiration. Built with privacy and abuse prevention in mind.
         </p>
 
         {/* ✅ SOCIAL PROOF COUNTER */}
