@@ -21,24 +21,55 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     setMessage('');
+
     try {
       if (isReset) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: 'https://www.ghostmails.org/dashboard',
+          redirectTo: 'https://ghostmails.org/login',
         });
+
         if (error) throw error;
+
         setMessage('Password reset email sent! Check your inbox.');
-      } else if (isSignup) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setMessage('Check your email to confirm your account!');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        window.location.href = '/dashboard';
+        return;
       }
+
+      if (isSignup) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        setMessage('Check your email to confirm your account!');
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (!data?.session) {
+        throw new Error('Login succeeded, but no session was created.');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Session was not ready yet. Please try again.');
+      }
+
+      window.location.replace('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -52,63 +83,283 @@ export default function LoginPage() {
     borderRadius: '12px',
     color: '#f5f3ee',
     fontSize: '15px',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  const linkBtnStyle = {
+    background: 'none',
+    border: 'none',
+    color: '#a78bfa',
+    cursor: 'pointer',
+    fontWeight: '600',
+    fontSize: '14px',
+    padding: 0,
+    fontFamily: 'inherit',
   };
 
   return (
-    <main style={{
-      minHeight: '100vh',
-      background: '#080010',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px'
-    }}>
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        <h1 style={{ color: '#fff', textAlign: 'center' }}>
+    <main
+      style={{
+        minHeight: '100vh',
+        background: '#080010',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'DM Sans, sans-serif',
+        padding: '24px',
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      <a
+        href="/"
+        style={{
+          textDecoration: 'none',
+          marginBottom: '40px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          zIndex: 1,
+        }}
+      >
+        <span style={{ color: '#a78bfa', fontSize: '20px' }}>&#10022;</span>
+        <span style={{ color: '#fff', fontSize: '18px', fontWeight: '700' }}>
+          GhostMail
+        </span>
+      </a>
+
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '24px',
+          padding: '40px',
+          width: '100%',
+          maxWidth: '420px',
+          backdropFilter: 'blur(20px)',
+          position: 'relative',
+          zIndex: 1,
+          boxSizing: 'border-box',
+        }}
+      >
+        <h1
+          style={{
+            color: '#fff',
+            fontSize: '24px',
+            fontWeight: '700',
+            marginBottom: '8px',
+            textAlign: 'center',
+          }}
+        >
           {isReset ? 'Reset password' : isSignup ? 'Create account' : 'Welcome back'}
         </h1>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          style={inputStyle}
-        />
+        <p
+          style={{
+            color: '#6b6b7a',
+            fontSize: '14px',
+            textAlign: 'center',
+            marginBottom: '32px',
+          }}
+        >
+          {isReset
+            ? 'Enter your email to get a reset link'
+            : isSignup
+            ? 'Join GhostMail today'
+            : 'Sign in to your account'}
+        </p>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: '12px',
+              color: '#6b6b7a',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: '600',
+            }}
+          >
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            style={inputStyle}
+            autoComplete="email"
+          />
+        </div>
 
         {!isReset && (
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            style={{ ...inputStyle, marginTop: '10px' }}
-          />
+          <div style={{ marginBottom: '8px' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '12px',
+                color: '#6b6b7a',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: '600',
+              }}
+            >
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              style={inputStyle}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+            />
+          </div>
         )}
 
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        {message && <p style={{ color: 'green' }}>{message}</p>}
+        {!isSignup && !isReset && (
+          <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+            <button
+              onClick={() => {
+                setIsReset(true);
+                setError('');
+                setMessage('');
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#a78bfa',
+                cursor: 'pointer',
+                fontSize: '12px',
+                padding: '4px 0',
+                fontFamily: 'inherit',
+              }}
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
 
-        <button onClick={handleSubmit} style={{
-          width: '100%',
-          marginTop: '15px',
-          padding: '12px',
-          background: '#7c3aed',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '10px'
-        }}>
-          {isReset ? 'Send reset link' : isSignup ? 'Sign up' : 'Sign in'}
+        {!isReset && <div style={{ marginBottom: '24px' }} />}
+
+        {error && (
+          <p
+            style={{
+              color: '#f87171',
+              fontSize: '13px',
+              marginBottom: '16px',
+              textAlign: 'center',
+            }}
+          >
+            {error}
+          </p>
+        )}
+
+        {message && (
+          <p
+            style={{
+              color: '#22c55e',
+              fontSize: '13px',
+              marginBottom: '16px',
+              textAlign: 'center',
+            }}
+          >
+            {message}
+          </p>
+        )}
+
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '14px',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontFamily: 'inherit',
+            marginBottom: '20px',
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? 'Loading...' : isReset ? 'Send reset link' : isSignup ? 'Create account' : 'Sign in'}
         </button>
 
-        <div style={{ marginTop: '15px', textAlign: 'center' }}>
-          {!isReset && (
-            <button onClick={() => setIsReset(true)}>Forgot password?</button>
-          )}
-          <br />
-          <button onClick={() => setIsSignup(!isSignup)}>
-            {isSignup ? 'Sign in' : 'Create account'}
-          </button>
+        {isReset ? (
+          <p style={{ textAlign: 'center', fontSize: '14px', color: '#6b6b7a' }}>
+            <button
+              onClick={() => {
+                setIsReset(false);
+                setError('');
+                setMessage('');
+              }}
+              style={linkBtnStyle}
+            >
+              Back to sign in
+            </button>
+          </p>
+        ) : (
+          <p style={{ textAlign: 'center', fontSize: '14px', color: '#6b6b7a' }}>
+            {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              onClick={() => {
+                setIsSignup(!isSignup);
+                setError('');
+                setMessage('');
+              }}
+              style={linkBtnStyle}
+            >
+              {isSignup ? 'Sign in' : 'Create account'}
+            </button>
+          </p>
+        )}
+
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: '2rem',
+            fontSize: '12px',
+            color: '#444',
+          }}
+        >
+          <a
+            href="/terms"
+            style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}
+          >
+            Terms
+          </a>
+          <a
+            href="/privacy"
+            style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}
+          >
+            Privacy
+          </a>
+          <a
+            href="mailto:support@ghostmails.org"
+            style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}
+          >
+            Contact
+          </a>
         </div>
       </div>
     </main>
