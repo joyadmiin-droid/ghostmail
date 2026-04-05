@@ -213,7 +213,39 @@ export default function DashboardPage() {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
   }
+async function deleteMailbox(id) {
+  const confirmDelete = confirm('Delete this inbox?');
 
+  if (!confirmDelete) return;
+
+  try {
+    const { error } = await supabase
+      .from('mailboxes')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // remove from UI
+    setAddresses(prev => prev.filter(a => a.id !== id));
+
+    // cleanup usage + favorites
+    setMailboxUsage(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+
+    setFavorites(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+
+  } catch (err) {
+    alert('Failed to delete inbox');
+  }
+}
   function toggleFavorite(id) {
     setFavorites(prev => ({
       ...prev,
@@ -493,6 +525,16 @@ export default function DashboardPage() {
                     <a href={`/inbox?token=${addr.token}`} style={secondaryBtn}>
                       Open inbox
                     </a>
+                    <button
+  style={{
+    ...secondaryBtn,
+    border: '1px solid rgba(248,113,113,0.4)',
+    color: '#f87171'
+  }}
+  onClick={() => deleteMailbox(addr.id)}
+>
+  Delete
+</button>
                   </div>
                 </div>
               );
