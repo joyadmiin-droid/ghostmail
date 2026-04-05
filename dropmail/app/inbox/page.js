@@ -305,6 +305,10 @@ function InboxContent() {
         .mail-card {
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
+          select option {
+  background: #0f0a1a;
+  color: #ffffff;
+}
 
         .mail-card:hover {
           transform: translateY(-2px);
@@ -980,11 +984,12 @@ const autoRefreshSelect = {
   padding: '11px 12px',
   borderRadius: '12px',
   border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.03)',
-  color: '#fff',
+  background: '#0f0a1a', // FIX
+  color: '#ffffff', // FIX
   fontSize: '14px',
   fontWeight: 700,
   outline: 'none',
+  appearance: 'none',
 };
 
 const copyButtonStrong = {
