@@ -153,11 +153,14 @@ export default function Home() {
           <span className={styles.logoText}>GhostMail</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div className={styles.navLinks}>
           <a href="/about">About</a>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
-          <a href={user ? '/dashboard' : '/login'} style={{ fontWeight: '500' }}>
+          <a
+            href={user ? '/dashboard' : '/login'}
+            className={styles.navCta}
+          >
             {user ? 'Dashboard' : 'Sign in'}
           </a>
         </div>
@@ -282,6 +285,104 @@ export default function Home() {
         <p className={styles.bottomNote}>
           Built for developers and responsible use — not for abuse.
         </p>
+      </section>
+
+      <section className={styles.pricingSection}>
+        <div className={styles.pricingInner}>
+          <div className={styles.pricingTop}>
+            <p className={styles.pricingEyebrow}>Plans</p>
+            <h2 className={styles.pricingTitle}>Simple pricing for every workflow</h2>
+            <p className={styles.pricingSub}>
+              Start free, then upgrade when you need more inboxes, longer lifetimes, and a smoother workflow.
+            </p>
+          </div>
+
+          <div className={styles.pricingGrid}>
+            <div className={styles.pricingCard}>
+              <div className={styles.planHeader}>
+                <span className={styles.planIcon}>👻</span>
+                <div>
+                  <h3 className={styles.planName}>Ghost</h3>
+                  <p className={styles.planDesc}>Free forever</p>
+                </div>
+              </div>
+
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPrice}>$0</span>
+                <span className={styles.planPeriod}>/ month</span>
+              </div>
+
+              <div className={styles.planFeatures}>
+                <p>• 1 temporary inbox at a time</p>
+                <p>• 10-minute expiry</p>
+                <p>• Fast generation for testing</p>
+                <p>• No account required</p>
+              </div>
+
+              <button
+                className={styles.planButton}
+                onClick={generateMailbox}
+                type="button"
+              >
+                Start free
+              </button>
+            </div>
+
+            <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
+              <div className={styles.pricingBadge}>Most popular</div>
+
+              <div className={styles.planHeader}>
+                <span className={styles.planIcon}>⚡</span>
+                <div>
+                  <h3 className={styles.planName}>Phantom</h3>
+                  <p className={styles.planDesc}>For heavier testing</p>
+                </div>
+              </div>
+
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPrice}>$4.99</span>
+                <span className={styles.planPeriod}>/ month</span>
+              </div>
+
+              <div className={styles.planFeatures}>
+                <p>• Up to 5 active inboxes</p>
+                <p>• 24-hour expiry window</p>
+                <p>• Better workflow for QA sessions</p>
+                <p>• Ideal for repeated testing</p>
+              </div>
+
+              <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
+                Get Phantom
+              </a>
+            </div>
+
+            <div className={styles.pricingCard}>
+              <div className={styles.planHeader}>
+                <span className={styles.planIcon}>🚀</span>
+                <div>
+                  <h3 className={styles.planName}>Spectre</h3>
+                  <p className={styles.planDesc}>For power users</p>
+                </div>
+              </div>
+
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPrice}>$8.99</span>
+                <span className={styles.planPeriod}>/ month</span>
+              </div>
+
+              <div className={styles.planFeatures}>
+                <p>• Unlimited active inboxes</p>
+                <p>• Long-lived testing workflow</p>
+                <p>• Better for teams and daily usage</p>
+                <p>• Designed for advanced users</p>
+              </div>
+
+              <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
+                Get Spectre
+              </a>
+            </div>
+          </div>
+        </div>
       </section>
 
       <footer className={styles.footer}>
