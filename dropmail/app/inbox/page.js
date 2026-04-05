@@ -210,12 +210,8 @@ function InboxContent() {
         <div style={emptyCard}>
           <div style={emptyIcon}>🔒</div>
           <h2 style={emptyTitle}>No inbox link found</h2>
-          <p style={emptyText}>
-            You need a valid inbox link to access this page.
-          </p>
-          <a href="/" style={primaryLink}>
-            Generate a new address
-          </a>
+          <p style={emptyText}>You need a valid inbox link to access this page.</p>
+          <a href="/" style={primaryLink}>Generate a new address</a>
         </div>
       </main>
     );
@@ -238,13 +234,9 @@ function InboxContent() {
         <div style={emptyCard}>
           <div style={emptyIcon}>📭</div>
           <h2 style={emptyTitle}>Inbox not found</h2>
-          <p style={emptyText}>
-            This inbox may have expired or the link is invalid.
-          </p>
+          <p style={emptyText}>This inbox may have expired or the link is invalid.</p>
           <p style={errorText}>{error}</p>
-          <a href="/" style={primaryLink}>
-            Generate a new address
-          </a>
+          <a href="/" style={primaryLink}>Generate a new address</a>
         </div>
       </main>
     );
@@ -256,36 +248,25 @@ function InboxContent() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; }
 
-        .inbox-mail-card {
-          transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        .mail-card {
+          transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
 
-        .inbox-mail-card:hover {
+        .mail-card:hover {
           transform: translateY(-2px);
-          border-color: rgba(167,139,250,0.22) !important;
-          box-shadow: 0 0 24px rgba(167,139,250,0.08), 0 16px 34px rgba(0,0,0,0.18) !important;
+          border-color: rgba(167,139,250,0.26) !important;
+          box-shadow: 0 18px 34px rgba(0,0,0,0.18), 0 0 24px rgba(167,139,250,0.08) !important;
         }
 
-        .inbox-action-btn {
-          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        .action-btn {
+          transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
 
-        .inbox-action-btn:hover {
+        .action-btn:hover {
           transform: translateY(-1px);
           border-color: rgba(167,139,250,0.28) !important;
-          box-shadow: 0 10px 24px rgba(0,0,0,0.18);
-        }
-
-        .inbox-meta-card {
-          transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-        }
-
-        .inbox-meta-card:hover {
-          transform: translateY(-2px);
-          border-color: rgba(167,139,250,0.18) !important;
-          box-shadow: 0 12px 26px rgba(0,0,0,0.16);
+          box-shadow: 0 12px 26px rgba(0,0,0,0.18);
         }
       `}</style>
 
@@ -305,18 +286,16 @@ function InboxContent() {
                   : 'rgba(167,139,250,0.12)',
                 borderColor: isExpiringSoon
                   ? 'rgba(248,113,113,0.34)'
-                  : 'rgba(167,139,250,0.32)',
+                  : 'rgba(167,139,250,0.30)',
                 boxShadow: isExpiringSoon
-                  ? '0 0 24px rgba(248,113,113,0.10)'
-                  : '0 0 24px rgba(167,139,250,0.08)',
+                  ? '0 0 26px rgba(248,113,113,0.10)'
+                  : '0 0 22px rgba(167,139,250,0.08)',
               }}
             >
-              <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>
-                ⏳
-              </span>
+              <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
               <span
                 style={{
-                  color: isExpiringSoon ? '#fca5a5' : '#e3d9ff',
+                  color: isExpiringSoon ? '#fca5a5' : '#e8deff',
                   fontFamily: 'monospace',
                   fontWeight: 800,
                 }}
@@ -330,7 +309,7 @@ function InboxContent() {
             type="button"
             onClick={() => fetchEmails(true)}
             disabled={refreshing}
-            className="inbox-action-btn"
+            className="action-btn"
             style={{
               ...ghostButton,
               opacity: refreshing ? 0.75 : 1,
@@ -348,277 +327,271 @@ function InboxContent() {
         </div>
       </header>
 
-      <section style={addressBar}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={sectionLabel}>Your address</div>
-          <div style={addressText}>{mailbox?.address || '—'}</div>
-        </div>
-
-        <div style={headerActions}>
-          <button
-            type="button"
-            onClick={copyAddress}
-            className="inbox-action-btn"
-            style={{
-              ...ghostButton,
-              borderColor: copied
-                ? 'rgba(34,197,94,0.35)'
-                : 'rgba(167,139,250,0.24)',
-              color: copied ? '#4ade80' : '#f5f3ff',
-              background: copied
-                ? 'rgba(34,197,94,0.10)'
-                : 'rgba(255,255,255,0.03)',
-              boxShadow: copied
-                ? '0 0 24px rgba(34,197,94,0.10)'
-                : '0 0 20px rgba(167,139,250,0.06)',
-            }}
-          >
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
-        </div>
-      </section>
-
-      <div
-        style={{
-          ...mainLayout,
-          flexDirection: isMobile ? 'column' : 'row',
-        }}
-      >
-        <aside
-          style={{
-            ...sidebar,
-            width: isMobile ? '100%' : '370px',
-            borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
-            borderBottom: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
-            maxHeight: isMobile ? '46vh' : 'none',
-          }}
-        >
-          <div style={sidebarHeader}>
-            <div>
-              <div style={sectionLabel}>Inbox</div>
-              <div style={sidebarSubtext}>
-                {emails.length} email{emails.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-
-            {emails.length > 0 && (
-              <div style={pillNeutral}>
-                {unreadCount} unread
-              </div>
-            )}
+      <div style={shell}>
+        <section style={topInfoGrid}>
+          <div style={topInfoCardWide}>
+            <div style={sectionLabel}>Your address</div>
+            <div style={addressText}>{mailbox?.address || '—'}</div>
           </div>
 
-          {emails.length === 0 ? (
-            <div style={waitingWrap}>
-              <div style={emptyIconSmall}>📭</div>
-              <p style={waitingTitle}>Waiting for emails...</p>
-              <p style={waitingText}>
-                Send something to{' '}
-                <span style={waitingAddress}>{mailbox?.address}</span>{' '}
-                then press refresh.
-              </p>
+          <div style={topInfoCard}>
+            <div style={sectionLabel}>Inbox status</div>
+            <div style={{ ...topInfoValue, color: isExpiringSoon ? '#fca5a5' : '#22c55e' }}>
+              {timeLeft === 'Expired' ? 'Expired' : 'Active'}
             </div>
-          ) : (
-            <>
-              <div style={emailListWrap}>
-                {visibleEmails.map(email => {
-                  const active = selected?.id === email.id;
+          </div>
 
-                  return (
-                    <button
-                      key={email.id}
-                      type="button"
-                      onClick={() => openEmail(email)}
-                      className="inbox-mail-card"
-                      style={{
-                        ...emailRow,
-                        background: active
-                          ? 'linear-gradient(180deg, rgba(167,139,250,0.16), rgba(167,139,250,0.07))'
-                          : 'rgba(255,255,255,0.03)',
-                        borderColor: active
-                          ? 'rgba(167,139,250,0.38)'
-                          : 'rgba(255,255,255,0.05)',
-                        boxShadow: active
-                          ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 28px rgba(167,139,250,0.08)'
-                          : '0 10px 22px rgba(0,0,0,0.10)',
-                      }}
-                    >
-                      <div style={avatarCircle}>{getInitials(email)}</div>
+          <div style={topInfoCard}>
+            <div style={sectionLabel}>Unread</div>
+            <div style={topInfoValue}>{unreadCount}</div>
+          </div>
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={emailRowTop}>
-                          <span
-                            style={{
-                              ...senderText,
-                              color: email.is_read ? '#d4cdea' : '#ffffff',
-                              fontWeight: email.is_read ? 600 : 800,
-                            }}
-                          >
-                            {email.from_name || email.from_address}
-                          </span>
+          <div style={topActionsCard}>
+            <button
+              type="button"
+              onClick={copyAddress}
+              className="action-btn"
+              style={{
+                ...copyButtonStrong,
+                borderColor: copied
+                  ? 'rgba(34,197,94,0.35)'
+                  : 'rgba(167,139,250,0.24)',
+                color: copied ? '#4ade80' : '#f5f3ff',
+                background: copied
+                  ? 'rgba(34,197,94,0.10)'
+                  : 'rgba(255,255,255,0.03)',
+              }}
+            >
+              {copied ? '✓ Copied' : 'Copy address'}
+            </button>
+          </div>
+        </section>
 
-                          <span style={emailDate}>{formatTime(email.received_at)}</span>
-                        </div>
-
-                        <div
-                          style={{
-                            ...emailSubject,
-                            color: active ? '#f8f5ff' : '#ebe6ff',
-                          }}
-                        >
-                          {email.subject || '(no subject)'}
-                        </div>
-
-                        <div style={emailPreviewRow}>
-                          <span style={previewText}>
-                            {email.body_text
-                              ? email.body_text.replace(/\s+/g, ' ').trim()
-                              : email.from_address || 'No preview available'}
-                          </span>
-
-                          {!email.is_read && <span style={unreadDot} />}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {hasHiddenEmails && (
-                <div style={lockedBox}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔐</div>
-                  <div style={lockedTitle}>
-                    {emails.length - 1} more email{emails.length - 1 !== 1 ? 's' : ''}
-                  </div>
-                  <div style={lockedText}>
-                    Sign up free to unlock all emails, keep inboxes longer, and manage them better.
-                  </div>
-                  <a href="/login" style={primaryLinkSmall}>
-                    Sign up free
-                  </a>
-                </div>
-              )}
-            </>
-          )}
-        </aside>
-
-        <section
+        <div
           style={{
-            ...viewer,
-            minHeight: isMobile ? '54vh' : 'auto',
+            ...contentWrap,
+            flexDirection: isMobile ? 'column' : 'row',
           }}
         >
-          {selected ? (
-            <div style={viewerInner}>
-              <div style={messageHeader}>
-                <div style={messageTopRow}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <h1 style={messageTitle}>{selected.subject || '(no subject)'}</h1>
+          <aside
+            style={{
+              ...sidebarPanel,
+              width: isMobile ? '100%' : '370px',
+              maxHeight: isMobile ? '46vh' : 'calc(100vh - 290px)',
+            }}
+          >
+            <div style={sidebarHeader}>
+              <div>
+                <div style={sectionLabel}>Inbox</div>
+                <div style={sidebarSubtext}>
+                  {emails.length} email{emails.length !== 1 ? 's' : ''}
+                </div>
+              </div>
 
-                    <div style={messageMetaGrid}>
-                      <div style={metaCard} className="inbox-meta-card">
-                        <div style={sectionLabel}>From</div>
-                        <div style={metaValue}>
-                          {selected.from_name || selected.from_address}
+              {emails.length > 0 && (
+                <div style={pillNeutral}>{unreadCount} unread</div>
+              )}
+            </div>
+
+            {emails.length === 0 ? (
+              <div style={waitingWrap}>
+                <div style={emptyIconSmall}>📭</div>
+                <p style={waitingTitle}>Waiting for emails...</p>
+                <p style={waitingText}>
+                  Send something to{' '}
+                  <span style={waitingAddress}>{mailbox?.address}</span>{' '}
+                  then press refresh.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div style={emailListWrap}>
+                  {visibleEmails.map(email => {
+                    const active = selected?.id === email.id;
+
+                    return (
+                      <button
+                        key={email.id}
+                        type="button"
+                        onClick={() => openEmail(email)}
+                        className="mail-card"
+                        style={{
+                          ...emailRow,
+                          background: active
+                            ? 'linear-gradient(180deg, rgba(167,139,250,0.17), rgba(167,139,250,0.07))'
+                            : 'rgba(255,255,255,0.03)',
+                          borderColor: active
+                            ? 'rgba(167,139,250,0.42)'
+                            : 'rgba(255,255,255,0.05)',
+                          boxShadow: active
+                            ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 30px rgba(167,139,250,0.10), 0 20px 38px rgba(0,0,0,0.18)'
+                            : '0 12px 24px rgba(0,0,0,0.10)',
+                        }}
+                      >
+                        <div style={avatarCircle}>{getInitials(email)}</div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={emailRowTop}>
+                            <span
+                              style={{
+                                ...senderText,
+                                color: email.is_read ? '#d4cdea' : '#ffffff',
+                                fontWeight: email.is_read ? 600 : 800,
+                              }}
+                            >
+                              {email.from_name || email.from_address}
+                            </span>
+
+                            <span style={emailDate}>{formatTime(email.received_at)}</span>
+                          </div>
+
+                          <div
+                            style={{
+                              ...emailSubject,
+                              color: active ? '#ffffff' : '#efe9ff',
+                            }}
+                          >
+                            {email.subject || '(no subject)'}
+                          </div>
+
+                          <div style={emailPreviewRow}>
+                            <span style={previewText}>
+                              {email.body_text
+                                ? email.body_text.replace(/\s+/g, ' ').trim()
+                                : email.from_address || 'No preview available'}
+                            </span>
+
+                            {!email.is_read && <span style={unreadDot} />}
+                          </div>
                         </div>
-                        {selected.from_address && selected.from_name && (
-                          <div style={metaSubValue}>{selected.from_address}</div>
-                        )}
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                      <div style={metaCard} className="inbox-meta-card">
-                        <div style={sectionLabel}>Received</div>
-                        <div style={metaValue}>{formatFullDate(selected.received_at)}</div>
+                {hasHiddenEmails && (
+                  <div style={lockedBox}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔐</div>
+                    <div style={lockedTitle}>
+                      {emails.length - 1} more email{emails.length - 1 !== 1 ? 's' : ''}
+                    </div>
+                    <div style={lockedText}>
+                      Sign up free to unlock all emails, keep inboxes longer, and manage them better.
+                    </div>
+                    <a href="/login" style={primaryLinkSmall}>
+                      Sign up free
+                    </a>
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
+
+          <section style={viewerPanel}>
+            {selected ? (
+              <div style={viewerInner}>
+                <div style={messageHeader}>
+                  <h1 style={messageTitle}>{selected.subject || '(no subject)'}</h1>
+
+                  <div style={messageMetaGrid}>
+                    <div style={metaCard}>
+                      <div style={sectionLabel}>From</div>
+                      <div style={metaValue}>
+                        {selected.from_name || selected.from_address}
                       </div>
+                      {selected.from_address && selected.from_name && (
+                        <div style={metaSubValue}>{selected.from_address}</div>
+                      )}
+                    </div>
+
+                    <div style={metaCard}>
+                      <div style={sectionLabel}>Received</div>
+                      <div style={metaValue}>{formatFullDate(selected.received_at)}</div>
                     </div>
                   </div>
                 </div>
+
+                <div style={messageBodyWrap}>
+                  {selected.body_html ? (
+                    <iframe
+                      title="Email content"
+                      sandbox="allow-same-origin"
+                      style={messageIframe}
+                      srcDoc={`
+                        <style>
+                          html, body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: #0b0712 !important;
+                            color: #f5f3ff !important;
+                            font-family: Arial, sans-serif !important;
+                            line-height: 1.75 !important;
+                            font-size: 15px !important;
+                            word-wrap: break-word !important;
+                            overflow-wrap: anywhere !important;
+                          }
+                          body {
+                            padding: 28px !important;
+                          }
+                          * {
+                            max-width: 100% !important;
+                            box-sizing: border-box !important;
+                          }
+                          img {
+                            max-width: 100% !important;
+                            height: auto !important;
+                            border-radius: 10px !important;
+                          }
+                          table {
+                            width: 100% !important;
+                            display: block !important;
+                            overflow-x: auto !important;
+                          }
+                          pre, code {
+                            white-space: pre-wrap !important;
+                            word-break: break-word !important;
+                          }
+                          blockquote {
+                            margin: 0 !important;
+                            padding-left: 14px !important;
+                            border-left: 3px solid rgba(167,139,250,0.45) !important;
+                            color: #d9d2ef !important;
+                          }
+                          a {
+                            color: #c4b5fd !important;
+                          }
+                        </style>
+                        ${selected.body_html}
+                      `}
+                    />
+                  ) : (
+                    <pre style={messagePre}>{selected.body_text || '(empty email)'}</pre>
+                  )}
+                </div>
               </div>
-
-              <div style={messageBodyWrap}>
-                {selected.body_html ? (
-                  <iframe
-                    title="Email content"
-                    sandbox="allow-same-origin"
-                    style={messageIframe}
-                    srcDoc={`
-                      <style>
-                        html, body {
-                          margin: 0 !important;
-                          padding: 0 !important;
-                          background: #0b0712 !important;
-                          color: #f5f3ff !important;
-                          font-family: Arial, sans-serif !important;
-                          line-height: 1.7 !important;
-                          font-size: 15px !important;
-                          word-wrap: break-word !important;
-                          overflow-wrap: anywhere !important;
-                        }
-                        body {
-                          padding: 26px !important;
-                        }
-                        * {
-                          max-width: 100% !important;
-                          box-sizing: border-box !important;
-                        }
-                        img {
-                          max-width: 100% !important;
-                          height: auto !important;
-                          border-radius: 10px !important;
-                        }
-                        table {
-                          width: 100% !important;
-                          display: block !important;
-                          overflow-x: auto !important;
-                        }
-                        pre, code {
-                          white-space: pre-wrap !important;
-                          word-break: break-word !important;
-                        }
-                        blockquote {
-                          margin: 0 !important;
-                          padding-left: 14px !important;
-                          border-left: 3px solid rgba(167,139,250,0.45) !important;
-                          color: #d9d2ef !important;
-                        }
-                        a {
-                          color: #c4b5fd !important;
-                        }
-                      </style>
-                      ${selected.body_html}
-                    `}
-                  />
-                ) : (
-                  <pre style={messagePre}>{selected.body_text || '(empty email)'}</pre>
-                )}
+            ) : (
+              <div style={noSelectionWrap}>
+                <div style={noSelectionIcon}>✉️</div>
+                <p style={noSelectionTitle}>No email selected</p>
+                <p style={noSelectionText}>Choose a message from the inbox to read it.</p>
               </div>
-            </div>
-          ) : (
-            <div style={noSelectionWrap}>
-              <div style={noSelectionIcon}>✉️</div>
-              <p style={noSelectionTitle}>No email selected</p>
-              <p style={noSelectionText}>Choose a message from the inbox to read it.</p>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {!isLoggedIn && (
-        <div style={bottomPromo}>
-          <div style={promoText}>
-            👻 <span style={{ color: '#e9ddff', fontWeight: 800 }}>Free plan</span> — addresses expire in 10 minutes. Sign up for longer-lived inboxes.
-          </div>
-
-          <div style={headerActions}>
-            <a href="/login" style={primaryLinkSmall}>
-              Sign up free
-            </a>
-            <a href="/login" style={secondaryLink}>
-              Sign in
-            </a>
-          </div>
+            )}
+          </section>
         </div>
-      )}
+
+        {!isLoggedIn && (
+          <div style={bottomPromo}>
+            <div style={promoText}>
+              👻 <span style={{ color: '#e9ddff', fontWeight: 800 }}>Free plan</span> — addresses expire in 10 minutes. Sign up for longer-lived inboxes.
+            </div>
+
+            <div style={headerActions}>
+              <a href="/login" style={primaryLinkSmall}>Sign up free</a>
+              <a href="/login" style={secondaryLink}>Sign in</a>
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
@@ -629,7 +602,6 @@ export default function InboxPage() {
       fallback={
         <main style={fallbackMain}>
           <p style={{ color: '#8c84a4', marginBottom: '18px' }}>Loading...</p>
-
           <div style={footerWrap}>
             <a href="/terms" style={footerLink}>Terms</a>
             <a href="/privacy" style={footerLink}>Privacy</a>
@@ -657,12 +629,18 @@ export default function InboxPage() {
 
 const pageWrap = {
   minHeight: '100vh',
-  background:
-    'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
+  background: 'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   display: 'flex',
   flexDirection: 'column',
+};
+
+const shell = {
+  width: '100%',
+  maxWidth: '1260px',
+  margin: '0 auto',
+  padding: '22px 18px 30px',
 };
 
 const fallbackMain = {
@@ -678,8 +656,7 @@ const fallbackMain = {
 
 const centerWrap = {
   minHeight: '100vh',
-  background:
-    'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
+  background: 'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -849,15 +826,57 @@ const smallCta = {
   textDecoration: 'none',
 };
 
-const addressBar = {
-  padding: '16px 18px',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+const topInfoGrid = {
+  display: 'grid',
+  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+  gap: '14px',
+  marginBottom: '18px',
+};
+
+const topInfoCardWide = {
+  background: 'rgba(255,255,255,0.035)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: '20px',
+  padding: '18px',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
+};
+
+const topInfoCard = {
+  background: 'rgba(255,255,255,0.035)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: '20px',
+  padding: '18px',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
+};
+
+const topActionsCard = {
+  background: 'rgba(255,255,255,0.035)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: '20px',
+  padding: '18px',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '12px',
-  flexWrap: 'wrap',
-  background: 'rgba(255,255,255,0.015)',
+  justifyContent: 'center',
+};
+
+const topInfoValue = {
+  color: '#ffffff',
+  fontSize: '24px',
+  fontWeight: 900,
+  marginTop: '8px',
+};
+
+const copyButtonStrong = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(255,255,255,0.03)',
+  color: '#fff',
+  fontSize: '14px',
+  fontWeight: 800,
+  cursor: 'pointer',
 };
 
 const sectionLabel = {
@@ -875,33 +894,44 @@ const addressText = {
   color: '#c8b6ff',
   fontWeight: 800,
   wordBreak: 'break-all',
-  marginTop: '6px',
+  marginTop: '8px',
+  lineHeight: 1.6,
 };
 
-const mainLayout = {
+const contentWrap = {
   display: 'flex',
-  flex: 1,
-  minHeight: 0,
+  gap: '18px',
+  alignItems: 'stretch',
 };
 
-const sidebar = {
-  flexShrink: 0,
-  overflowY: 'auto',
-  background: 'rgba(255,255,255,0.015)',
+const sidebarPanel = {
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: '24px',
+  overflow: 'hidden',
+  boxShadow: '0 20px 46px rgba(0,0,0,0.18)',
+  display: 'flex',
+  flexDirection: 'column',
+};
+
+const viewerPanel = {
+  flex: 1,
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: '24px',
+  overflow: 'hidden',
+  boxShadow: '0 20px 46px rgba(0,0,0,0.18)',
+  minHeight: 'calc(100vh - 290px)',
 };
 
 const sidebarHeader = {
-  padding: '16px',
+  padding: '18px',
   borderBottom: '1px solid rgba(255,255,255,0.06)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '12px',
-  position: 'sticky',
-  top: 0,
   background: 'rgba(10,2,18,0.94)',
-  backdropFilter: 'blur(10px)',
-  zIndex: 5,
 };
 
 const sidebarSubtext = {
@@ -921,7 +951,7 @@ const pillNeutral = {
 };
 
 const waitingWrap = {
-  padding: '42px 18px',
+  padding: '44px 18px',
   textAlign: 'center',
 };
 
@@ -945,15 +975,16 @@ const waitingAddress = {
 };
 
 const emailListWrap = {
-  padding: '12px',
+  padding: '14px',
   display: 'flex',
   flexDirection: 'column',
   gap: '12px',
+  overflowY: 'auto',
 };
 
 const emailRow = {
   width: '100%',
-  padding: '15px',
+  padding: '16px',
   cursor: 'pointer',
   textAlign: 'left',
   borderRadius: '18px',
@@ -982,7 +1013,7 @@ const emailRowTop = {
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '10px',
-  marginBottom: '4px',
+  marginBottom: '5px',
 };
 
 const senderText = {
@@ -999,7 +1030,7 @@ const emailSubject = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  marginBottom: '6px',
+  marginBottom: '7px',
 };
 
 const emailPreviewRow = {
@@ -1033,7 +1064,7 @@ const emailDate = {
 };
 
 const lockedBox = {
-  margin: '12px',
+  margin: '14px',
   padding: '18px',
   background: 'rgba(167,139,250,0.07)',
   border: '1px solid rgba(167,139,250,0.18)',
@@ -1056,31 +1087,19 @@ const lockedText = {
   lineHeight: 1.6,
 };
 
-const viewer = {
-  flex: 1,
-  overflowY: 'auto',
-  background: 'rgba(255,255,255,0.01)',
-};
-
 const viewerInner = {
   padding: '26px',
-  maxWidth: '1020px',
 };
 
 const messageHeader = {
   marginBottom: '22px',
 };
 
-const messageTopRow = {
-  display: 'flex',
-  gap: '16px',
-};
-
 const messageTitle = {
   color: '#fff',
   fontSize: 'clamp(24px, 3vw, 32px)',
   fontWeight: 900,
-  margin: '0 0 16px',
+  margin: '0 0 18px',
   lineHeight: 1.22,
   wordBreak: 'break-word',
   letterSpacing: '-0.03em',
@@ -1150,7 +1169,7 @@ const noSelectionWrap = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  height: '100%',
+  minHeight: '500px',
   textAlign: 'center',
   padding: '32px',
 };
@@ -1175,6 +1194,7 @@ const noSelectionText = {
 };
 
 const bottomPromo = {
+  marginTop: '18px',
   borderTop: '1px solid rgba(167,139,250,0.14)',
   background: 'rgba(167,139,250,0.05)',
   padding: '14px 18px',
@@ -1183,6 +1203,7 @@ const bottomPromo = {
   justifyContent: 'space-between',
   flexWrap: 'wrap',
   gap: '12px',
+  borderRadius: '18px',
 };
 
 const promoText = {
