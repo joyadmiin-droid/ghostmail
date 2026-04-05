@@ -21,24 +21,34 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
-  description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
-  keywords: ['temp mail', 'throwaway email', 'disposable email', 'temporary email', 'fake email', 'anonymous email', 'ghostmail'],
+  title: 'GhostMail – Temporary Email for Testing & Privacy',
+
+description:
+  'Generate temporary email addresses instantly. Perfect for developers, QA testing, and protecting your primary inbox from unwanted emails.',
+
+keywords: [
+  'temporary email',
+  'temp mail',
+  'disposable email',
+  'email testing',
+  'privacy email',
+  'qa testing email'
+],
   authors: [{ name: 'GhostMail' }],
   metadataBase: new URL('https://ghostmails.org'),
   openGraph: {
     title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
-    description: 'Generate a real working throwaway email address in one click. Use it anywhere to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
+    description: 'Generate a real working temporary email address in one click. Use it for testing, development, and protecting your inbox to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
     url: 'https://ghostmails.org',
     siteName: 'GhostMail',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'GhostMail — Instant Throwaway Email' }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'GhostMail — Instant temporary email' }],
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
-    description: 'Generate a real working throwaway email address in one click. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
+    description: 'Generate a real working temporary email address in one click. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
     images: ['/og-image.png'],
   },
   robots: { index: true, follow: true },
