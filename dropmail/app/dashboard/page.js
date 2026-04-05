@@ -374,10 +374,11 @@ export default function DashboardPage() {
           background: rgba(255,255,255,0.08) !important;
         }
 
-        .dashboard-delete-danger:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 10px 24px rgba(220,38,38,0.28);
-        }
+          .dashboard-delete-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(220,38,38,0.28);
+  filter: brightness(1.05);
+}
       `}</style>
 
       <div style={container}>
@@ -1132,6 +1133,7 @@ const deleteCancelBtn = {
 
 const deleteConfirmBtn = {
   padding: '12px 18px',
+  transition: 'all 0.2s ease',
   borderRadius: 14,
   border: '1px solid rgba(239,68,68,0.28)',
   background: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
