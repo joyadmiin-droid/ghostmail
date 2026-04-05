@@ -336,13 +336,24 @@ function InboxContent() {
         }
       `}</style>
 
-      <header style={topHeader}>
+      <header
+        style={{
+          ...topHeader,
+          padding: isMobile ? '12px 14px' : '14px 18px',
+        }}
+      >
         <a href="/" style={brandLink}>
           <span style={brandIcon}>✦</span>
           <span style={brandText}>GhostMail</span>
         </a>
 
-        <div style={headerActions}>
+        <div
+          style={{
+            ...headerActions,
+            width: isMobile ? '100%' : 'auto',
+            justifyContent: isMobile ? 'space-between' : 'flex-end',
+          }}
+        >
           {timeLeft && (
             <div
               style={{
@@ -396,11 +407,29 @@ function InboxContent() {
         </div>
       </header>
 
-      <div style={shell}>
-        <section style={topInfoGrid}>
+      <div
+        style={{
+          ...shell,
+          padding: isMobile ? '16px 12px 24px' : '22px 18px 30px',
+        }}
+      >
+        <section
+          style={{
+            ...topInfoGrid,
+            gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1.2fr',
+            gap: isMobile ? '12px' : '14px',
+          }}
+        >
           <div style={topInfoCardWide}>
             <div style={sectionLabel}>Your address</div>
-            <div style={addressText}>{mailbox?.address || '—'}</div>
+            <div
+              style={{
+                ...addressText,
+                fontSize: isMobile ? '14px' : '15px',
+              }}
+            >
+              {mailbox?.address || '—'}
+            </div>
           </div>
 
           <div style={topInfoCard}>
@@ -453,13 +482,14 @@ function InboxContent() {
           style={{
             ...contentWrap,
             flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '14px' : '18px',
           }}
         >
           <aside
             style={{
               ...sidebarPanel,
               width: isMobile ? '100%' : '370px',
-              maxHeight: isMobile ? '46vh' : 'calc(100vh - 290px)',
+              maxHeight: isMobile ? '42vh' : 'calc(100vh - 290px)',
             }}
           >
             <div style={sidebarHeader}>
@@ -499,6 +529,7 @@ function InboxContent() {
                         className="mail-card"
                         style={{
                           ...emailRow,
+                          padding: isMobile ? '14px' : '16px',
                           background: active
                             ? 'linear-gradient(180deg, rgba(167,139,250,0.17), rgba(167,139,250,0.07))'
                             : 'rgba(255,255,255,0.03)',
@@ -569,13 +600,35 @@ function InboxContent() {
             )}
           </aside>
 
-          <section style={viewerPanel}>
+          <section
+            style={{
+              ...viewerPanel,
+              minHeight: isMobile ? 'auto' : 'calc(100vh - 290px)',
+            }}
+          >
             {selected ? (
-              <div style={viewerInner}>
+              <div
+                style={{
+                  ...viewerInner,
+                  padding: isMobile ? '18px 14px' : '26px',
+                }}
+              >
                 <div style={messageHeader}>
-                  <h1 style={messageTitle}>{selected.subject || '(no subject)'}</h1>
+                  <h1
+                    style={{
+                      ...messageTitle,
+                      fontSize: isMobile ? '1.7rem' : 'clamp(24px, 3vw, 32px)',
+                    }}
+                  >
+                    {selected.subject || '(no subject)'}
+                  </h1>
 
-                  <div style={messageMetaGrid}>
+                  <div
+                    style={{
+                      ...messageMetaGrid,
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))',
+                    }}
+                  >
                     <div style={metaCard}>
                       <div style={sectionLabel}>From</div>
                       <div style={metaValue}>
@@ -639,7 +692,11 @@ function InboxContent() {
                     <iframe
                       title="Email content"
                       sandbox="allow-same-origin"
-                      style={messageIframe}
+                      style={{
+                        ...messageIframe,
+                        height: isMobile ? '58vh' : '70vh',
+                        minHeight: isMobile ? '420px' : '520px',
+                      }}
                       srcDoc={`
                         <style>
                           html, body {
@@ -688,7 +745,14 @@ function InboxContent() {
                       `}
                     />
                   ) : (
-                    <pre style={messagePre}>{selected.body_text || '(empty email)'}</pre>
+                    <pre
+                      style={{
+                        ...messagePre,
+                        padding: isMobile ? '18px' : '28px',
+                      }}
+                    >
+                      {selected.body_text || '(empty email)'}
+                    </pre>
                   )}
                 </div>
               </div>
@@ -717,7 +781,14 @@ function InboxContent() {
       </div>
 
       {toast && (
-        <div style={toastStyle}>
+        <div
+          style={{
+            ...toastStyle,
+            bottom: isMobile ? '16px' : '24px',
+            width: isMobile ? 'calc(100% - 24px)' : 'auto',
+            maxWidth: isMobile ? '420px' : 'none',
+          }}
+        >
           {toast}
         </div>
       )}
