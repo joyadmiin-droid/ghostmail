@@ -21,10 +21,10 @@ const dmMono = DM_Mono({
 });
 
 export const metadata = {
-  title: 'GhostMail – Temporary Email for Testing & Privacy',
+  title: 'GhostMail - Email Testing Tool for Developers & QA',
 
 description:
-  'Generate temporary email addresses instantly. Perfect for developers, QA testing, and protecting your primary inbox from unwanted emails.',
+  'Create disposable email addresses for QA testing, development workflows, and protecting your primary inbox during testing. Built for responsible use with automatic expiration.',
 
 keywords: [
   'temporary email',
@@ -37,20 +37,29 @@ keywords: [
   authors: [{ name: 'GhostMail' }],
   metadataBase: new URL('https://ghostmails.org'),
   openGraph: {
-    title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
-    description: 'Generate a real working temporary email address in one click. Use it for testing, development, and protecting your inbox to avoid spam, protect your privacy, and stay anonymous. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
-    url: 'https://ghostmails.org',
-    siteName: 'GhostMail',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'GhostMail — Instant temporary email' }],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'GhostMail — Free Disposable Temp Email, Gone in 10 Min',
-    description: 'Generate a real working temporary email address in one click. Auto-deletes in 10 minutes — no trace, no signup, no BS.',
-    images: ['/og-image.png'],
-  },
+  title: 'GhostMail – Email Testing Tool for Developers & QA',
+  description:
+    'Create temporary email addresses for QA testing, development workflows, and protecting your primary inbox during testing. Built for responsible use with automatic expiration.',
+  url: 'https://ghostmails.org',
+  siteName: 'GhostMail',
+  images: [
+    {
+      url: '/og-image.png',
+      width: 1200,
+      height: 630,
+      alt: 'GhostMail – Email testing tool for developers and QA',
+    },
+  ],
+  locale: 'en_US',
+  type: 'website',
+},
+twitter: {
+  card: 'summary_large_image',
+  title: 'GhostMail – Email Testing Tool for Developers & QA',
+  description:
+  'Create temporary email addresses for QA testing, development workflows, and protecting your primary inbox during testing. Built for responsible use with automatic expiration.',
+  images: ['/og-image.png'],
+},
   robots: { index: true, follow: true },
 };
 
