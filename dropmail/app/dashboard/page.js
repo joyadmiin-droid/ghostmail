@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 
 export default function DashboardPage() {
   const [status, setStatus] = useState('loading');
@@ -18,6 +20,27 @@ export default function DashboardPage() {
   const [emailCount, setEmailCount] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [mailboxUsage, setMailboxUsage] = useState({});
+  const [favorites, setFavorites] = useState({});
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      if (raw) {
+        setFavorites(JSON.parse(raw));
+      }
+    } catch (err) {
+      console.error('Failed to load favorites:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    } catch (err) {
+      console.error('Failed to save favorites:', err);
+    }
+  }, [favorites]);
 
   useEffect(() => {
     let mounted = true;
@@ -184,9 +207,51 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedId(null), 1500);
   }
 
+  function toggleFavorite(id) {
+    setFavorites(prev => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  }
+
+  function isFavorite(id) {
+    return !!favorites[id];
+  }
+
   function getPlanDisplayName(value) {
     return (value || 'free').toUpperCase();
   }
+
+  const sortedAddresses = useMemo(() => {
+    return [...addresses].sort((a, b) => {
+      const aFav = isFavorite(a.id) ? 1 : 0;
+      const bFav = isFavorite(b.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+  }, [addresses, favorites]);
+
+  const filteredAddresses = useMemo(() => {
+    return sortedAddresses.filter(addr => {
+      const badge = getMailboxStatus(addr);
+      const fav = isFavorite(addr.id);
+
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'favorites') return fav;
+      if (activeFilter === 'new') return badge.label === 'New';
+      if (activeFilter === 'used') return badge.label === 'Used';
+      if (activeFilter === 'expired') return badge.label === 'Expired';
+      return true;
+    });
+  }, [sortedAddresses, activeFilter, mailboxUsage, favorites]);
+
+  const filterOptions = [
+    { key: 'all', label: 'All' },
+    { key: 'favorites', label: 'Favorites' },
+    { key: 'new', label: 'New' },
+    { key: 'used', label: 'Used' },
+    { key: 'expired', label: 'Expired' },
+  ];
 
   if (status === 'loading') {
     return (
@@ -209,19 +274,36 @@ export default function DashboardPage() {
   return (
     <main style={pageStyle}>
       <style>{`
-  @keyframes spin { to { transform: rotate(360deg); } }
-  * { box-sizing: border-box; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
 
-  .dashboard-email-card {
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  }
+        .dashboard-email-card {
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
 
-  .dashboard-email-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(167,139,250,0.35) !important;
-    box-shadow: 0 0 28px rgba(167,139,250,0.10), 0 18px 44px rgba(0,0,0,0.20) !important;
-  }
-`}</style>
+        .dashboard-email-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(167,139,250,0.35) !important;
+          box-shadow: 0 0 28px rgba(167,139,250,0.10), 0 18px 44px rgba(0,0,0,0.20) !important;
+        }
+
+        .dashboard-filter-btn {
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .dashboard-filter-btn:hover {
+          transform: translateY(-1px);
+          border-color: rgba(167,139,250,0.34) !important;
+        }
+
+        .dashboard-fav-btn {
+          transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+        }
+
+        .dashboard-fav-btn:hover {
+          transform: scale(1.05);
+        }
+      `}</style>
 
       <div style={container}>
         <div style={header}>
@@ -260,6 +342,44 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {addresses.length > 0 && (
+          <div style={filtersWrap}>
+            <div style={filtersRow}>
+              {filterOptions.map(filter => {
+                const active = activeFilter === filter.key;
+
+                return (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    className="dashboard-filter-btn"
+                    onClick={() => setActiveFilter(filter.key)}
+                    style={{
+                      ...filterBtn,
+                      background: active
+                        ? 'rgba(167,139,250,0.16)'
+                        : 'rgba(255,255,255,0.03)',
+                      color: active ? '#f3edff' : '#cfc8e7',
+                      borderColor: active
+                        ? 'rgba(167,139,250,0.36)'
+                        : 'rgba(255,255,255,0.08)',
+                      boxShadow: active
+                        ? '0 0 20px rgba(167,139,250,0.10)'
+                        : 'none',
+                    }}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={filterCountText}>
+              Showing {filteredAddresses.length} of {addresses.length} inboxes
+            </div>
+          </div>
+        )}
+
         {addresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>📭</div>
@@ -271,17 +391,59 @@ export default function DashboardPage() {
               {loadingCreate ? 'Generating...' : 'Create First Address'}
             </button>
           </div>
+        ) : filteredAddresses.length === 0 ? (
+          <div style={emptyCard}>
+            <div style={{ fontSize: '2rem', marginBottom: 10 }}>🗂️</div>
+            <h3 style={{ margin: '0 0 8px', color: '#fff' }}>No inboxes in this filter</h3>
+            <p style={{ margin: 0, color: '#9f9ab2', lineHeight: 1.6 }}>
+              Try another filter or create a new address.
+            </p>
+          </div>
         ) : (
           <div style={gridWrap}>
-            {addresses.map(addr => {
+            {filteredAddresses.map(addr => {
               const badge = getMailboxStatus(addr);
               const usageCount = mailboxUsage[addr.id] || 0;
+              const favorite = isFavorite(addr.id);
 
               return (
-                <div key={addr.id} style={emailCard} className="dashboard-email-card">
+                <div
+                  key={addr.id}
+                  style={{
+                    ...emailCard,
+                    borderColor: favorite
+                      ? 'rgba(250,204,21,0.26)'
+                      : 'rgba(255,255,255,0.08)',
+                    boxShadow: favorite
+                      ? '0 14px 40px rgba(0,0,0,0.16), 0 0 28px rgba(250,204,21,0.08)'
+                      : '0 14px 40px rgba(0,0,0,0.16)',
+                  }}
+                  className="dashboard-email-card"
+                >
                   <div style={cardTop}>
-                    <div style={cardAddressWrap}>
-                      <div style={addrText}>{addr.address}</div>
+                    <div style={cardTopRow}>
+                      <div style={cardAddressWrap}>
+                        <div style={addrText}>{addr.address}</div>
+                      </div>
+
+                      <button
+                        type="button"
+                        aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+                        className="dashboard-fav-btn"
+                        onClick={() => toggleFavorite(addr.id)}
+                        style={{
+                          ...favoriteBtn,
+                          color: favorite ? '#facc15' : '#8f89a5',
+                          borderColor: favorite
+                            ? 'rgba(250,204,21,0.30)'
+                            : 'rgba(255,255,255,0.08)',
+                          background: favorite
+                            ? 'rgba(250,204,21,0.10)'
+                            : 'rgba(255,255,255,0.03)',
+                        }}
+                      >
+                        {favorite ? '★' : '☆'}
+                      </button>
                     </div>
 
                     <span
@@ -384,7 +546,7 @@ const planCard = {
   borderRadius: 18,
   background: 'rgba(167,139,250,0.08)',
   border: '1px solid rgba(167,139,250,0.22)',
-  marginBottom: 26,
+  marginBottom: 20,
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -410,6 +572,32 @@ const planMeta = {
   fontWeight: 700,
 };
 
+const filtersWrap = {
+  marginBottom: 22,
+};
+
+const filtersRow = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+};
+
+const filterBtn = {
+  padding: '10px 14px',
+  borderRadius: 12,
+  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(255,255,255,0.03)',
+  color: '#cfc8e7',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const filterCountText = {
+  marginTop: 10,
+  color: '#938baa',
+  fontSize: 13,
+};
+
 const gridWrap = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -421,7 +609,7 @@ const emailCard = {
   borderRadius: 18,
   background: 'rgba(255,255,255,0.035)',
   border: '1px solid rgba(255,255,255,0.08)',
-  minHeight: 210,
+  minHeight: 220,
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -434,8 +622,16 @@ const cardTop = {
   gap: 14,
 };
 
+const cardTopRow = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 12,
+};
+
 const cardAddressWrap = {
   minWidth: 0,
+  flex: 1,
 };
 
 const addrText = {
@@ -444,6 +640,17 @@ const addrText = {
   fontSize: 16,
   lineHeight: 1.6,
   wordBreak: 'break-all',
+};
+
+const favoriteBtn = {
+  width: 38,
+  height: 38,
+  borderRadius: 12,
+  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(255,255,255,0.03)',
+  fontSize: 18,
+  cursor: 'pointer',
+  flexShrink: 0,
 };
 
 const cardStats = {
