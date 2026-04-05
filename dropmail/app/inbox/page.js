@@ -840,25 +840,76 @@ export default function InboxPage() {
             minHeight: '100vh',
             background: '#080010',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            fontFamily: 'sans-serif',
           }}
         >
-          <p style={{ color: '#6b6b7a', fontFamily: 'sans-serif' }}>Loading...</p>
+          <p style={{ color: '#6b6b7a', marginBottom: '20px' }}>
+            Loading...
+          </p>
+
+          {/* Footer */}
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#555',
+            }}
+          >
+            <a href="/terms" style={{ margin: '0 8px', color: '#666' }}>
+              Terms
+            </a>
+            <a href="/privacy" style={{ margin: '0 8px', color: '#666' }}>
+              Privacy
+            </a>
+            <a
+              href="mailto:support@ghostmails.org"
+              style={{ margin: '0 8px', color: '#666' }}
+            >
+              Contact
+            </a>
+          </div>
         </main>
       }
     >
-      <InboxContent />
+      <main
+        style={{
+          minHeight: '100vh',
+          background: '#080010',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Main Content */}
+        <div style={{ flex: 1 }}>
+          <InboxContent />
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '16px',
+            fontSize: '12px',
+            color: '#555',
+          }}
+        >
+          <a href="/terms" style={{ margin: '0 8px', color: '#666' }}>
+            Terms
+          </a>
+          <a href="/privacy" style={{ margin: '0 8px', color: '#666' }}>
+            Privacy
+          </a>
+          <a
+            href="mailto:support@ghostmails.org"
+            style={{ margin: '0 8px', color: '#666' }}
+          >
+            Contact
+          </a>
+        </div>
+      </main>
     </Suspense>
   );
 }
-<div style={{
-  textAlign: 'center',
-  padding: '16px',
-  fontSize: '12px',
-  color: '#555'
-}}>
-  <a href="/terms" style={{ margin: '0 8px', color: '#666' }}>Terms</a>
-  <a href="/privacy" style={{ margin: '0 8px', color: '#666' }}>Privacy</a>
-  <a href="mailto:support@ghostmails.org" style={{ margin: '0 8px', color: '#666' }}>Contact</a>
-</div>
