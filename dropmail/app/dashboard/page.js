@@ -141,16 +141,13 @@ export default function DashboardPage() {
 
   return (
     <main style={pageStyle}>
-      {/* HEADER */}
       <div style={container}>
+
+        {/* HEADER */}
         <div style={header}>
           <div>
             <h1 style={{ margin: 0 }}>Dashboard</h1>
             <p style={{ color: '#888' }}>{user?.email}</p>
-            <p style={{ color: '#a78bfa' }}>Plan: {plan}</p>
-            <p style={{ color: '#22c55e' }}>
-              Emails: {emailCount ?? '...'}
-            </p>
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
@@ -161,6 +158,36 @@ export default function DashboardPage() {
             <button style={dangerBtn} onClick={handleSignOut}>
               Sign out
             </button>
+          </div>
+        </div>
+
+        {/* PLAN CARD 🔥 */}
+        <div style={planCard}>
+          <div>
+            <p style={{ margin: 0, color: '#888' }}>Current plan</p>
+            <h2 style={{ margin: '4px 0' }}>{plan.toUpperCase()}</h2>
+            <p style={{ color: '#22c55e' }}>
+              Emails received: {emailCount ?? '...'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            {plan === 'free' && (
+              <>
+                <button style={upgradeBtn}>
+                  Upgrade to Phantom
+                </button>
+                <button style={upgradeBtnSecondary}>
+                  Upgrade to Spectre
+                </button>
+              </>
+            )}
+
+            {plan !== 'free' && (
+              <button style={manageBtn}>
+                Manage billing
+              </button>
+            )}
           </div>
         </div>
 
@@ -193,18 +220,20 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {error && <p style={{ color: '#f87171' }}>{error}</p>}
       </div>
     </main>
   );
 }
 
 /* STYLES */
+
 const pageStyle = {
   minHeight: '100vh',
   background: '#080010',
   color: '#fff',
   padding: '32px 20px',
-  fontFamily: 'sans-serif',
 };
 
 const container = {
@@ -220,6 +249,19 @@ const header = {
   gap: 20,
 };
 
+const planCard = {
+  padding: 20,
+  borderRadius: 16,
+  background: 'rgba(167,139,250,0.08)',
+  border: '1px solid rgba(167,139,250,0.25)',
+  marginBottom: 24,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: 16,
+};
+
 const card = {
   padding: 20,
   borderRadius: 16,
@@ -230,7 +272,6 @@ const card = {
 const addrText = {
   fontFamily: 'monospace',
   color: '#a78bfa',
-  wordBreak: 'break-all',
 };
 
 const meta = {
@@ -255,13 +296,38 @@ const primaryBtn = {
   cursor: 'pointer',
 };
 
+const upgradeBtn = {
+  padding: '10px 16px',
+  borderRadius: 10,
+  border: 'none',
+  background: '#7c3aed',
+  color: '#fff',
+  cursor: 'pointer',
+};
+
+const upgradeBtnSecondary = {
+  padding: '10px 16px',
+  borderRadius: 10,
+  border: '1px solid #7c3aed',
+  background: 'transparent',
+  color: '#a78bfa',
+  cursor: 'pointer',
+};
+
+const manageBtn = {
+  padding: '10px 16px',
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.2)',
+  background: 'transparent',
+  color: '#fff',
+};
+
 const secondaryBtn = {
   padding: '10px 14px',
   borderRadius: 10,
   border: '1px solid rgba(255,255,255,0.15)',
   background: 'transparent',
   color: '#fff',
-  cursor: 'pointer',
 };
 
 const dangerBtn = {
