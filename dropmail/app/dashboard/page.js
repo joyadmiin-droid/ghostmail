@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-const [showUpgrade, setShowUpgrade] = useState(false);
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -13,6 +13,7 @@ const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 export default function DashboardPage() {
   const [status, setStatus] = useState('loading');
   const [user, setUser] = useState(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [plan, setPlan] = useState('free');
   const [addresses, setAddresses] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
@@ -129,36 +130,43 @@ export default function DashboardPage() {
   }
 
   async function generateMailbox() {
-    setLoadingCreate(true);
-    setError('');
+  setLoadingCreate(true);
+  setError('');
 
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const headers = {};
-      if (session?.access_token) {
-        headers.Authorization = 'Bearer ' + session.access_token;
-      }
-
-      const res = await fetch('/api/mailbox/create', {
-        method: 'POST',
-        headers,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
-
-      setAddresses(prev => [data, ...prev]);
-      setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
-    } catch (err) {
-      setError(err.message || 'Failed to generate mailbox');
-    } finally {
-      setLoadingCreate(false);
-    }
+  // FREE PLAN LIMIT
+  if (plan === 'free' && addresses.length >= 1) {
+    setShowUpgrade(true);
+    setLoadingCreate(false);
+    return;
   }
+
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers = {};
+    if (session?.access_token) {
+      headers.Authorization = 'Bearer ' + session.access_token;
+    }
+
+    const res = await fetch('/api/mailbox/create', {
+      method: 'POST',
+      headers,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
+
+    setAddresses(prev => [data, ...prev]);
+    setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
+  } catch (err) {
+    setError(err.message || 'Failed to generate mailbox');
+  } finally {
+    setLoadingCreate(false);
+  }
+}
 
   function getExpiryLabel(expiresAt) {
     const diff = new Date(expiresAt) - new Date();
