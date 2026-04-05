@@ -120,46 +120,36 @@ export default function Home() {
   }
 
   async function generateMailbox() {
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch('/api/mailbox/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const text = await res.text();
+    let data = null;
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const headers = { 'Content-Type': 'application/json' };
-      if (session?.access_token) {
-        headers.Authorization = 'Bearer ' + session.access_token;
-      }
-
-      const res = await fetch('/api/mailbox/create', {
-        method: 'POST',
-        headers,
-        signal: controller.signal,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to generate address');
-      }
-
-      setMailbox(data);
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        setError('Request timed out. Please try again.');
-      } else {
-        setError(err.message || 'Something went wrong');
-      }
-    } finally {
-      clearTimeout(timeout);
-      setLoading(false);
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('Server returned invalid JSON: ' + text.slice(0, 120));
     }
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to generate address');
+    }
+
+    setMailbox(data);
+  } catch (err) {
+    console.error('Generate mailbox error:', err);
+    setError(err.message || 'Something went wrong');
+  } finally {
+    setLoading(false);
   }
+}
 
   async function copyAddress(addr) {
     await navigator.clipboard.writeText(addr);
