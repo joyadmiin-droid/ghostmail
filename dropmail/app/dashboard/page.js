@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [emailCount, setEmailCount] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [mailboxUsage, setMailboxUsage] = useState({});
 
   useEffect(() => {
     let mounted = true;
@@ -51,13 +52,40 @@ export default function DashboardPage() {
           .eq('is_active', true)
           .order('created_at', { ascending: false });
 
-        setAddresses(mailboxes || []);
+        const mailboxList = mailboxes || [];
+        setAddresses(mailboxList);
 
         const { count } = await supabase
           .from('emails')
           .select('id', { count: 'exact', head: true });
 
         setEmailCount(count || 0);
+
+        if (mailboxList.length > 0) {
+          const mailboxIds = mailboxList.map(m => m.id);
+
+          const { data: emailsData, error: usageError } = await supabase
+            .from('emails')
+            .select('id, mailbox_id')
+            .in('mailbox_id', mailboxIds);
+
+          if (!usageError && emailsData) {
+            const usageMap = {};
+            for (const mailbox of mailboxList) {
+              usageMap[mailbox.id] = 0;
+            }
+            for (const email of emailsData) {
+              if (email.mailbox_id) {
+                usageMap[email.mailbox_id] = (usageMap[email.mailbox_id] || 0) + 1;
+              }
+            }
+            setMailboxUsage(usageMap);
+          } else {
+            setMailboxUsage({});
+          }
+        } else {
+          setMailboxUsage({});
+        }
 
         setStatus('ready');
       } catch (err) {
@@ -67,7 +95,9 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-    return () => (mounted = false);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function handleSignOut() {
@@ -99,6 +129,7 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error(data.error);
 
       setAddresses(prev => [data, ...prev]);
+      setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -114,6 +145,29 @@ export default function DashboardPage() {
     if (mins > 1440) return Math.round(mins / 1440) + 'd left';
     if (mins > 60) return Math.round(mins / 60) + 'h left';
     return mins + 'm left';
+  }
+
+  function getMailboxStatus(addr) {
+    const expired = new Date(addr.expires_at) <= new Date();
+    if (expired) {
+      return {
+        label: 'Expired',
+        color: '#f87171',
+      };
+    }
+
+    const usedCount = mailboxUsage[addr.id] || 0;
+    if (usedCount > 0) {
+      return {
+        label: 'Used',
+        color: '#f59e0b',
+      };
+    }
+
+    return {
+      label: 'New',
+      color: '#22c55e',
+    };
   }
 
   async function copyAddress(addr, id) {
@@ -142,8 +196,6 @@ export default function DashboardPage() {
   return (
     <main style={pageStyle}>
       <div style={container}>
-
-        {/* HEADER */}
         <div style={header}>
           <div>
             <h1 style={{ margin: 0 }}>Dashboard</h1>
@@ -161,7 +213,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* PLAN CARD 🔥 */}
         <div style={planCard}>
           <div>
             <p style={{ margin: 0, color: '#888' }}>Current plan</p>
@@ -191,34 +242,52 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* LIST */}
         <div style={{ display: 'grid', gap: 16 }}>
-          {addresses.map(addr => (
-            <div key={addr.id} style={card}>
-              <div style={addrText}>{addr.address}</div>
+          {addresses.map(addr => {
+            const badge = getMailboxStatus(addr);
 
-              <div style={meta}>
-                <span style={{ color: '#22c55e' }}>● Active</span>
-                <span>{getExpiryLabel(addr.expires_at)}</span>
+            return (
+              <div key={addr.id} style={card}>
+                <div style={addrText}>{addr.address}</div>
+
+                <div style={meta}>
+                  <span
+                    style={{
+                      ...statusBadge,
+                      color: badge.color,
+                      borderColor: badge.color + '55',
+                      background:
+                        badge.label === 'Expired'
+                          ? 'rgba(248,113,113,0.08)'
+                          : badge.label === 'Used'
+                          ? 'rgba(245,158,11,0.08)'
+                          : 'rgba(34,197,94,0.08)',
+                    }}
+                  >
+                    ● {badge.label}
+                  </span>
+
+                  <span>{getExpiryLabel(addr.expires_at)}</span>
+                </div>
+
+                <div style={actions}>
+                  <button
+                    style={secondaryBtn}
+                    onClick={() => copyAddress(addr.address, addr.id)}
+                  >
+                    {copiedId === addr.id ? 'Copied' : 'Copy'}
+                  </button>
+
+                  <a
+                    href={`/inbox?token=${addr.token}`}
+                    style={secondaryBtn}
+                  >
+                    Open inbox
+                  </a>
+                </div>
               </div>
-
-              <div style={actions}>
-                <button
-                  style={secondaryBtn}
-                  onClick={() => copyAddress(addr.address, addr.id)}
-                >
-                  {copiedId === addr.id ? 'Copied' : 'Copy'}
-                </button>
-
-                <a
-                  href={`/inbox?token=${addr.token}`}
-                  style={secondaryBtn}
-                >
-                  Open inbox
-                </a>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {error && <p style={{ color: '#f87171' }}>{error}</p>}
@@ -277,14 +346,26 @@ const addrText = {
 const meta = {
   display: 'flex',
   justifyContent: 'space-between',
+  alignItems: 'center',
   marginTop: 10,
   color: '#aaa',
+  gap: 12,
+  flexWrap: 'wrap',
+};
+
+const statusBadge = {
+  padding: '6px 12px',
+  borderRadius: 999,
+  border: '1px solid',
+  fontSize: 13,
+  fontWeight: 700,
 };
 
 const actions = {
   display: 'flex',
   gap: 10,
   marginTop: 14,
+  flexWrap: 'wrap',
 };
 
 const primaryBtn = {
@@ -328,6 +409,8 @@ const secondaryBtn = {
   border: '1px solid rgba(255,255,255,0.15)',
   background: 'transparent',
   color: '#fff',
+  textDecoration: 'none',
+  cursor: 'pointer',
 };
 
 const dangerBtn = {
@@ -346,4 +429,6 @@ const centerStyle = {
   justifyContent: 'center',
   background: '#080010',
   color: '#fff',
+  flexDirection: 'column',
+  gap: 12,
 };
