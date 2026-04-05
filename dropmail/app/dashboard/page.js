@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [error, setError] = useState('');
   const [emailCount, setEmailCount] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -24,12 +25,11 @@ export default function DashboardPage() {
       try {
         const {
           data: { session },
-          error: sessionError,
         } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        if (sessionError || !session?.user) {
+        if (!session?.user) {
           window.location.replace('/login');
           return;
         }
@@ -42,55 +42,32 @@ export default function DashboardPage() {
           .eq('id', session.user.id)
           .maybeSingle();
 
-        if (!mounted) return;
+        if (profile?.plan) setPlan(profile.plan);
 
-        if (profile?.plan) {
-          setPlan(profile.plan);
-        }
-
-        const { data: mailboxes, error: mailboxError } = await supabase
+        const { data: mailboxes } = await supabase
           .from('mailboxes')
           .select('id, address, token, expires_at, created_at')
           .eq('user_id', session.user.id)
           .eq('is_active', true)
           .order('created_at', { ascending: false });
 
-        if (!mounted) return;
-
-        if (mailboxError) {
-          throw mailboxError;
-        }
-
         setAddresses(mailboxes || []);
 
-        const { count, error: emailCountError } = await supabase
+        const { count } = await supabase
           .from('emails')
           .select('id', { count: 'exact', head: true });
 
-        if (!mounted) return;
-
-        if (emailCountError) {
-          console.error('Email count error:', emailCountError);
-          setEmailCount(0);
-        } else {
-          setEmailCount(count || 0);
-        }
+        setEmailCount(count || 0);
 
         setStatus('ready');
       } catch (err) {
-        console.error('Dashboard load error:', err);
-        if (mounted) {
-          setError(err.message || 'Failed to load dashboard');
-          setStatus('error');
-        }
+        setError(err.message || 'Failed to load dashboard');
+        setStatus('error');
       }
     }
 
     loadDashboard();
-
-    return () => {
-      mounted = false;
-    };
+    return () => (mounted = false);
   }, []);
 
   async function handleSignOut() {
@@ -107,7 +84,7 @@ export default function DashboardPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      const headers = { 'Content-Type': 'application/json' };
+      const headers = {};
       if (session?.access_token) {
         headers.Authorization = 'Bearer ' + session.access_token;
       }
@@ -119,14 +96,11 @@ export default function DashboardPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to generate address');
-      }
+      if (!res.ok) throw new Error(data.error);
 
       setAddresses(prev => [data, ...prev]);
     } catch (err) {
-      console.error('Generate dashboard mailbox error:', err);
-      setError(err.message || 'Failed to generate address');
+      setError(err.message);
     } finally {
       setLoadingCreate(false);
     }
@@ -135,213 +109,175 @@ export default function DashboardPage() {
   function getExpiryLabel(expiresAt) {
     const diff = new Date(expiresAt) - new Date();
     if (diff <= 0) return 'Expired';
+
     const mins = Math.round(diff / 60000);
-    if (mins > 60 * 24) return Math.round(mins / 60 / 24) + 'd left';
+    if (mins > 1440) return Math.round(mins / 1440) + 'd left';
     if (mins > 60) return Math.round(mins / 60) + 'h left';
     return mins + 'm left';
   }
 
-  async function copyAddress(addr) {
+  async function copyAddress(addr, id) {
     await navigator.clipboard.writeText(addr);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
   }
 
   if (status === 'loading') {
     return (
-      <main
-        style={{
-          minHeight: '100vh',
-          background: '#0d0d14',
-          color: '#a78bfa',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'sans-serif',
-        }}
-      >
-        Loading dashboard...
+      <main style={centerStyle}>
+        <p>Loading dashboard...</p>
       </main>
     );
   }
 
   if (status === 'error') {
     return (
-      <main
-        style={{
-          minHeight: '100vh',
-          background: '#0d0d14',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '12px',
-          fontFamily: 'sans-serif',
-          padding: '24px',
-          textAlign: 'center',
-        }}
-      >
-        <h2>Dashboard failed to load</h2>
+      <main style={centerStyle}>
+        <h2>Error loading dashboard</h2>
         <p style={{ color: '#f87171' }}>{error}</p>
-        <a href="/login" style={{ color: '#a78bfa' }}>
-          Back to login
-        </a>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: '#0d0d14',
-        color: '#fff',
-        fontFamily: 'sans-serif',
-        padding: '24px',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: '900px',
-          margin: '0 auto',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '24px',
-            flexWrap: 'wrap',
-          }}
-        >
+    <main style={pageStyle}>
+      {/* HEADER */}
+      <div style={container}>
+        <div style={header}>
           <div>
             <h1 style={{ margin: 0 }}>Dashboard</h1>
-            <p style={{ margin: '8px 0 0', color: '#aaa' }}>{user?.email}</p>
-            <p style={{ margin: '6px 0 0', color: '#a78bfa' }}>Plan: {plan}</p>
-            <p style={{ margin: '6px 0 0', color: '#22c55e' }}>
-              Emails received: {emailCount ?? '...'}
+            <p style={{ color: '#888' }}>{user?.email}</p>
+            <p style={{ color: '#a78bfa' }}>Plan: {plan}</p>
+            <p style={{ color: '#22c55e' }}>
+              Emails: {emailCount ?? '...'}
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={generateMailbox}
-              disabled={loadingCreate}
-              style={{
-                padding: '12px 18px',
-                border: 'none',
-                borderRadius: '10px',
-                background: '#a78bfa',
-                color: '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              {loadingCreate ? 'Generating...' : 'Generate address'}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button style={primaryBtn} onClick={generateMailbox}>
+              {loadingCreate ? 'Generating...' : 'New Address'}
             </button>
 
-            <button
-              onClick={handleSignOut}
-              style={{
-                padding: '12px 18px',
-                border: '1px solid rgba(248,113,113,0.4)',
-                borderRadius: '10px',
-                background: 'transparent',
-                color: '#f87171',
-                cursor: 'pointer',
-              }}
-            >
+            <button style={dangerBtn} onClick={handleSignOut}>
               Sign out
             </button>
           </div>
         </div>
 
-        {error && (
-          <p style={{ color: '#f87171', marginBottom: '16px' }}>{error}</p>
-        )}
+        {/* LIST */}
+        <div style={{ display: 'grid', gap: 16 }}>
+          {addresses.map(addr => (
+            <div key={addr.id} style={card}>
+              <div style={addrText}>{addr.address}</div>
 
-        <div
-          style={{
-            display: 'grid',
-            gap: '12px',
-          }}
-        >
-          {addresses.length === 0 ? (
-            <div
-              style={{
-                padding: '20px',
-                borderRadius: '14px',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              No addresses yet.
-            </div>
-          ) : (
-            addresses.map(addr => (
-              <div
-                key={addr.id}
-                style={{
-                  padding: '16px',
-                  borderRadius: '14px',
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
-              >
-                <div
-                  style={{
-                    color: '#a78bfa',
-                    wordBreak: 'break-all',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {addr.address}
-                </div>
-
-                <div style={{ color: '#aaa', marginTop: '8px', fontSize: '14px' }}>
-                  {getExpiryLabel(addr.expires_at)}
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginTop: '12px',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <button
-                    onClick={() => copyAddress(addr.address)}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(167,139,250,0.4)',
-                      background: 'transparent',
-                      color: '#a78bfa',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Copy
-                  </button>
-
-                  <a
-                    href={'/inbox?token=' + addr.token}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      color: '#fff',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Open inbox
-                  </a>
-                </div>
+              <div style={meta}>
+                <span style={{ color: '#22c55e' }}>● Active</span>
+                <span>{getExpiryLabel(addr.expires_at)}</span>
               </div>
-            ))
-          )}
+
+              <div style={actions}>
+                <button
+                  style={secondaryBtn}
+                  onClick={() => copyAddress(addr.address, addr.id)}
+                >
+                  {copiedId === addr.id ? 'Copied' : 'Copy'}
+                </button>
+
+                <a
+                  href={`/inbox?token=${addr.token}`}
+                  style={secondaryBtn}
+                >
+                  Open inbox
+                </a>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </main>
   );
 }
+
+/* STYLES */
+const pageStyle = {
+  minHeight: '100vh',
+  background: '#080010',
+  color: '#fff',
+  padding: '32px 20px',
+  fontFamily: 'sans-serif',
+};
+
+const container = {
+  maxWidth: 900,
+  margin: '0 auto',
+};
+
+const header = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginBottom: 30,
+  flexWrap: 'wrap',
+  gap: 20,
+};
+
+const card = {
+  padding: 20,
+  borderRadius: 16,
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+};
+
+const addrText = {
+  fontFamily: 'monospace',
+  color: '#a78bfa',
+  wordBreak: 'break-all',
+};
+
+const meta = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginTop: 10,
+  color: '#aaa',
+};
+
+const actions = {
+  display: 'flex',
+  gap: 10,
+  marginTop: 14,
+};
+
+const primaryBtn = {
+  padding: '12px 18px',
+  borderRadius: 12,
+  border: 'none',
+  background: 'linear-gradient(135deg,#7c3aed,#ec4899)',
+  color: '#fff',
+  cursor: 'pointer',
+};
+
+const secondaryBtn = {
+  padding: '10px 14px',
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.15)',
+  background: 'transparent',
+  color: '#fff',
+  cursor: 'pointer',
+};
+
+const dangerBtn = {
+  padding: '12px 18px',
+  borderRadius: 12,
+  border: '1px solid rgba(248,113,113,0.4)',
+  background: 'transparent',
+  color: '#f87171',
+  cursor: 'pointer',
+};
+
+const centerStyle = {
+  minHeight: '100vh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#080010',
+  color: '#fff',
+};
