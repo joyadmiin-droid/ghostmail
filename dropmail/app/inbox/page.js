@@ -335,9 +335,7 @@ function InboxContent() {
             {copied ? '✓ Copied' : 'Copy'}
           </button>
 
-          <a href="/" style={secondaryLink}>
-            New address
-          </a>
+        
         </div>
       </section>
 

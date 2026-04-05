@@ -272,6 +272,63 @@ export default function Home() {
           )}
         </div>
 
+        <section className={styles.howSection}>
+          <h2 className={styles.howTitle}>How it works</h2>
+
+          <div className={styles.howGrid}>
+            <div className={styles.howCard}>
+              <span className={styles.howStep}>01</span>
+              <h3 className={styles.howCardTitle}>Generate</h3>
+              <p className={styles.howCardText}>
+                Create a temporary email address instantly with one click.
+              </p>
+            </div>
+
+            <div className={styles.howCard}>
+              <span className={styles.howStep}>02</span>
+              <h3 className={styles.howCardTitle}>Receive</h3>
+              <p className={styles.howCardText}>
+                Use it for testing signups, onboarding flows, OTPs, and app emails.
+              </p>
+            </div>
+
+            <div className={styles.howCard}>
+              <span className={styles.howStep}>03</span>
+              <h3 className={styles.howCardTitle}>Auto-delete</h3>
+              <p className={styles.howCardText}>
+                The inbox expires automatically, keeping your workflow clean and temporary.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.perfectSection}>
+          <h2 className={styles.perfectTitle}>Perfect for</h2>
+
+          <div className={styles.perfectGrid}>
+            <div className={styles.perfectCard}>
+              <h3 className={styles.perfectCardTitle}>QA testing</h3>
+              <p className={styles.perfectCardText}>
+                Test registration flows, password resets, OTPs, and welcome emails safely.
+              </p>
+            </div>
+
+            <div className={styles.perfectCard}>
+              <h3 className={styles.perfectCardTitle}>Developers</h3>
+              <p className={styles.perfectCardText}>
+                Verify integrations, debug email delivery, and test app notifications fast.
+              </p>
+            </div>
+
+            <div className={styles.perfectCard}>
+              <h3 className={styles.perfectCardTitle}>Privacy-conscious users</h3>
+              <p className={styles.perfectCardText}>
+                Protect your main inbox when you need a short-lived address for testing.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section className={styles.responsibleSection}>
           <h3 className={styles.responsibleTitle}>Responsible Use</h3>
           <p className={styles.responsibleItem}>• Software testing and QA environments</p>
@@ -386,7 +443,14 @@ export default function Home() {
       </section>
 
       <footer className={styles.footer}>
-        <p>© 2026 GhostMail — Developer-focused email testing tool. Use responsibly.</p>
+        <div className={styles.footerLinks}>
+          <a href="/about">About</a>
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="mailto:support@ghostmails.org">Contact</a>
+        </div>
+
+        <p>© 2026 GhostMail — Built for developers, QA, and temporary email testing workflows.</p>
       </footer>
     </main>
   );

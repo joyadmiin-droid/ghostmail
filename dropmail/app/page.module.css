@@ -596,3 +596,133 @@
   display: block;
   text-decoration: none;
 }
+/* =========================
+   HOW IT WORKS
+========================= */
+
+.howSection {
+  margin-top: 80px;
+  max-width: 1000px;
+  width: 100%;
+  text-align: center;
+}
+
+.howTitle {
+  font-size: 32px;
+  color: #fff;
+  margin-bottom: 40px;
+}
+
+.howGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.howCard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 24px;
+  text-align: left;
+  transition: 0.2s;
+}
+
+.howCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(167,139,250,0.4);
+}
+
+.howStep {
+  font-size: 12px;
+  color: #a78bfa;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.howCardTitle {
+  margin: 8px 0;
+  font-size: 18px;
+  color: #fff;
+}
+
+.howCardText {
+  font-size: 14px;
+  color: #9a95ac;
+  line-height: 1.6;
+}
+
+/* =========================
+   PERFECT FOR
+========================= */
+
+.perfectSection {
+  margin-top: 80px;
+  max-width: 1000px;
+  width: 100%;
+  text-align: center;
+}
+
+.perfectTitle {
+  font-size: 32px;
+  color: #fff;
+  margin-bottom: 40px;
+}
+
+.perfectGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.perfectCard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 24px;
+  text-align: left;
+  transition: 0.2s;
+}
+
+.perfectCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(167,139,250,0.4);
+}
+
+.perfectCardTitle {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: #fff;
+}
+
+.perfectCardText {
+  font-size: 14px;
+  color: #9a95ac;
+  line-height: 1.6;
+}
+
+/* =========================
+   FOOTER UPGRADE
+========================= */
+
+.footer {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footerLinks a {
+  color: #8d89a0;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.footerLinks a:hover {
+  color: #fff;
+}
