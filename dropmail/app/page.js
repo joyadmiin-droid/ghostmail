@@ -165,8 +165,8 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.tagline}>
-  Temporary Email for Developers & Testing
-</div>
+          Temporary Email for Developers & Testing
+        </div>
 
         <h1 className={styles.headline}>
           Your inbox.
@@ -175,84 +175,118 @@ export default function Home() {
         </h1>
 
         <p className={styles.sub}>
-  Generate <strong>temporary email addresses</strong> for QA testing, development workflows, and protecting your primary inbox during testing.
-</p>
+          Generate <strong>temporary email addresses</strong> for QA testing,
+          development workflows, and protecting your primary inbox during testing.
+        </p>
 
-        {/* TRUST LINE */}
-        <p style={{ fontSize: '13px', opacity: 0.7, marginTop: '10px' }}>
-  GhostMail is designed for developers, QA teams, and individuals who need temporary email for testing workflows and privacy.
-  Abuse, spam, fraudulent signups, and illegal activity are strictly prohibited.
-</p>
+        <p className={styles.trustLine}>
+          GhostMail is designed for developers, QA teams, and individuals who need temporary email for testing workflows and privacy.
+          Abuse, spam, fraudulent signups, and illegal activity are strictly prohibited.
+        </p>
 
-        <p style={{ fontSize: '13px', opacity: 0.7 }}>
-  Built for responsible use with automatic expiration and abuse prevention.
-</p>
+        <p className={styles.helperLine}>
+          Built for responsible use with automatic expiration and abuse prevention.
+        </p>
 
         {totalEmails !== null && (
-          <p style={{ color: '#22c55e' }}>
+          <p className={styles.liveStat}>
             {formatCount(totalEmails)} emails received today
           </p>
         )}
 
         <div className={styles.card}>
           {!mailbox ? (
-            <div>
+            <div className={styles.cardInner}>
               <button
                 className={styles.btnPrimary}
                 onClick={generateMailbox}
                 disabled={loading}
               >
-                {loading ? 'Loading...' : 'Generate My Address'}
+                {loading ? (
+                  <>
+                    <span className={styles.spinner}></span>
+                    Generating...
+                  </>
+                ) : (
+                  'Generate My Address'
+                )}
               </button>
 
-              {error && (
-                <p style={{ color: '#f87171', marginTop: '12px', textAlign: 'center' }}>
-                  {error}
-                </p>
-              )}
+              {error && <p className={styles.errorMsg}>{error}</p>}
+
+              <p className={styles.tokenNote}>
+                Fast, temporary inboxes for development and testing.
+              </p>
             </div>
           ) : (
-            <div>
-              <p>{mailbox.address}</p>
-              <p style={{ marginTop: '8px', opacity: 0.7 }}>
-                {getExpiryLabel(mailbox.expires_at)}
-              </p>
+            <div className={styles.cardInner}>
+              <div className={styles.addressRow}>
+                <span className={styles.addressLabel}>Your temporary inbox</span>
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '12px' }}>
-                <button onClick={() => copyAddress(mailbox.address)}>
-                  {copied === mailbox.address ? 'Copied' : 'Copy'}
-                </button>
+                <div className={styles.addressBox}>
+                  <span className={styles.addressText}>{mailbox.address}</span>
 
-                <button
-                  onClick={() =>
-                    (window.location.href = '/inbox?token=' + mailbox.token)
-                  }
+                  <button
+                    onClick={() => copyAddress(mailbox.address)}
+                    className={`${styles.copyBtn} ${copied === mailbox.address ? styles.copied : ''}`}
+                    type="button"
+                  >
+                    {copied === mailbox.address ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.metaRow}>
+                <span className={styles.activePill}>● Active</span>
+                <span className={styles.expiryText}>
+                  {getExpiryLabel(mailbox.expires_at)}
+                </span>
+              </div>
+
+              <div className={styles.actionRow}>
+                <a
+                  href={`/inbox?token=${mailbox.token}`}
+                  className={`${styles.btnSecondary} ${styles.linkButton}`}
                 >
                   Open Inbox
+                </a>
+
+                <button
+                  onClick={generateMailbox}
+                  className={styles.btnSecondary}
+                  type="button"
+                >
+                  New Address
                 </button>
               </div>
+
+              {error && <p className={styles.errorMsg}>{error}</p>}
+
+              <p className={styles.tokenNote}>
+                Bookmark your inbox link if you want quick access before expiry.
+              </p>
             </div>
           )}
         </div>
 
-        {/* HOW IT WORKS */}
-        <section style={{ marginTop: '50px' }}>
-  <h3 style={{ marginBottom: '10px' }}>Responsible Use</h3>
-  <p>• Software testing and QA environments</p>
-  <p>• Developer workflows and debugging email flows</p>
-  <p>• Temporary inboxes for testing integrations</p>
-  <br />
-  <p>GhostMail is not intended for bypassing platform restrictions, creating fake accounts, spam, or abusive activity.</p>
-</section>
+        <section className={styles.responsibleSection}>
+          <h3 className={styles.responsibleTitle}>Responsible Use</h3>
+          <p className={styles.responsibleItem}>• Software testing and QA environments</p>
+          <p className={styles.responsibleItem}>• Developer workflows and debugging email flows</p>
+          <p className={styles.responsibleItem}>• Temporary inboxes for testing integrations</p>
+          <p className={styles.responsibleNote}>
+            GhostMail is not intended for bypassing platform restrictions, creating fake accounts, spam, or abusive activity.
+          </p>
+        </section>
 
-        <p style={{ fontSize: '12px', opacity: 0.6, marginTop: '20px' }}>
+        <p className={styles.bottomNote}>
           Built for developers and responsible use — not for abuse.
         </p>
       </section>
 
       <footer className={styles.footer}>
-  <p>© 2026 GhostMail — Developer-focused email testing tool. Use responsibly.</p>
-</footer>
+        <p>© 2026 GhostMail — Developer-focused email testing tool. Use responsibly.</p>
+      </footer>
     </main>
   );
 }
