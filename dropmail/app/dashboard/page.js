@@ -126,12 +126,12 @@ export default function DashboardPage() {
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
 
       setAddresses(prev => [data, ...prev]);
       setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to generate mailbox');
     } finally {
       setLoadingCreate(false);
     }
@@ -149,24 +149,32 @@ export default function DashboardPage() {
 
   function getMailboxStatus(addr) {
     const expired = new Date(addr.expires_at) <= new Date();
+
     if (expired) {
       return {
         label: 'Expired',
         color: '#f87171',
+        bg: 'rgba(248,113,113,0.10)',
+        border: 'rgba(248,113,113,0.28)',
       };
     }
 
     const usedCount = mailboxUsage[addr.id] || 0;
+
     if (usedCount > 0) {
       return {
         label: 'Used',
         color: '#f59e0b',
+        bg: 'rgba(245,158,11,0.10)',
+        border: 'rgba(245,158,11,0.28)',
       };
     }
 
     return {
       label: 'New',
       color: '#22c55e',
+      bg: 'rgba(34,197,94,0.10)',
+      border: 'rgba(34,197,94,0.28)',
     };
   }
 
@@ -176,10 +184,15 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedId(null), 1500);
   }
 
+  function getPlanDisplayName(value) {
+    return (value || 'free').toUpperCase();
+  }
+
   if (status === 'loading') {
     return (
       <main style={centerStyle}>
-        <p>Loading dashboard...</p>
+        <div style={loadingSpinner} />
+        <p style={{ color: '#b6b0c8' }}>Loading dashboard...</p>
       </main>
     );
   }
@@ -187,23 +200,28 @@ export default function DashboardPage() {
   if (status === 'error') {
     return (
       <main style={centerStyle}>
-        <h2>Error loading dashboard</h2>
-        <p style={{ color: '#f87171' }}>{error}</p>
+        <h2 style={{ margin: 0 }}>Error loading dashboard</h2>
+        <p style={{ color: '#f87171', margin: 0 }}>{error}</p>
       </main>
     );
   }
 
   return (
     <main style={pageStyle}>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+      `}</style>
+
       <div style={container}>
         <div style={header}>
-          <div>
-            <h1 style={{ margin: 0 }}>Dashboard</h1>
-            <p style={{ color: '#888' }}>{user?.email}</p>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={pageTitle}>Dashboard</h1>
+            <p style={pageSubtitle}>{user?.email}</p>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button style={primaryBtn} onClick={generateMailbox}>
+          <div style={headerActions}>
+            <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
               {loadingCreate ? 'Generating...' : 'New Address'}
             </button>
 
@@ -215,82 +233,95 @@ export default function DashboardPage() {
 
         <div style={planCard}>
           <div>
-            <p style={{ margin: 0, color: '#888' }}>Current plan</p>
-            <h2 style={{ margin: '4px 0' }}>{plan.toUpperCase()}</h2>
-            <p style={{ color: '#22c55e' }}>
-              Emails received: {emailCount ?? '...'}
-            </p>
+            <p style={planEyebrow}>Current plan</p>
+            <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
+            <p style={planMeta}>Emails received: {emailCount ?? '...'}</p>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {plan === 'free' && (
               <>
-                <button style={upgradeBtn}>
-                  Upgrade to Phantom
-                </button>
-                <button style={upgradeBtnSecondary}>
-                  Upgrade to Spectre
-                </button>
+                <button style={upgradeBtn}>Upgrade to Phantom</button>
+                <button style={upgradeBtnSecondary}>Upgrade to Spectre</button>
               </>
             )}
 
-            {plan !== 'free' && (
-              <button style={manageBtn}>
-                Manage billing
-              </button>
-            )}
+            {plan !== 'free' && <button style={manageBtn}>Manage billing</button>}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 16 }}>
-          {addresses.map(addr => {
-            const badge = getMailboxStatus(addr);
+        {addresses.length === 0 ? (
+          <div style={emptyCard}>
+            <div style={{ fontSize: '2rem', marginBottom: 10 }}>📭</div>
+            <h3 style={{ margin: '0 0 8px', color: '#fff' }}>No addresses yet</h3>
+            <p style={{ margin: '0 0 18px', color: '#9f9ab2', lineHeight: 1.6 }}>
+              Generate your first address to start receiving emails.
+            </p>
+            <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
+              {loadingCreate ? 'Generating...' : 'Create First Address'}
+            </button>
+          </div>
+        ) : (
+          <div style={gridWrap}>
+            {addresses.map(addr => {
+              const badge = getMailboxStatus(addr);
+              const usageCount = mailboxUsage[addr.id] || 0;
 
-            return (
-              <div key={addr.id} style={card}>
-                <div style={addrText}>{addr.address}</div>
+              return (
+                <div key={addr.id} style={emailCard}>
+                  <div style={cardTop}>
+                    <div style={cardAddressWrap}>
+                      <div style={addrText}>{addr.address}</div>
+                    </div>
 
-                <div style={meta}>
-                  <span
-                    style={{
-                      ...statusBadge,
-                      color: badge.color,
-                      borderColor: badge.color + '55',
-                      background:
-                        badge.label === 'Expired'
-                          ? 'rgba(248,113,113,0.08)'
-                          : badge.label === 'Used'
-                          ? 'rgba(245,158,11,0.08)'
-                          : 'rgba(34,197,94,0.08)',
-                    }}
-                  >
-                    ● {badge.label}
-                  </span>
+                    <span
+                      style={{
+                        ...statusBadge,
+                        color: badge.color,
+                        borderColor: badge.border,
+                        background: badge.bg,
+                      }}
+                    >
+                      ● {badge.label}
+                    </span>
+                  </div>
 
-                  <span>{getExpiryLabel(addr.expires_at)}</span>
+                  <div style={cardStats}>
+                    <div style={statBox}>
+                      <span style={statLabel}>Status</span>
+                      <span style={{ ...statValue, color: badge.color }}>{badge.label}</span>
+                    </div>
+
+                    <div style={statBox}>
+                      <span style={statLabel}>Emails</span>
+                      <span style={statValue}>{usageCount}</span>
+                    </div>
+
+                    <div style={statBox}>
+                      <span style={statLabel}>Expires</span>
+                      <span style={statValueMuted}>{getExpiryLabel(addr.expires_at)}</span>
+                    </div>
+                  </div>
+
+                  <div style={actions}>
+                    <button
+                      style={secondaryBtn}
+                      onClick={() => copyAddress(addr.address, addr.id)}
+                    >
+                      {copiedId === addr.id ? 'Copied' : 'Copy'}
+                    </button>
+
+                    <a href={`/inbox?token=${addr.token}`} style={secondaryBtn}>
+                      Open inbox
+                    </a>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
 
-                <div style={actions}>
-                  <button
-                    style={secondaryBtn}
-                    onClick={() => copyAddress(addr.address, addr.id)}
-                  >
-                    {copiedId === addr.id ? 'Copied' : 'Copy'}
-                  </button>
-
-                  <a
-                    href={`/inbox?token=${addr.token}`}
-                    style={secondaryBtn}
-                  >
-                    Open inbox
-                  </a>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {error && <p style={{ color: '#f87171' }}>{error}</p>}
+        {error && <p style={{ color: '#f87171', marginTop: 18 }}>{error}</p>}
       </div>
     </main>
   );
@@ -300,61 +331,153 @@ export default function DashboardPage() {
 
 const pageStyle = {
   minHeight: '100vh',
-  background: '#080010',
+  background:
+    'radial-gradient(circle at top, rgba(124,58,237,0.12), transparent 26%), #080010',
   color: '#fff',
-  padding: '32px 20px',
+  padding: '32px 20px 48px',
 };
 
 const container = {
-  maxWidth: 900,
+  maxWidth: 1120,
   margin: '0 auto',
 };
 
 const header = {
   display: 'flex',
   justifyContent: 'space-between',
-  marginBottom: 30,
+  alignItems: 'flex-start',
+  marginBottom: 28,
   flexWrap: 'wrap',
   gap: 20,
 };
 
+const pageTitle = {
+  margin: 0,
+  fontSize: '3rem',
+  lineHeight: 1,
+};
+
+const pageSubtitle = {
+  color: '#8f89a5',
+  margin: '10px 0 0',
+  wordBreak: 'break-word',
+};
+
+const headerActions = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+};
+
 const planCard = {
-  padding: 20,
-  borderRadius: 16,
+  padding: 22,
+  borderRadius: 18,
   background: 'rgba(167,139,250,0.08)',
-  border: '1px solid rgba(167,139,250,0.25)',
-  marginBottom: 24,
+  border: '1px solid rgba(167,139,250,0.22)',
+  marginBottom: 26,
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: 16,
+  boxShadow: '0 12px 40px rgba(0,0,0,0.14)',
 };
 
-const card = {
-  padding: 20,
-  borderRadius: 16,
-  background: 'rgba(255,255,255,0.04)',
+const planEyebrow = {
+  margin: 0,
+  color: '#9d96b2',
+  fontSize: 14,
+};
+
+const planName = {
+  margin: '6px 0',
+  fontSize: '2rem',
+};
+
+const planMeta = {
+  color: '#22c55e',
+  margin: 0,
+  fontWeight: 700,
+};
+
+const gridWrap = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+  gap: 18,
+};
+
+const emailCard = {
+  padding: 18,
+  borderRadius: 18,
+  background: 'rgba(255,255,255,0.035)',
   border: '1px solid rgba(255,255,255,0.08)',
+  minHeight: 210,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  boxShadow: '0 14px 40px rgba(0,0,0,0.16)',
+};
+
+const cardTop = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 14,
+};
+
+const cardAddressWrap = {
+  minWidth: 0,
 };
 
 const addrText = {
   fontFamily: 'monospace',
   color: '#a78bfa',
+  fontSize: 16,
+  lineHeight: 1.6,
+  wordBreak: 'break-all',
 };
 
-const meta = {
+const cardStats = {
+  display: 'grid',
+  gridTemplateColumns: '1fr',
+  gap: 10,
+  marginTop: 16,
+  marginBottom: 16,
+};
+
+const statBox = {
+  padding: '10px 12px',
+  borderRadius: 14,
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.05)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  marginTop: 10,
-  color: '#aaa',
-  gap: 12,
-  flexWrap: 'wrap',
+  gap: 10,
+};
+
+const statLabel = {
+  fontSize: 12,
+  color: '#8f89a5',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  fontWeight: 700,
+};
+
+const statValue = {
+  fontSize: 14,
+  color: '#fff',
+  fontWeight: 700,
+};
+
+const statValueMuted = {
+  fontSize: 14,
+  color: '#d4cfe2',
+  fontWeight: 700,
 };
 
 const statusBadge = {
-  padding: '6px 12px',
+  width: 'fit-content',
+  padding: '7px 12px',
   borderRadius: 999,
   border: '1px solid',
   fontSize: 13,
@@ -364,8 +487,8 @@ const statusBadge = {
 const actions = {
   display: 'flex',
   gap: 10,
-  marginTop: 14,
   flexWrap: 'wrap',
+  marginTop: 'auto',
 };
 
 const primaryBtn = {
@@ -375,6 +498,7 @@ const primaryBtn = {
   background: 'linear-gradient(135deg,#7c3aed,#ec4899)',
   color: '#fff',
   cursor: 'pointer',
+  fontWeight: 700,
 };
 
 const upgradeBtn = {
@@ -384,6 +508,7 @@ const upgradeBtn = {
   background: '#7c3aed',
   color: '#fff',
   cursor: 'pointer',
+  fontWeight: 700,
 };
 
 const upgradeBtnSecondary = {
@@ -393,6 +518,7 @@ const upgradeBtnSecondary = {
   background: 'transparent',
   color: '#a78bfa',
   cursor: 'pointer',
+  fontWeight: 700,
 };
 
 const manageBtn = {
@@ -401,6 +527,8 @@ const manageBtn = {
   border: '1px solid rgba(255,255,255,0.2)',
   background: 'transparent',
   color: '#fff',
+  cursor: 'pointer',
+  fontWeight: 700,
 };
 
 const secondaryBtn = {
@@ -411,6 +539,10 @@ const secondaryBtn = {
   color: '#fff',
   textDecoration: 'none',
   cursor: 'pointer',
+  fontWeight: 700,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 const dangerBtn = {
@@ -420,6 +552,15 @@ const dangerBtn = {
   background: 'transparent',
   color: '#f87171',
   cursor: 'pointer',
+  fontWeight: 700,
+};
+
+const emptyCard = {
+  padding: 32,
+  borderRadius: 18,
+  background: 'rgba(255,255,255,0.035)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  textAlign: 'center',
 };
 
 const centerStyle = {
@@ -431,4 +572,13 @@ const centerStyle = {
   color: '#fff',
   flexDirection: 'column',
   gap: 12,
+};
+
+const loadingSpinner = {
+  width: 34,
+  height: 34,
+  border: '3px solid rgba(167,139,250,0.18)',
+  borderTop: '3px solid #a78bfa',
+  borderRadius: '50%',
+  animation: 'spin 0.8s linear infinite',
 };
