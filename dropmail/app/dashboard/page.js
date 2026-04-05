@@ -209,9 +209,19 @@ export default function DashboardPage() {
   return (
     <main style={pageStyle}>
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        * { box-sizing: border-box; }
-      `}</style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+  * { box-sizing: border-box; }
+
+  .dashboard-email-card {
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .dashboard-email-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(167,139,250,0.35) !important;
+    box-shadow: 0 0 28px rgba(167,139,250,0.10), 0 18px 44px rgba(0,0,0,0.20) !important;
+  }
+`}</style>
 
       <div style={container}>
         <div style={header}>
@@ -268,7 +278,7 @@ export default function DashboardPage() {
               const usageCount = mailboxUsage[addr.id] || 0;
 
               return (
-                <div key={addr.id} style={emailCard}>
+                <div key={addr.id} style={emailCard} className="dashboard-email-card">
                   <div style={cardTop}>
                     <div style={cardAddressWrap}>
                       <div style={addrText}>{addr.address}</div>
@@ -380,7 +390,7 @@ const planCard = {
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: 16,
-  boxShadow: '0 12px 40px rgba(0,0,0,0.14)',
+  boxShadow: '0 0 40px rgba(167,139,250,0.15), 0 12px 40px rgba(0,0,0,0.14)',
 };
 
 const planEyebrow = {
