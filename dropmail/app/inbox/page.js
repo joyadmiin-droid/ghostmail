@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -16,6 +15,7 @@ function InboxContent() {
 
   const [emails, setEmails] = useState([]);
   const [mailbox, setMailbox] = useState(null);
+  const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -26,6 +26,11 @@ function InboxContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [autoRefreshSeconds, setAutoRefreshSeconds] = useState(0);
+
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  }
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 980);
@@ -159,6 +164,7 @@ function InboxContent() {
     try {
       await navigator.clipboard.writeText(mailbox.address);
       setCopied(true);
+      showToast('Address copied');
       setTimeout(() => setCopied(false), 1800);
     } catch (err) {
       console.error('Copy failed:', err);
@@ -171,6 +177,7 @@ function InboxContent() {
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(true);
+      showToast('Code copied');
       setTimeout(() => setCopiedCode(false), 1600);
     } catch (err) {
       console.error('Code copy failed:', err);
@@ -245,7 +252,7 @@ function InboxContent() {
     if (!genericMatches.length) return null;
 
     const filtered = genericMatches.filter(code => !/^\d{4}$/.test(code) || Number(code) > 1900);
-    return (filtered[0] || genericMatches[0] || null);
+    return filtered[0] || genericMatches[0] || null;
   }
 
   const detectedCode = useMemo(() => extractCode(selected), [selected]);
@@ -306,10 +313,11 @@ function InboxContent() {
         .mail-card {
           transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
-          select option {
-  background: #0f0a1a;
-  color: #ffffff;
-}
+
+        select option {
+          background: #0f0a1a;
+          color: #ffffff;
+        }
 
         .mail-card:hover {
           transform: translateY(-2px);
@@ -365,7 +373,10 @@ function InboxContent() {
 
           <button
             type="button"
-            onClick={() => fetchEmails(true)}
+            onClick={async () => {
+              await fetchEmails(true);
+              showToast('Inbox updated');
+            }}
             disabled={refreshing}
             className="action-btn"
             style={{
@@ -704,6 +715,12 @@ function InboxContent() {
           </div>
         )}
       </div>
+
+      {toast && (
+        <div style={toastStyle}>
+          {toast}
+        </div>
+      )}
     </main>
   );
 }
@@ -722,17 +739,7 @@ export default function InboxPage() {
         </main>
       }
     >
-      <main style={fallbackMain}>
-        <div style={{ flex: 1, width: '100%' }}>
-          <InboxContent />
-        </div>
-
-        <div style={footerWrap}>
-          <a href="/terms" style={footerLink}>Terms</a>
-          <a href="/privacy" style={footerLink}>Privacy</a>
-          <a href="mailto:support@ghostmails.org" style={footerLink}>Contact</a>
-        </div>
-      </main>
+      <InboxContent />
     </Suspense>
   );
 }
@@ -985,8 +992,8 @@ const autoRefreshSelect = {
   padding: '11px 12px',
   borderRadius: '12px',
   border: '1px solid rgba(255,255,255,0.10)',
-  background: '#0f0a1a', // FIX
-  color: '#ffffff', // FIX
+  background: '#0f0a1a',
+  color: '#ffffff',
   fontSize: '14px',
   fontWeight: 700,
   outline: 'none',
@@ -1361,4 +1368,20 @@ const footerLink = {
   margin: '0 8px',
   color: '#7a728e',
   textDecoration: 'none',
+};
+
+const toastStyle = {
+  position: 'fixed',
+  bottom: '24px',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  background: 'rgba(15,10,30,0.95)',
+  border: '1px solid rgba(167,139,250,0.3)',
+  color: '#fff',
+  padding: '12px 18px',
+  borderRadius: '12px',
+  fontSize: '14px',
+  fontWeight: 700,
+  boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+  zIndex: 9999,
 };
