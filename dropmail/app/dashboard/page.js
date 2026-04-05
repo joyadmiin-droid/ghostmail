@@ -13,6 +13,9 @@ const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 export default function DashboardPage() {
   const [status, setStatus] = useState('loading');
   const [user, setUser] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedInbox, setSelectedInbox] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [plan, setPlan] = useState('free');
   const [addresses, setAddresses] = useState([]);
@@ -92,7 +95,7 @@ export default function DashboardPage() {
         setEmailCount(count || 0);
 
         if (mailboxList.length > 0) {
-          const mailboxIds = mailboxList.map(m => m.id);
+          const mailboxIds = mailboxList.map((m) => m.id);
 
           const { data: emailsData, error: usageError } = await supabase
             .from('emails')
@@ -164,8 +167,8 @@ export default function DashboardPage() {
 
       if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
 
-      setAddresses(prev => [data, ...prev]);
-      setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
+      setAddresses((prev) => [data, ...prev]);
+      setMailboxUsage((prev) => ({ ...prev, [data.id]: 0 }));
       showToast('New inbox created');
     } catch (err) {
       setError(err.message || 'Failed to generate mailbox');
@@ -174,35 +177,51 @@ export default function DashboardPage() {
     }
   }
 
-  async function deleteMailbox(id) {
-    const confirmDelete = confirm('Delete this inbox?');
-    if (!confirmDelete) return;
+  function openDeleteModal(inbox) {
+    setSelectedInbox(inbox);
+    setDeleteModalOpen(true);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeleteModalOpen(false);
+    setSelectedInbox(null);
+  }
+
+  async function handleDeleteMailbox() {
+    if (!selectedInbox) return;
 
     try {
+      setDeleting(true);
+
       const { error } = await supabase
         .from('mailboxes')
         .update({ is_active: false })
-        .eq('id', id);
+        .eq('id', selectedInbox.id);
 
       if (error) throw error;
 
-      setAddresses(prev => prev.filter(a => a.id !== id));
+      setAddresses((prev) => prev.filter((a) => a.id !== selectedInbox.id));
 
-      setMailboxUsage(prev => {
+      setMailboxUsage((prev) => {
         const copy = { ...prev };
-        delete copy[id];
+        delete copy[selectedInbox.id];
         return copy;
       });
 
-      setFavorites(prev => {
+      setFavorites((prev) => {
         const copy = { ...prev };
-        delete copy[id];
+        delete copy[selectedInbox.id];
         return copy;
       });
 
+      setDeleteModalOpen(false);
+      setSelectedInbox(null);
       showToast('Inbox deleted');
     } catch (err) {
-      alert('Failed to delete inbox');
+      alert(err.message || 'Failed to delete inbox');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -255,7 +274,7 @@ export default function DashboardPage() {
   }
 
   function toggleFavorite(id) {
-    setFavorites(prev => ({
+    setFavorites((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
@@ -279,7 +298,7 @@ export default function DashboardPage() {
   }, [addresses, favorites]);
 
   const filteredAddresses = useMemo(() => {
-    return sortedAddresses.filter(addr => {
+    return sortedAddresses.filter((addr) => {
       const badge = getMailboxStatus(addr);
       const fav = isFavorite(addr.id);
 
@@ -350,6 +369,15 @@ export default function DashboardPage() {
         .dashboard-fav-btn:hover {
           transform: scale(1.05);
         }
+
+        .dashboard-delete-secondary:hover {
+          background: rgba(255,255,255,0.08) !important;
+        }
+
+        .dashboard-delete-danger:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 24px rgba(220,38,38,0.28);
+        }
       `}</style>
 
       <div style={container}>
@@ -392,7 +420,7 @@ export default function DashboardPage() {
         {addresses.length > 0 && (
           <div style={filtersWrap}>
             <div style={filtersRow}>
-              {filterOptions.map(filter => {
+              {filterOptions.map((filter) => {
                 const active = activeFilter === filter.key;
 
                 return (
@@ -448,7 +476,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div style={gridWrap}>
-            {filteredAddresses.map(addr => {
+            {filteredAddresses.map((addr) => {
               const badge = getMailboxStatus(addr);
               const usageCount = mailboxUsage[addr.id] || 0;
               const favorite = isFavorite(addr.id);
@@ -538,9 +566,9 @@ export default function DashboardPage() {
                       style={{
                         ...secondaryBtn,
                         border: '1px solid rgba(248,113,113,0.4)',
-                        color: '#f87171'
+                        color: '#f87171',
                       }}
-                      onClick={() => deleteMailbox(addr.id)}
+                      onClick={() => openDeleteModal(addr)}
                     >
                       Delete
                     </button>
@@ -576,21 +604,54 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <button
-              style={modalCloseBtn}
-              onClick={() => setShowUpgrade(false)}
-            >
+            <button style={modalCloseBtn} onClick={() => setShowUpgrade(false)}>
               Maybe later
             </button>
           </div>
         </div>
       )}
 
-      {toast && (
-        <div style={toastStyle}>
-          {toast}
+      {deleteModalOpen && (
+        <div style={deleteOverlay} onClick={closeDeleteModal}>
+          <div style={deleteBox} onClick={(e) => e.stopPropagation()}>
+            <div style={deleteIconWrap}>🗑️</div>
+
+            <h2 style={deleteTitle}>Delete inbox?</h2>
+
+            <p style={deleteText}>
+              This will permanently remove this inbox from your dashboard. This action cannot be undone.
+            </p>
+
+            <div style={deleteEmailBox}>
+              {selectedInbox?.address}
+            </div>
+
+            <div style={deleteActions}>
+              <button
+                type="button"
+                className="dashboard-delete-secondary"
+                style={deleteCancelBtn}
+                onClick={closeDeleteModal}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="dashboard-delete-danger"
+                style={deleteConfirmBtn}
+                onClick={handleDeleteMailbox}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete inbox'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      {toast && <div style={toastStyle}>{toast}</div>}
     </main>
   );
 }
@@ -986,6 +1047,98 @@ const modalCloseBtn = {
   color: '#bdb6d3',
   cursor: 'pointer',
   fontWeight: 700,
+};
+
+const deleteOverlay = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(3, 1, 10, 0.76)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '20px',
+  zIndex: 1200,
+};
+
+const deleteBox = {
+  width: '100%',
+  maxWidth: 460,
+  borderRadius: 24,
+  border: '1px solid rgba(255,255,255,0.08)',
+  background:
+    'linear-gradient(180deg, rgba(20,10,35,0.96) 0%, rgba(10,5,20,0.98) 100%)',
+  boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+  padding: 28,
+  color: '#fff',
+};
+
+const deleteIconWrap = {
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  background: 'rgba(239,68,68,0.12)',
+  border: '1px solid rgba(239,68,68,0.22)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 24,
+  marginBottom: 18,
+};
+
+const deleteTitle = {
+  fontSize: 28,
+  fontWeight: 800,
+  margin: 0,
+  marginBottom: 10,
+  letterSpacing: '-0.02em',
+};
+
+const deleteText = {
+  color: 'rgba(255,255,255,0.72)',
+  fontSize: 15,
+  lineHeight: 1.6,
+  marginBottom: 18,
+};
+
+const deleteEmailBox = {
+  padding: '14px 16px',
+  borderRadius: 16,
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#c4b5fd',
+  fontSize: 14,
+  wordBreak: 'break-word',
+  marginBottom: 24,
+};
+
+const deleteActions = {
+  display: 'flex',
+  gap: 12,
+  justifyContent: 'flex-end',
+  flexWrap: 'wrap',
+};
+
+const deleteCancelBtn = {
+  padding: '12px 18px',
+  borderRadius: 14,
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const deleteConfirmBtn = {
+  padding: '12px 18px',
+  borderRadius: 14,
+  border: '1px solid rgba(239,68,68,0.28)',
+  background: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
+  color: '#fff',
+  fontWeight: 700,
+  cursor: 'pointer',
+  minWidth: 140,
 };
 
 const toastStyle = {
