@@ -25,7 +25,7 @@ function InboxContent() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+    const checkMobile = () => setIsMobile(window.innerWidth <= 980);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -82,14 +82,17 @@ function InboxContent() {
           throw new Error(data.error || 'Failed to load inbox');
         }
 
+        const nextEmails = data.emails || [];
+
         setMailbox(data.mailbox || null);
-        setEmails(data.emails || []);
+        setEmails(nextEmails);
         setError(null);
 
         setSelected(prev => {
-          if (!prev) return (data.emails && data.emails[0]) || null;
-          const stillExists = (data.emails || []).find(e => e.id === prev.id);
-          return stillExists || ((data.emails && data.emails[0]) || null);
+          if (!nextEmails.length) return null;
+          if (!prev) return nextEmails[0];
+          const stillExists = nextEmails.find(e => e.id === prev.id);
+          return stillExists || nextEmails[0];
         });
       } catch (err) {
         setError(err.message || 'Failed to load inbox');
@@ -116,9 +119,18 @@ function InboxContent() {
         return;
       }
 
-      const m = Math.floor(diff / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setTimeLeft(m + ':' + s.toString().padStart(2, '0'));
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        setTimeLeft(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds
+          .toString()
+          .padStart(2, '0')}`);
+      } else {
+        setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }
     };
 
     tick();
@@ -128,9 +140,14 @@ function InboxContent() {
 
   async function copyAddress() {
     if (!mailbox?.address) return;
-    await navigator.clipboard.writeText(mailbox.address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    try {
+      await navigator.clipboard.writeText(mailbox.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
   }
 
   async function markRead(emailId) {
@@ -139,6 +156,7 @@ function InboxContent() {
       setEmails(prev =>
         prev.map(e => (e.id === emailId ? { ...e, is_read: true } : e))
       );
+      setSelected(prev => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
     } catch (err) {
       console.error('Mark read failed:', err);
     }
@@ -159,7 +177,11 @@ function InboxContent() {
     if (diff < 60000) return 'just now';
     if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
     if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-    return d.toLocaleDateString();
+
+    return d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
   }
 
   function formatFullDate(ts) {
@@ -167,17 +189,23 @@ function InboxContent() {
     return d.toLocaleString();
   }
 
+  function getInitials(email) {
+    const from = email?.from_name || email?.from_address || '?';
+    return from.trim().slice(0, 1).toUpperCase();
+  }
+
   const visibleEmails = isLoggedIn ? emails : emails.slice(0, 1);
   const hasHiddenEmails = !isLoggedIn && emails.length > 1;
   const isExpiringSoon =
     mailbox &&
+    mailbox.expires_at &&
     new Date(mailbox.expires_at) < new Date(Date.now() + 2 * 60 * 1000);
 
   if (!token) {
     return (
       <main style={centerWrap}>
         <div style={emptyCard}>
-          <div style={emoji}>🔒</div>
+          <div style={emptyIcon}>🔒</div>
           <h2 style={emptyTitle}>No inbox link found</h2>
           <p style={emptyText}>
             You need a valid inbox link to access this page.
@@ -195,7 +223,7 @@ function InboxContent() {
       <main style={centerWrap}>
         <div style={{ textAlign: 'center' }}>
           <div style={spinner} />
-          <p style={{ color: '#7b7690', marginTop: '14px' }}>Loading your inbox...</p>
+          <p style={loadingText}>Loading your inbox...</p>
         </div>
       </main>
     );
@@ -205,12 +233,12 @@ function InboxContent() {
     return (
       <main style={centerWrap}>
         <div style={emptyCard}>
-          <div style={emoji}>📭</div>
+          <div style={emptyIcon}>📭</div>
           <h2 style={emptyTitle}>Inbox not found</h2>
           <p style={emptyText}>
             This inbox may have expired or the link is invalid.
           </p>
-          <p style={{ color: '#f87171', marginBottom: '18px' }}>{error}</p>
+          <p style={errorText}>{error}</p>
           <a href="/" style={primaryLink}>
             Generate a new address
           </a>
@@ -223,35 +251,38 @@ function InboxContent() {
     <main style={pageWrap}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
         * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
       `}</style>
 
       <header style={topHeader}>
         <a href="/" style={brandLink}>
-          <span style={{ color: '#a78bfa', fontSize: '18px' }}>&#10022;</span>
-          <span style={{ color: '#fff', fontSize: '16px', fontWeight: '700' }}>GhostMail</span>
+          <span style={brandIcon}>✦</span>
+          <span style={brandText}>GhostMail</span>
         </a>
 
-        <div style={topActions}>
+        <div style={headerActions}>
           {timeLeft && (
             <div
               style={{
                 ...timeBadge,
                 background: isExpiringSoon
-                  ? 'rgba(248,113,113,0.10)'
+                  ? 'rgba(248,113,113,0.12)'
                   : 'rgba(167,139,250,0.10)',
                 borderColor: isExpiringSoon
-                  ? 'rgba(248,113,113,0.30)'
-                  : 'rgba(167,139,250,0.30)',
+                  ? 'rgba(248,113,113,0.32)'
+                  : 'rgba(167,139,250,0.28)',
               }}
             >
-              <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
+              <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>
+                ⏳
+              </span>
               <span
                 style={{
-                  color: isExpiringSoon ? '#f87171' : '#c4b5fd',
+                  color: isExpiringSoon ? '#fca5a5' : '#d8ccff',
                   fontFamily: 'monospace',
-                  fontWeight: '700',
+                  fontWeight: 800,
                 }}
               >
                 {timeLeft}
@@ -260,9 +291,14 @@ function InboxContent() {
           )}
 
           <button
+            type="button"
             onClick={() => fetchEmails(true)}
             disabled={refreshing}
-            style={ghostButton}
+            style={{
+              ...ghostButton,
+              opacity: refreshing ? 0.75 : 1,
+              cursor: refreshing ? 'default' : 'pointer',
+            }}
           >
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
@@ -275,24 +311,25 @@ function InboxContent() {
         </div>
       </header>
 
-      <div style={addressBar}>
-        <div style={{ minWidth: 0 }}>
-          <div style={miniLabel}>Your address</div>
-          <div style={addressText}>{mailbox?.address}</div>
+      <section style={addressBar}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={sectionLabel}>Your address</div>
+          <div style={addressText}>{mailbox?.address || '—'}</div>
         </div>
 
-        <div style={topActions}>
+        <div style={headerActions}>
           <button
+            type="button"
             onClick={copyAddress}
             style={{
               ...ghostButton,
               borderColor: copied
                 ? 'rgba(34,197,94,0.35)'
-                : 'rgba(167,139,250,0.30)',
-              color: copied ? '#22c55e' : '#a78bfa',
+                : 'rgba(167,139,250,0.22)',
+              color: copied ? '#4ade80' : '#f5f3ff',
               background: copied
                 ? 'rgba(34,197,94,0.10)'
-                : 'rgba(167,139,250,0.10)',
+                : 'rgba(255,255,255,0.03)',
             }}
           >
             {copied ? '✓ Copied' : 'Copy'}
@@ -302,7 +339,7 @@ function InboxContent() {
             New address
           </a>
         </div>
-      </div>
+      </section>
 
       <div
         style={{
@@ -313,88 +350,110 @@ function InboxContent() {
         <aside
           style={{
             ...sidebar,
-            width: isMobile ? '100%' : '340px',
-            maxHeight: isMobile ? '42vh' : 'none',
+            width: isMobile ? '100%' : '360px',
             borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
             borderBottom: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
+            maxHeight: isMobile ? '46vh' : 'none',
           }}
         >
           <div style={sidebarHeader}>
-            <span style={miniLabel}>Inbox</span>
-            <span style={{ fontSize: '11px', color: '#6f6983' }}>
-              {emails.length} email{emails.length !== 1 ? 's' : ''}
-            </span>
+            <div>
+              <div style={sectionLabel}>Inbox</div>
+              <div style={sidebarSubtext}>
+                {emails.length} email{emails.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            {emails.length > 0 && (
+              <div style={pillNeutral}>
+                {emails.filter(e => !e.is_read).length} unread
+              </div>
+            )}
           </div>
 
           {emails.length === 0 ? (
             <div style={waitingWrap}>
-              <div style={{ fontSize: '2.4rem', marginBottom: '10px' }}>📭</div>
-              <p style={{ color: '#fff', fontWeight: '700', marginBottom: '4px' }}>
-                Waiting for emails...
-              </p>
-              <p style={{ color: '#7a748f', fontSize: '12px', lineHeight: 1.6 }}>
+              <div style={emptyIconSmall}>📭</div>
+              <p style={waitingTitle}>Waiting for emails...</p>
+              <p style={waitingText}>
                 Send something to{' '}
-                <span style={{ color: '#a78bfa', wordBreak: 'break-all' }}>
-                  {mailbox?.address}
-                </span>{' '}
-                and refresh.
+                <span style={waitingAddress}>{mailbox?.address}</span>{' '}
+                then press refresh.
               </p>
             </div>
           ) : (
             <>
-              {visibleEmails.map(email => (
-                <button
-                  key={email.id}
-                  onClick={() => openEmail(email)}
-                  style={{
-                    ...emailRow,
-                    background:
-                      selected?.id === email.id
-                        ? 'rgba(167,139,250,0.08)'
-                        : 'transparent',
-                    borderLeft:
-                      selected?.id === email.id
-                        ? '2px solid #a78bfa'
-                        : '2px solid transparent',
-                  }}
-                >
-                  <div style={emailRowTop}>
-                    <span
+              <div style={emailListWrap}>
+                {visibleEmails.map(email => {
+                  const active = selected?.id === email.id;
+
+                  return (
+                    <button
+                      key={email.id}
+                      type="button"
+                      onClick={() => openEmail(email)}
                       style={{
-                        fontSize: '13px',
-                        fontWeight: email.is_read ? 500 : 700,
-                        color: email.is_read ? '#a09ab4' : '#fff',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '190px',
-                        textAlign: 'left',
+                        ...emailRow,
+                        background: active
+                          ? 'linear-gradient(180deg, rgba(167,139,250,0.12), rgba(167,139,250,0.06))'
+                          : 'rgba(255,255,255,0.02)',
+                        borderColor: active
+                          ? 'rgba(167,139,250,0.35)'
+                          : 'rgba(255,255,255,0.05)',
+                        boxShadow: active
+                          ? '0 0 0 1px rgba(167,139,250,0.12) inset'
+                          : 'none',
                       }}
                     >
-                      {email.from_name || email.from_address}
-                    </span>
+                      <div style={avatarCircle}>{getInitials(email)}</div>
 
-                    {!email.is_read && <span style={unreadDot} />}
-                  </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={emailRowTop}>
+                          <span
+                            style={{
+                              ...senderText,
+                              color: email.is_read ? '#d4cdea' : '#ffffff',
+                              fontWeight: email.is_read ? 600 : 800,
+                            }}
+                          >
+                            {email.from_name || email.from_address}
+                          </span>
 
-                  <div style={emailSubject}>
-                    {email.subject || '(no subject)'}
-                  </div>
+                          <span style={emailDate}>{formatTime(email.received_at)}</span>
+                        </div>
 
-                  <div style={emailDate}>
-                    {formatTime(email.received_at)}
-                  </div>
-                </button>
-              ))}
+                        <div
+                          style={{
+                            ...emailSubject,
+                            color: active ? '#f8f5ff' : '#ebe6ff',
+                          }}
+                        >
+                          {email.subject || '(no subject)'}
+                        </div>
+
+                        <div style={emailPreviewRow}>
+                          <span style={previewText}>
+                            {email.body_text
+                              ? email.body_text.replace(/\s+/g, ' ').trim()
+                              : email.from_address || 'No preview available'}
+                          </span>
+
+                          {!email.is_read && <span style={unreadDot} />}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
               {hasHiddenEmails && (
                 <div style={lockedBox}>
                   <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔐</div>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>
+                  <div style={lockedTitle}>
                     {emails.length - 1} more email{emails.length - 1 !== 1 ? 's' : ''}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#7b7690', marginBottom: '12px', lineHeight: 1.5 }}>
-                    Sign up free to unlock all emails, longer-lived inboxes, and better workflow tools.
+                  <div style={lockedText}>
+                    Sign up free to unlock all emails, keep inboxes longer, and manage them better.
                   </div>
                   <a href="/login" style={primaryLinkSmall}>
                     Sign up free
@@ -408,29 +467,30 @@ function InboxContent() {
         <section
           style={{
             ...viewer,
-            minHeight: isMobile ? '58vh' : 'auto',
+            minHeight: isMobile ? '54vh' : 'auto',
           }}
         >
           {selected ? (
             <div style={viewerInner}>
               <div style={messageHeader}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={messageTitle}>
-                    {selected.subject || '(no subject)'}
-                  </h2>
+                <div style={messageTopRow}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h1 style={messageTitle}>{selected.subject || '(no subject)'}</h1>
 
-                  <div style={messageMetaWrap}>
-                    <div>
-                      <div style={miniLabel}>From</div>
-                      <div style={metaValue}>
-                        {selected.from_name || selected.from_address}
+                    <div style={messageMetaGrid}>
+                      <div style={metaCard}>
+                        <div style={sectionLabel}>From</div>
+                        <div style={metaValue}>
+                          {selected.from_name || selected.from_address}
+                        </div>
+                        {selected.from_address && selected.from_name && (
+                          <div style={metaSubValue}>{selected.from_address}</div>
+                        )}
                       </div>
-                    </div>
 
-                    <div>
-                      <div style={miniLabel}>Received</div>
-                      <div style={metaValue}>
-                        {formatFullDate(selected.received_at)}
+                      <div style={metaCard}>
+                        <div style={sectionLabel}>Received</div>
+                        <div style={metaValue}>{formatFullDate(selected.received_at)}</div>
                       </div>
                     </div>
                   </div>
@@ -440,45 +500,66 @@ function InboxContent() {
               <div style={messageBodyWrap}>
                 {selected.body_html ? (
                   <iframe
-                    srcDoc={
-                      `<style>
-                        html,body{
-                          background:#0a0a0f !important;
-                          color:#e8e6df !important;
-                          font-family:Arial,sans-serif !important;
-                          margin:0 !important;
-                          padding:24px !important;
-                          line-height:1.7 !important;
-                          font-size:15px !important;
-                        }
-                        *{
-                          max-width:100% !important;
-                        }
-                        a{ color:#a78bfa !important; }
-                        img{
-                          max-width:100% !important;
-                          height:auto !important;
-                          border-radius:8px !important;
-                        }
-                      </style>` + selected.body_html
-                    }
-                    style={messageIframe}
-                    sandbox="allow-same-origin"
                     title="Email content"
+                    sandbox="allow-same-origin"
+                    style={messageIframe}
+                    srcDoc={`
+                      <style>
+                        html, body {
+                          margin: 0 !important;
+                          padding: 0 !important;
+                          background: #0b0712 !important;
+                          color: #f5f3ff !important;
+                          font-family: Arial, sans-serif !important;
+                          line-height: 1.7 !important;
+                          font-size: 15px !important;
+                          word-wrap: break-word !important;
+                          overflow-wrap: anywhere !important;
+                        }
+                        body {
+                          padding: 24px !important;
+                        }
+                        * {
+                          max-width: 100% !important;
+                          box-sizing: border-box !important;
+                        }
+                        img {
+                          max-width: 100% !important;
+                          height: auto !important;
+                          border-radius: 10px !important;
+                        }
+                        table {
+                          width: 100% !important;
+                          display: block !important;
+                          overflow-x: auto !important;
+                        }
+                        pre, code {
+                          white-space: pre-wrap !important;
+                          word-break: break-word !important;
+                        }
+                        blockquote {
+                          margin: 0 !important;
+                          padding-left: 14px !important;
+                          border-left: 3px solid rgba(167,139,250,0.45) !important;
+                          color: #d9d2ef !important;
+                        }
+                        a {
+                          color: #c4b5fd !important;
+                        }
+                      </style>
+                      ${selected.body_html}
+                    `}
                   />
                 ) : (
-                  <pre style={messagePre}>
-                    {selected.body_text || '(empty email)'}
-                  </pre>
+                  <pre style={messagePre}>{selected.body_text || '(empty email)'}</pre>
                 )}
               </div>
             </div>
           ) : (
             <div style={noSelectionWrap}>
-              <div style={{ fontSize: '3rem', marginBottom: '12px', opacity: 0.35 }}>✉️</div>
-              <p style={{ fontSize: '14px', color: '#7b7690' }}>
-                Select an email to read it
-              </p>
+              <div style={noSelectionIcon}>✉️</div>
+              <p style={noSelectionTitle}>No email selected</p>
+              <p style={noSelectionText}>Choose a message from the inbox to read it.</p>
             </div>
           )}
         </section>
@@ -486,15 +567,14 @@ function InboxContent() {
 
       {!isLoggedIn && (
         <div style={bottomPromo}>
-          <div style={{ fontSize: '13px', color: '#9b96ad' }}>
-            👻 <span style={{ color: '#c4b5fd', fontWeight: '700' }}>Free plan</span> — addresses expire in 10 minutes. Sign up for longer-lived inboxes.
+          <div style={promoText}>
+            👻 <span style={{ color: '#e9ddff', fontWeight: 800 }}>Free plan</span> — addresses expire in 10 minutes. Sign up for longer-lived inboxes.
           </div>
 
-          <div style={topActions}>
+          <div style={headerActions}>
             <a href="/login" style={primaryLinkSmall}>
               Sign up free
             </a>
-
             <a href="/login" style={secondaryLink}>
               Sign in
             </a>
@@ -510,7 +590,7 @@ export default function InboxPage() {
     <Suspense
       fallback={
         <main style={fallbackMain}>
-          <p style={{ color: '#6b6b7a', marginBottom: '20px' }}>Loading...</p>
+          <p style={{ color: '#8c84a4', marginBottom: '18px' }}>Loading...</p>
 
           <div style={footerWrap}>
             <a href="/terms" style={footerLink}>Terms</a>
@@ -535,104 +615,137 @@ export default function InboxPage() {
   );
 }
 
-/* shared styles */
+/* styles */
 
 const pageWrap = {
   minHeight: '100vh',
-  background: '#080010',
-  fontFamily: 'inherit',
+  background:
+    'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
+  fontFamily:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   display: 'flex',
   flexDirection: 'column',
 };
 
 const fallbackMain = {
   minHeight: '100vh',
-  background: '#080010',
+  background: '#07010d',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  fontFamily: 'sans-serif',
+  fontFamily:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const centerWrap = {
   minHeight: '100vh',
-  background: '#080010',
+  background:
+    'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontFamily: 'sans-serif',
+  fontFamily:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   padding: '24px',
 };
 
 const emptyCard = {
   textAlign: 'center',
-  maxWidth: '460px',
+  maxWidth: '480px',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: '24px',
+  padding: '32px 28px',
+  boxShadow: '0 20px 60px rgba(0,0,0,0.32)',
 };
 
-const emoji = {
+const emptyIcon = {
   fontSize: '3rem',
   marginBottom: '1rem',
 };
 
+const emptyIconSmall = {
+  fontSize: '2.25rem',
+  marginBottom: '12px',
+};
+
 const emptyTitle = {
   color: '#fff',
-  marginBottom: '0.5rem',
+  margin: '0 0 10px',
+  fontSize: '28px',
+  fontWeight: 800,
 };
 
 const emptyText = {
-  color: '#777189',
-  marginBottom: '1.5rem',
-  lineHeight: 1.6,
+  color: '#9d95b6',
+  marginBottom: '18px',
+  lineHeight: 1.7,
+  fontSize: '14px',
+};
+
+const errorText = {
+  color: '#fca5a5',
+  marginBottom: '18px',
+  fontSize: '14px',
 };
 
 const primaryLink = {
-  background: '#a78bfa',
+  background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
   color: '#fff',
-  padding: '10px 24px',
+  padding: '11px 24px',
   borderRadius: '999px',
   textDecoration: 'none',
-  fontWeight: '700',
+  fontWeight: 800,
   display: 'inline-block',
+  boxShadow: '0 12px 30px rgba(139,92,246,0.28)',
 };
 
 const primaryLinkSmall = {
-  background: '#a78bfa',
+  background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
   color: '#fff',
-  padding: '8px 14px',
-  borderRadius: '8px',
+  padding: '9px 14px',
+  borderRadius: '10px',
   textDecoration: 'none',
   fontSize: '13px',
-  fontWeight: '700',
+  fontWeight: 800,
+  boxShadow: '0 10px 24px rgba(139,92,246,0.18)',
 };
 
 const secondaryLink = {
-  padding: '7px 16px',
-  borderRadius: '8px',
-  border: '1px solid rgba(255,255,255,0.1)',
-  color: '#9f9aae',
+  padding: '8px 14px',
+  borderRadius: '10px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  color: '#d1cae8',
+  background: 'rgba(255,255,255,0.03)',
   fontSize: '13px',
-  fontWeight: '600',
+  fontWeight: 700,
   textDecoration: 'none',
 };
 
 const spinner = {
-  width: '32px',
-  height: '32px',
-  border: '3px solid rgba(167,139,250,0.2)',
+  width: '34px',
+  height: '34px',
+  border: '3px solid rgba(167,139,250,0.18)',
   borderTop: '3px solid #a78bfa',
   borderRadius: '50%',
   animation: 'spin 0.8s linear infinite',
   margin: '0 auto',
 };
 
+const loadingText = {
+  color: '#9f96bb',
+  marginTop: '14px',
+  fontSize: '14px',
+};
+
 const topHeader = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '1rem 1.25rem',
+  padding: '14px 18px',
   borderBottom: '1px solid rgba(255,255,255,0.06)',
-  background: 'rgba(8,0,16,0.85)',
+  background: 'rgba(7,1,13,0.82)',
   backdropFilter: 'blur(12px)',
   position: 'sticky',
   top: 0,
@@ -644,11 +757,23 @@ const topHeader = {
 const brandLink = {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px',
+  gap: '10px',
   textDecoration: 'none',
 };
 
-const topActions = {
+const brandIcon = {
+  color: '#b99cff',
+  fontSize: '18px',
+};
+
+const brandText = {
+  color: '#ffffff',
+  fontSize: '16px',
+  fontWeight: 800,
+  letterSpacing: '-0.02em',
+};
+
+const headerActions = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
@@ -661,196 +786,322 @@ const timeBadge = {
   gap: '6px',
   border: '1px solid',
   borderRadius: '999px',
-  padding: '5px 12px',
+  padding: '6px 12px',
+  fontSize: '13px',
 };
 
 const ghostButton = {
   padding: '8px 14px',
-  borderRadius: '8px',
-  border: '1px solid rgba(255,255,255,0.12)',
-  background: 'transparent',
+  borderRadius: '10px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(255,255,255,0.03)',
   color: '#fff',
   fontSize: '13px',
-  fontWeight: '600',
-  cursor: 'pointer',
+  fontWeight: 700,
 };
 
 const smallCta = {
-  background: 'rgba(167,139,250,0.15)',
-  color: '#a78bfa',
-  border: '1px solid rgba(167,139,250,0.3)',
+  background: 'rgba(167,139,250,0.14)',
+  color: '#d8ccff',
+  border: '1px solid rgba(167,139,250,0.28)',
   borderRadius: '999px',
-  padding: '7px 14px',
+  padding: '8px 14px',
   fontSize: '13px',
-  fontWeight: '700',
+  fontWeight: 800,
   textDecoration: 'none',
 };
 
 const addressBar = {
-  padding: '1rem 1.25rem',
+  padding: '16px 18px',
   borderBottom: '1px solid rgba(255,255,255,0.06)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '1rem',
+  gap: '12px',
   flexWrap: 'wrap',
+  background: 'rgba(255,255,255,0.015)',
 };
 
-const miniLabel = {
+const sectionLabel = {
   fontSize: '11px',
-  color: '#6f6983',
+  color: '#7f7698',
   textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  fontWeight: '700',
+  letterSpacing: '0.12em',
+  fontWeight: 800,
 };
 
 const addressText = {
-  fontFamily: 'monospace',
+  fontFamily:
+    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
   fontSize: '15px',
-  color: '#a78bfa',
-  fontWeight: '700',
+  color: '#c8b6ff',
+  fontWeight: 800,
   wordBreak: 'break-all',
-  marginTop: '4px',
+  marginTop: '6px',
 };
 
 const mainLayout = {
   display: 'flex',
   flex: 1,
-  overflow: 'hidden',
+  minHeight: 0,
 };
 
 const sidebar = {
   flexShrink: 0,
   overflowY: 'auto',
-  background: '#080010',
+  background: 'rgba(255,255,255,0.015)',
 };
 
 const sidebarHeader = {
-  padding: '12px 16px',
+  padding: '16px',
   borderBottom: '1px solid rgba(255,255,255,0.06)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  gap: '12px',
+  position: 'sticky',
+  top: 0,
+  background: 'rgba(10,2,18,0.94)',
+  backdropFilter: 'blur(10px)',
+  zIndex: 5,
+};
+
+const sidebarSubtext = {
+  fontSize: '12px',
+  color: '#9a91b5',
+  marginTop: '6px',
+};
+
+const pillNeutral = {
+  fontSize: '12px',
+  color: '#d6cff1',
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: '999px',
+  padding: '7px 10px',
+  whiteSpace: 'nowrap',
 };
 
 const waitingWrap = {
-  padding: '2.5rem 1.25rem',
+  padding: '42px 18px',
   textAlign: 'center',
+};
+
+const waitingTitle = {
+  color: '#fff',
+  fontWeight: 800,
+  margin: '0 0 8px',
+  fontSize: '15px',
+};
+
+const waitingText = {
+  color: '#958cab',
+  fontSize: '13px',
+  lineHeight: 1.7,
+  margin: 0,
+};
+
+const waitingAddress = {
+  color: '#c9b7ff',
+  wordBreak: 'break-all',
+};
+
+const emailListWrap = {
+  padding: '12px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '10px',
 };
 
 const emailRow = {
   width: '100%',
-  padding: '14px 16px',
+  padding: '14px',
   cursor: 'pointer',
-  borderBottom: '1px solid rgba(255,255,255,0.04)',
-  transition: 'all 0.15s',
   textAlign: 'left',
-  borderTop: 'none',
-  borderRight: 'none',
-  borderBottomColor: 'rgba(255,255,255,0.04)',
-  borderLeftWidth: '2px',
+  borderRadius: '16px',
+  border: '1px solid rgba(255,255,255,0.05)',
+  display: 'flex',
+  gap: '12px',
+  transition: 'all 0.15s ease',
+};
+
+const avatarCircle = {
+  width: '40px',
+  height: '40px',
+  borderRadius: '50%',
+  background: 'linear-gradient(135deg, rgba(167,139,250,0.25), rgba(139,92,246,0.16))',
+  border: '1px solid rgba(167,139,250,0.18)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#f5f3ff',
+  fontWeight: 800,
+  fontSize: '14px',
+  flexShrink: 0,
 };
 
 const emailRowTop = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  marginBottom: '4px',
   gap: '10px',
+  marginBottom: '4px',
 };
 
-const unreadDot = {
-  width: '7px',
-  height: '7px',
-  borderRadius: '50%',
-  background: '#a78bfa',
-  flexShrink: 0,
-};
-
-const emailSubject = {
-  fontSize: '12px',
-  color: '#928ca5',
+const senderText = {
+  fontSize: '13px',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  marginBottom: '4px',
+  maxWidth: '100%',
+};
+
+const emailSubject = {
+  fontSize: '13px',
+  fontWeight: 700,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  marginBottom: '6px',
+};
+
+const emailPreviewRow = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+};
+
+const previewText = {
+  fontSize: '12px',
+  color: '#9289ab',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  flex: 1,
+};
+
+const unreadDot = {
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+  background: '#a78bfa',
+  boxShadow: '0 0 16px rgba(167,139,250,0.9)',
+  flexShrink: 0,
 };
 
 const emailDate = {
   fontSize: '11px',
-  color: '#5f596f',
+  color: '#7f7698',
+  flexShrink: 0,
 };
 
 const lockedBox = {
   margin: '12px',
-  padding: '16px',
-  background: 'rgba(167,139,250,0.06)',
-  border: '1px solid rgba(167,139,250,0.2)',
-  borderRadius: '12px',
+  padding: '18px',
+  background: 'rgba(167,139,250,0.07)',
+  border: '1px solid rgba(167,139,250,0.18)',
+  borderRadius: '18px',
   textAlign: 'center',
+};
+
+const lockedTitle = {
+  fontSize: '14px',
+  fontWeight: 800,
+  color: '#fff',
+  marginBottom: '6px',
+};
+
+const lockedText = {
+  fontSize: '12px',
+  color: '#a095be',
+  marginBottom: '14px',
+  lineHeight: 1.6,
 };
 
 const viewer = {
   flex: 1,
   overflowY: 'auto',
-  background: '#080010',
+  background: 'rgba(255,255,255,0.01)',
 };
 
 const viewerInner = {
-  padding: '1.5rem 2rem',
-  maxWidth: '860px',
+  padding: '24px',
+  maxWidth: '980px',
 };
 
 const messageHeader = {
-  marginBottom: '1.5rem',
-  paddingBottom: '1.5rem',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  marginBottom: '20px',
+};
+
+const messageTopRow = {
+  display: 'flex',
+  gap: '16px',
 };
 
 const messageTitle = {
   color: '#fff',
-  fontSize: '1.45rem',
-  fontWeight: '800',
-  marginBottom: '1rem',
-  lineHeight: '1.35',
+  fontSize: 'clamp(22px, 3vw, 30px)',
+  fontWeight: 900,
+  margin: '0 0 16px',
+  lineHeight: 1.25,
   wordBreak: 'break-word',
+  letterSpacing: '-0.03em',
 };
 
-const messageMetaWrap = {
-  display: 'flex',
-  gap: '2rem',
-  flexWrap: 'wrap',
+const messageMetaGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+  gap: '12px',
+};
+
+const metaCard = {
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: '16px',
+  padding: '14px',
 };
 
 const metaValue = {
-  fontSize: '13px',
-  color: '#c6c0d8',
-  marginTop: '4px',
+  fontSize: '14px',
+  color: '#f1edff',
+  marginTop: '6px',
+  wordBreak: 'break-word',
+  fontWeight: 700,
+  lineHeight: 1.5,
+};
+
+const metaSubValue = {
+  fontSize: '12px',
+  color: '#9f96b8',
+  marginTop: '6px',
   wordBreak: 'break-word',
 };
 
 const messageBodyWrap = {
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.06)',
-  borderRadius: '16px',
-  padding: '0',
+  borderRadius: '20px',
   overflow: 'hidden',
+  boxShadow: '0 20px 50px rgba(0,0,0,0.22)',
 };
 
 const messageIframe = {
   width: '100%',
-  height: '520px',
+  height: '70vh',
+  minHeight: '520px',
   border: 'none',
-  background: '#0a0a0f',
+  background: '#0b0712',
+  display: 'block',
 };
 
 const messagePre = {
-  color: '#d6d1e2',
+  color: '#eee9ff',
   fontSize: '14px',
-  lineHeight: '1.8',
+  lineHeight: 1.85,
   whiteSpace: 'pre-wrap',
   fontFamily: 'inherit',
   wordBreak: 'break-word',
+  overflowWrap: 'anywhere',
   margin: 0,
   padding: '24px',
 };
@@ -862,13 +1113,32 @@ const noSelectionWrap = {
   justifyContent: 'center',
   height: '100%',
   textAlign: 'center',
-  padding: '2rem',
+  padding: '32px',
+};
+
+const noSelectionIcon = {
+  fontSize: '3rem',
+  marginBottom: '12px',
+  opacity: 0.38,
+};
+
+const noSelectionTitle = {
+  color: '#fff',
+  fontWeight: 800,
+  margin: '0 0 8px',
+  fontSize: '16px',
+};
+
+const noSelectionText = {
+  fontSize: '14px',
+  color: '#9289ab',
+  margin: 0,
 };
 
 const bottomPromo = {
-  borderTop: '1px solid rgba(167,139,250,0.2)',
+  borderTop: '1px solid rgba(167,139,250,0.14)',
   background: 'rgba(167,139,250,0.05)',
-  padding: '12px 1.25rem',
+  padding: '14px 18px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -876,14 +1146,21 @@ const bottomPromo = {
   gap: '12px',
 };
 
+const promoText = {
+  fontSize: '13px',
+  color: '#b0a7c9',
+  lineHeight: 1.6,
+};
+
 const footerWrap = {
   textAlign: 'center',
   padding: '16px',
   fontSize: '12px',
-  color: '#555',
+  color: '#6d6582',
 };
 
 const footerLink = {
   margin: '0 8px',
-  color: '#666',
+  color: '#7a728e',
+  textDecoration: 'none',
 };
