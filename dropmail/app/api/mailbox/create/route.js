@@ -31,6 +31,12 @@ function getExpiryForPlan(plan) {
   }
 }
 
+function getStartOfTodayIso() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now.toISOString();
+}
+
 export async function POST(request) {
   try {
     let plan = 'free';
@@ -68,6 +74,53 @@ export async function POST(request) {
             plan = profile.plan;
           }
         }
+      }
+    }
+
+    if (plan === 'free' && userId) {
+      const nowIso = new Date().toISOString();
+
+      const { count: activeInboxCount, error: activeCountErr } = await supabase
+        .from('mailboxes')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .gt('expires_at', nowIso);
+
+      if (activeCountErr) {
+        console.error('Active inbox count error:', activeCountErr);
+        return Response.json({ error: 'Failed to check active inbox limit' }, { status: 500 });
+      }
+
+      if ((activeInboxCount || 0) >= 1) {
+        return Response.json(
+          {
+            error: 'Free plan allows only 1 active inbox at a time.',
+            code: 'FREE_ACTIVE_LIMIT',
+          },
+          { status: 403 }
+        );
+      }
+
+      const { count: createdTodayCount, error: dailyCountErr } = await supabase
+        .from('mailboxes')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', getStartOfTodayIso());
+
+      if (dailyCountErr) {
+        console.error('Daily inbox count error:', dailyCountErr);
+        return Response.json({ error: 'Failed to check daily inbox limit' }, { status: 500 });
+      }
+
+      if ((createdTodayCount || 0) >= 3) {
+        return Response.json(
+          {
+            error: 'Free plan allows up to 3 inboxes per day.',
+            code: 'FREE_DAILY_LIMIT',
+          },
+          { status: 403 }
+        );
       }
     }
 
