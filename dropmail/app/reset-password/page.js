@@ -49,11 +49,15 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     if (error) {
-      setError(error.message);
-      return;
-    }
+  setError(error.message);
+  return;
+}
 
-    setMessage('Password updated successfully. You can now sign in.');
+setMessage('Password updated successfully. Taking you to login...');
+
+setTimeout(() => {
+  window.location.href = '/login';
+}, 2000);
   }
 
   return (
@@ -160,10 +164,30 @@ export default function ResetPasswordPage() {
         )}
 
         {message && (
-          <p style={{ color: '#4ade80', marginTop: '16px', fontSize: '14px' }}>
-            {message}
-          </p>
-        )}
+  <div style={{ marginTop: '16px' }}>
+    <p style={{ color: '#4ade80', fontSize: '14px', marginBottom: '12px' }}>
+      {message}
+    </p>
+
+    <button
+      onClick={() => {
+        window.location.href = '/login';
+      }}
+      style={{
+        width: '100%',
+        padding: '12px 16px',
+        borderRadius: '14px',
+        border: '1px solid rgba(255,255,255,0.10)',
+        background: 'rgba(255,255,255,0.04)',
+        color: '#fff',
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      Go to login
+    </button>
+  </div>
+)}
       </div>
     </main>
   );
