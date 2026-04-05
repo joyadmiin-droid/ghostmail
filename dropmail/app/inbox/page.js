@@ -125,9 +125,11 @@ function InboxContent() {
       const seconds = totalSeconds % 60;
 
       if (hours > 0) {
-        setTimeLeft(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds
-          .toString()
-          .padStart(2, '0')}`);
+        setTimeLeft(
+          `${hours}:${minutes.toString().padStart(2, '0')}:${seconds
+            .toString()
+            .padStart(2, '0')}`
+        );
       } else {
         setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
       }
@@ -196,6 +198,7 @@ function InboxContent() {
 
   const visibleEmails = isLoggedIn ? emails : emails.slice(0, 1);
   const hasHiddenEmails = !isLoggedIn && emails.length > 1;
+  const unreadCount = emails.filter(e => !e.is_read).length;
   const isExpiringSoon =
     mailbox &&
     mailbox.expires_at &&
@@ -254,6 +257,36 @@ function InboxContent() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
+
+        .inbox-mail-card {
+          transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .inbox-mail-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(167,139,250,0.22) !important;
+          box-shadow: 0 0 24px rgba(167,139,250,0.08), 0 16px 34px rgba(0,0,0,0.18) !important;
+        }
+
+        .inbox-action-btn {
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .inbox-action-btn:hover {
+          transform: translateY(-1px);
+          border-color: rgba(167,139,250,0.28) !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+        }
+
+        .inbox-meta-card {
+          transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .inbox-meta-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(167,139,250,0.18) !important;
+          box-shadow: 0 12px 26px rgba(0,0,0,0.16);
+        }
       `}</style>
 
       <header style={topHeader}>
@@ -268,11 +301,14 @@ function InboxContent() {
               style={{
                 ...timeBadge,
                 background: isExpiringSoon
-                  ? 'rgba(248,113,113,0.12)'
-                  : 'rgba(167,139,250,0.10)',
+                  ? 'rgba(248,113,113,0.14)'
+                  : 'rgba(167,139,250,0.12)',
                 borderColor: isExpiringSoon
-                  ? 'rgba(248,113,113,0.32)'
-                  : 'rgba(167,139,250,0.28)',
+                  ? 'rgba(248,113,113,0.34)'
+                  : 'rgba(167,139,250,0.32)',
+                boxShadow: isExpiringSoon
+                  ? '0 0 24px rgba(248,113,113,0.10)'
+                  : '0 0 24px rgba(167,139,250,0.08)',
               }}
             >
               <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>
@@ -280,7 +316,7 @@ function InboxContent() {
               </span>
               <span
                 style={{
-                  color: isExpiringSoon ? '#fca5a5' : '#d8ccff',
+                  color: isExpiringSoon ? '#fca5a5' : '#e3d9ff',
                   fontFamily: 'monospace',
                   fontWeight: 800,
                 }}
@@ -294,6 +330,7 @@ function InboxContent() {
             type="button"
             onClick={() => fetchEmails(true)}
             disabled={refreshing}
+            className="inbox-action-btn"
             style={{
               ...ghostButton,
               opacity: refreshing ? 0.75 : 1,
@@ -321,21 +358,23 @@ function InboxContent() {
           <button
             type="button"
             onClick={copyAddress}
+            className="inbox-action-btn"
             style={{
               ...ghostButton,
               borderColor: copied
                 ? 'rgba(34,197,94,0.35)'
-                : 'rgba(167,139,250,0.22)',
+                : 'rgba(167,139,250,0.24)',
               color: copied ? '#4ade80' : '#f5f3ff',
               background: copied
                 ? 'rgba(34,197,94,0.10)'
                 : 'rgba(255,255,255,0.03)',
+              boxShadow: copied
+                ? '0 0 24px rgba(34,197,94,0.10)'
+                : '0 0 20px rgba(167,139,250,0.06)',
             }}
           >
             {copied ? '✓ Copied' : 'Copy'}
           </button>
-
-        
         </div>
       </section>
 
@@ -348,7 +387,7 @@ function InboxContent() {
         <aside
           style={{
             ...sidebar,
-            width: isMobile ? '100%' : '360px',
+            width: isMobile ? '100%' : '370px',
             borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.06)',
             borderBottom: isMobile ? '1px solid rgba(255,255,255,0.06)' : 'none',
             maxHeight: isMobile ? '46vh' : 'none',
@@ -364,7 +403,7 @@ function InboxContent() {
 
             {emails.length > 0 && (
               <div style={pillNeutral}>
-                {emails.filter(e => !e.is_read).length} unread
+                {unreadCount} unread
               </div>
             )}
           </div>
@@ -390,17 +429,18 @@ function InboxContent() {
                       key={email.id}
                       type="button"
                       onClick={() => openEmail(email)}
+                      className="inbox-mail-card"
                       style={{
                         ...emailRow,
                         background: active
-                          ? 'linear-gradient(180deg, rgba(167,139,250,0.12), rgba(167,139,250,0.06))'
-                          : 'rgba(255,255,255,0.02)',
+                          ? 'linear-gradient(180deg, rgba(167,139,250,0.16), rgba(167,139,250,0.07))'
+                          : 'rgba(255,255,255,0.03)',
                         borderColor: active
-                          ? 'rgba(167,139,250,0.35)'
+                          ? 'rgba(167,139,250,0.38)'
                           : 'rgba(255,255,255,0.05)',
                         boxShadow: active
-                          ? '0 0 0 1px rgba(167,139,250,0.12) inset'
-                          : 'none',
+                          ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 28px rgba(167,139,250,0.08)'
+                          : '0 10px 22px rgba(0,0,0,0.10)',
                       }}
                     >
                       <div style={avatarCircle}>{getInitials(email)}</div>
@@ -476,7 +516,7 @@ function InboxContent() {
                     <h1 style={messageTitle}>{selected.subject || '(no subject)'}</h1>
 
                     <div style={messageMetaGrid}>
-                      <div style={metaCard}>
+                      <div style={metaCard} className="inbox-meta-card">
                         <div style={sectionLabel}>From</div>
                         <div style={metaValue}>
                           {selected.from_name || selected.from_address}
@@ -486,7 +526,7 @@ function InboxContent() {
                         )}
                       </div>
 
-                      <div style={metaCard}>
+                      <div style={metaCard} className="inbox-meta-card">
                         <div style={sectionLabel}>Received</div>
                         <div style={metaValue}>{formatFullDate(selected.received_at)}</div>
                       </div>
@@ -515,7 +555,7 @@ function InboxContent() {
                           overflow-wrap: anywhere !important;
                         }
                         body {
-                          padding: 24px !important;
+                          padding: 26px !important;
                         }
                         * {
                           max-width: 100% !important;
@@ -743,7 +783,7 @@ const topHeader = {
   justifyContent: 'space-between',
   padding: '14px 18px',
   borderBottom: '1px solid rgba(255,255,255,0.06)',
-  background: 'rgba(7,1,13,0.82)',
+  background: 'rgba(7,1,13,0.84)',
   backdropFilter: 'blur(12px)',
   position: 'sticky',
   top: 0,
@@ -908,24 +948,23 @@ const emailListWrap = {
   padding: '12px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '10px',
+  gap: '12px',
 };
 
 const emailRow = {
   width: '100%',
-  padding: '14px',
+  padding: '15px',
   cursor: 'pointer',
   textAlign: 'left',
-  borderRadius: '16px',
+  borderRadius: '18px',
   border: '1px solid rgba(255,255,255,0.05)',
   display: 'flex',
   gap: '12px',
-  transition: 'all 0.15s ease',
 };
 
 const avatarCircle = {
-  width: '40px',
-  height: '40px',
+  width: '42px',
+  height: '42px',
   borderRadius: '50%',
   background: 'linear-gradient(135deg, rgba(167,139,250,0.25), rgba(139,92,246,0.16))',
   border: '1px solid rgba(167,139,250,0.18)',
@@ -1000,6 +1039,7 @@ const lockedBox = {
   border: '1px solid rgba(167,139,250,0.18)',
   borderRadius: '18px',
   textAlign: 'center',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
 };
 
 const lockedTitle = {
@@ -1023,12 +1063,12 @@ const viewer = {
 };
 
 const viewerInner = {
-  padding: '24px',
-  maxWidth: '980px',
+  padding: '26px',
+  maxWidth: '1020px',
 };
 
 const messageHeader = {
-  marginBottom: '20px',
+  marginBottom: '22px',
 };
 
 const messageTopRow = {
@@ -1038,10 +1078,10 @@ const messageTopRow = {
 
 const messageTitle = {
   color: '#fff',
-  fontSize: 'clamp(22px, 3vw, 30px)',
+  fontSize: 'clamp(24px, 3vw, 32px)',
   fontWeight: 900,
   margin: '0 0 16px',
-  lineHeight: 1.25,
+  lineHeight: 1.22,
   wordBreak: 'break-word',
   letterSpacing: '-0.03em',
 };
@@ -1049,14 +1089,15 @@ const messageTitle = {
 const messageMetaGrid = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-  gap: '12px',
+  gap: '14px',
 };
 
 const metaCard = {
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.06)',
-  borderRadius: '16px',
-  padding: '14px',
+  borderRadius: '18px',
+  padding: '16px',
+  boxShadow: '0 12px 28px rgba(0,0,0,0.12)',
 };
 
 const metaValue = {
@@ -1078,9 +1119,9 @@ const metaSubValue = {
 const messageBodyWrap = {
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.06)',
-  borderRadius: '20px',
+  borderRadius: '22px',
   overflow: 'hidden',
-  boxShadow: '0 20px 50px rgba(0,0,0,0.22)',
+  boxShadow: '0 24px 54px rgba(0,0,0,0.24), 0 0 28px rgba(167,139,250,0.05)',
 };
 
 const messageIframe = {
@@ -1095,13 +1136,13 @@ const messageIframe = {
 const messagePre = {
   color: '#eee9ff',
   fontSize: '14px',
-  lineHeight: 1.85,
+  lineHeight: 1.9,
   whiteSpace: 'pre-wrap',
   fontFamily: 'inherit',
   wordBreak: 'break-word',
   overflowWrap: 'anywhere',
   margin: 0,
-  padding: '24px',
+  padding: '28px',
 };
 
 const noSelectionWrap = {
