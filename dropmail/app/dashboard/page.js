@@ -506,28 +506,32 @@ export default function DashboardPage() {
       {showUpgrade && (
   <div style={modalOverlay}>
     <div style={modalBox}>
-      <h2 style={{ margin: 0 }}>Upgrade required</h2>
+      <div style={modalBadge}>Free plan limit reached</div>
 
-      <p style={{ color: '#a8a2c0', lineHeight: 1.6 }}>
-        You’ve reached your free plan limit.
-        Upgrade to unlock more inboxes and longer lifetimes.
+      <h2 style={modalTitle}>
+        Upgrade to create more inboxes
+      </h2>
+
+      <p style={modalText}>
+        Your free plan includes <strong>1 active inbox</strong>.
+        Upgrade to unlock more inboxes, longer lifetimes, and smoother testing workflows.
       </p>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
-        <button style={upgradeBtn} onClick={() => alert('Paddle later')}>
-          Get Phantom ($4.99)
+      <div style={modalPlans}>
+        <button style={modalPrimaryBtn} onClick={() => alert('Paddle later')}>
+          Get Phantom — $4.99/mo
         </button>
 
-        <button style={upgradeBtnSecondary} onClick={() => alert('Paddle later')}>
-          Get Spectre ($8.99)
+        <button style={modalSecondaryBtn} onClick={() => alert('Paddle later')}>
+          Get Spectre — $8.99/mo
         </button>
       </div>
 
       <button
-        style={closeBtn}
+        style={modalCloseBtn}
         onClick={() => setShowUpgrade(false)}
       >
-        Close
+        Maybe later
       </button>
     </div>
   </div>
@@ -847,23 +851,96 @@ const modalOverlay = {
   zIndex: 999,
 };
 
-const modalBox = {
-  background: '#0b0414',
-  border: '1px solid rgba(167,139,250,0.2)',
-  borderRadius: 16,
-  padding: 28,
-  maxWidth: 400,
-  width: '90%',
-  textAlign: 'center',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+/* ================= MODAL STYLES ================= */
+
+const modalOverlay = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.72)',
+  backdropFilter: 'blur(8px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 999,
+  padding: '20px',
 };
 
-const closeBtn = {
-  marginTop: 16,
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: '1px solid rgba(255,255,255,0.2)',
-  background: 'transparent',
+const modalBox = {
+  background: 'linear-gradient(180deg, rgba(20,10,34,0.98), rgba(10,4,20,0.98))',
+  border: '1px solid rgba(167,139,250,0.22)',
+  borderRadius: 24,
+  padding: 32,
+  maxWidth: 500,
+  width: '100%',
+  textAlign: 'center',
+  boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 40px rgba(167,139,250,0.10)',
+};
+
+const modalBadge = {
+  display: 'inline-block',
+  marginBottom: 16,
+  padding: '8px 12px',
+  borderRadius: 999,
+  border: '1px solid rgba(167,139,250,0.25)',
+  background: 'rgba(167,139,250,0.10)',
+  color: '#d9cfff',
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+};
+
+const modalTitle = {
+  margin: '0 0 14px',
+  fontSize: '2rem',
+  lineHeight: 1.1,
   color: '#fff',
+};
+
+const modalText = {
+  color: '#b3acc8',
+  lineHeight: 1.7,
+  fontSize: 15,
+  margin: '0 0 24px',
+};
+
+const modalPlans = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+};
+
+const modalPrimaryBtn = {
+  width: '100%',
+  padding: '14px 16px',
+  borderRadius: 14,
+  border: 'none',
+  background: 'linear-gradient(135deg,#7c3aed,#ec4899)',
+  color: '#fff',
+  fontWeight: 800,
+  fontSize: 15,
   cursor: 'pointer',
+};
+
+const modalSecondaryBtn = {
+  width: '100%',
+  padding: '14px 16px',
+  borderRadius: 14,
+  border: '1px solid rgba(167,139,250,0.30)',
+  background: 'rgba(255,255,255,0.03)',
+  color: '#e9ddff',
+  fontWeight: 800,
+  fontSize: 15,
+  cursor: 'pointer',
+};
+
+const modalCloseBtn = {
+  marginTop: 18,
+  padding: '10px 14px',
+  borderRadius: 12,
+  border: '1px solid rgba(255,255,255,0.14)',
+  background: 'transparent',
+  color: '#bdb6d3',
+  cursor: 'pointer',
+  fontWeight: 700,
 };
