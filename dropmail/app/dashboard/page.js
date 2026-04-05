@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-
+const [showUpgrade, setShowUpgrade] = useState(false);
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -495,6 +495,35 @@ export default function DashboardPage() {
 
         {error && <p style={{ color: '#f87171', marginTop: 18 }}>{error}</p>}
       </div>
+      {showUpgrade && (
+  <div style={modalOverlay}>
+    <div style={modalBox}>
+      <h2 style={{ margin: 0 }}>Upgrade required</h2>
+
+      <p style={{ color: '#a8a2c0', lineHeight: 1.6 }}>
+        You’ve reached your free plan limit.
+        Upgrade to unlock more inboxes and longer lifetimes.
+      </p>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+        <button style={upgradeBtn} onClick={() => alert('Paddle later')}>
+          Get Phantom ($4.99)
+        </button>
+
+        <button style={upgradeBtnSecondary} onClick={() => alert('Paddle later')}>
+          Get Spectre ($8.99)
+        </button>
+      </div>
+
+      <button
+        style={closeBtn}
+        onClick={() => setShowUpgrade(false)}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
     </main>
   );
 }
@@ -798,4 +827,35 @@ const loadingSpinner = {
   borderTop: '3px solid #a78bfa',
   borderRadius: '50%',
   animation: 'spin 0.8s linear infinite',
+};
+const modalOverlay = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.7)',
+  backdropFilter: 'blur(6px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 999,
+};
+
+const modalBox = {
+  background: '#0b0414',
+  border: '1px solid rgba(167,139,250,0.2)',
+  borderRadius: 16,
+  padding: 28,
+  maxWidth: 400,
+  width: '90%',
+  textAlign: 'center',
+  boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+};
+
+const closeBtn = {
+  marginTop: 16,
+  padding: '10px 14px',
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.2)',
+  background: 'transparent',
+  color: '#fff',
+  cursor: 'pointer',
 };
