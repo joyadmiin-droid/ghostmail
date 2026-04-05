@@ -164,8 +164,8 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.tagline}>
-          Temporary email for testing & privacy
-        </div>
+  Temporary Email for Developers & Testing
+</div>
 
         <h1 className={styles.headline}>
           Your inbox.
@@ -174,19 +174,18 @@ export default function Home() {
         </h1>
 
         <p className={styles.sub}>
-          Generate <strong>temporary email addresses</strong> instantly.
-          Perfect for developers, QA testing, and protecting your inbox from unwanted emails.
-        </p>
+  Generate <strong>temporary email addresses</strong> for QA testing, development workflows, and protecting your primary inbox during testing.
+</p>
 
         {/* TRUST LINE */}
         <p style={{ fontSize: '13px', opacity: 0.7, marginTop: '10px' }}>
-          GhostMail is designed for developers and individuals who need temporary email for testing and privacy.
-          Abuse, spam, and illegal activity are strictly prohibited.
-        </p>
+  GhostMail is designed for developers, QA teams, and individuals who need temporary email for testing workflows and privacy.
+  Abuse, spam, fraudulent signups, and illegal activity are strictly prohibited.
+</p>
 
         <p style={{ fontSize: '13px', opacity: 0.7 }}>
-          Automatically deleted after expiration. Built for responsible use with abuse prevention.
-        </p>
+  Built for responsible use with automatic expiration and abuse prevention.
+</p>
 
         {totalEmails !== null && (
           <p style={{ color: '#22c55e' }}>
@@ -237,11 +236,13 @@ export default function Home() {
 
         {/* HOW IT WORKS */}
         <section style={{ marginTop: '50px' }}>
-          <h3 style={{ marginBottom: '10px' }}>How it works</h3>
-          <p>1. Generate a temporary email</p>
-          <p>2. Use it for testing or signups</p>
-          <p>3. Emails appear instantly and expire automatically</p>
-        </section>
+  <h3 style={{ marginBottom: '10px' }}>Responsible Use</h3>
+  <p>• Software testing and QA environments</p>
+  <p>• Developer workflows and debugging email flows</p>
+  <p>• Temporary inboxes for testing integrations</p>
+  <br />
+  <p>GhostMail is not intended for bypassing platform restrictions, creating fake accounts, spam, or abusive activity.</p>
+</section>
 
         <p style={{ fontSize: '12px', opacity: 0.6, marginTop: '20px' }}>
           Built for developers and responsible use — not for abuse.
@@ -249,8 +250,8 @@ export default function Home() {
       </section>
 
       <footer className={styles.footer}>
-        <p>© 2026 GhostMail — Privacy-focused. Secure. Responsible use.</p>
-      </footer>
+  <p>© 2026 GhostMail — Developer-focused email testing tool. Use responsibly.</p>
+</footer>
     </main>
   );
 }

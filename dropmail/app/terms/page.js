@@ -6,39 +6,27 @@ export default function TermsPage() {
   const sections = [
     {
       title: '1. What GhostMail Is',
-      body: 'GhostMail (ghostmails.org) is a disposable email service that generates temporary email addresses for short-term use. Email addresses and their contents are automatically deleted after a set period depending on your plan.',
+      body: 'GhostMail (ghostmails.org) is a developer-focused email testing service that generates temporary email addresses for QA testing, development workflows, and inbox protection. Email addresses and their contents are automatically deleted after a set period depending on your plan.',
     },
     {
       title: '2. Acceptable Use',
-      body: 'You agree to use GhostMail only for lawful purposes. You may not use GhostMail to send or facilitate spam or phishing, conduct fraudulent activities, distribute malware, or harass or harm other individuals. We reserve the right to block addresses or IPs found in violation.',
+      body: 'You agree to use GhostMail only for lawful purposes such as software testing, QA environments, and development workflows. You may not use GhostMail to send or facilitate spam or phishing, conduct fraudulent activities, distribute malware, or harass or harm other individuals. We reserve the right to block addresses or IPs found in violation.',
     },
     {
-      title: '3. Temporary Nature of the Service',
+      title: '3. Prohibited Use',
+      body: 'You may NOT use GhostMail to bypass platform restrictions, create fake or abusive accounts, evade identity verification systems, send unsolicited spam, or engage in illegal or malicious activities. Any such use will result in immediate blocking of access.',
+    },
+    {
+      title: '4. Temporary Nature of the Service',
       body: 'All email addresses are temporary by design. Free addresses expire after 10 minutes. Paid plan addresses expire per plan terms. Do not use GhostMail for anything requiring permanent email storage.',
     },
     {
-      title: '4. No Account Required (Free Tier)',
+      title: '5. No Account Required (Free Tier)',
       body: 'Free-tier users do not create accounts. Because no account is linked to your session, we cannot restore deleted addresses or emails under any circumstances.',
     },
     {
-      title: '5. Paid Plans',
+      title: '6. Paid Plans',
       body: 'Paid subscriptions (Phantom, Spectre) are billed monthly. All payments are processed securely by Paddle.com, our authorized reseller and Merchant of Record. We reserve the right to change pricing with 30 days notice.',
-    },
-    {
-      title: '7. Disclaimer of Warranties',
-      body: 'GhostMail is provided as-is without warranties of any kind. We do not guarantee uptime, email delivery speed, or that the service will be error-free.',
-    },
-    {
-      title: '8. Limitation of Liability',
-      body: 'To the maximum extent permitted by law, GhostMail and its operators shall not be liable for any indirect, incidental, or consequential damages arising from your use of the service.',
-    },
-    {
-      title: '9. Changes to These Terms',
-      body: 'We may update these Terms at any time. Continued use after changes constitutes acceptance.',
-    },
-    {
-      title: '10. Contact',
-      body: 'Questions? Email us at support@ghostmails.org',
     },
   ];
 
@@ -64,52 +52,61 @@ export default function TermsPage() {
           Terms of Service
         </h1>
         <p style={{ color: '#555', fontSize: '0.85rem', fontFamily: 'sans-serif', marginBottom: '3rem' }}>
-          Last updated: March 27, 2026
+          Last updated: April 2026
         </p>
 
         <div style={{ background: 'rgba(167,139,250,0.07)', borderLeft: '3px solid #a78bfa', padding: '1rem 1.2rem', borderRadius: '0 8px 8px 0', marginBottom: '2rem', color: '#888', fontSize: '0.92rem' }}>
-          By using GhostMail, you agree to these terms. They are short, plain English, and we hide nothing.
+          GhostMail is intended for developers, QA testing, and responsible use only.
         </div>
 
-        {sections.slice(0, 5).map(section => (
+        {sections.map(section => (
           <div key={section.title} style={{ marginBottom: '2rem' }}>
             <h2 style={headingStyle}>{section.title}</h2>
             <p style={paraStyle}>{section.body}</p>
           </div>
         ))}
 
-        {/* SECTION 6 - Paddle compliant refund policy */}
+        {/* Refund Policy */}
         <div style={{ marginBottom: '2rem' }}>
-          <h2 style={headingStyle}>6. Refund Policy</h2>
+          <h2 style={headingStyle}>7. Refund Policy</h2>
           <p style={paraStyle}>
             You may request a full refund within 14 days of your initial purchase or renewal date.
-            Refund requests must be submitted within this 14-day window.
           </p>
           <p style={{ ...paraStyle, marginTop: '0.75rem' }}>
             To request a refund, email us at{' '}
-            <a href="mailto:support@ghostmails.org" style={linkStyle}>support@ghostmails.org</a>
-            {' '}with your order details. Refunds are processed within 5-10 business days to your original payment method.
-          </p>
-          <p style={{ ...paraStyle, marginTop: '0.75rem' }}>
-            All refund requests are handled by Paddle.com as our Merchant of Record. You may also contact Paddle directly at{' '}
-            <a href="https://www.paddle.com/legal/buyer-terms" target="_blank" rel="noreferrer" style={linkStyle}>
-              paddle.com/legal/buyer-terms
-            </a>.
+            <a href="mailto:support@ghostmails.org" style={linkStyle}>support@ghostmails.org</a>.
           </p>
         </div>
 
-        {sections.slice(5).map(section => (
-          <div key={section.title} style={{ marginBottom: '2rem' }}>
-            <h2 style={headingStyle}>{section.title}</h2>
-            <p style={paraStyle}>{section.body}</p>
-          </div>
-        ))}
+        {/* Disclaimer */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={headingStyle}>8. Disclaimer</h2>
+          <p style={paraStyle}>
+            GhostMail is provided as-is without warranties. We do not guarantee uptime or delivery.
+          </p>
+        </div>
+
+        {/* Liability */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={headingStyle}>9. Limitation of Liability</h2>
+          <p style={paraStyle}>
+            We are not liable for any damages resulting from use of the service.
+          </p>
+        </div>
+
+        {/* Contact */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={headingStyle}>10. Contact</h2>
+          <p style={paraStyle}>
+            support@ghostmails.org
+          </p>
+        </div>
 
       </div>
 
       <footer style={{ textAlign: 'center', padding: '2rem', borderTop: '1px solid #1a1a2e', color: '#444', fontFamily: 'sans-serif', fontSize: '0.8rem' }}>
         <p>
-          GhostMail - private by design &nbsp;|&nbsp;
+          GhostMail — Developer-focused email testing tool &nbsp;|&nbsp;
           <a href="/terms" style={{ ...linkStyle, margin: '0 0.5rem' }}>Terms</a>
           <a href="/privacy" style={{ ...linkStyle, margin: '0 0.5rem' }}>Privacy</a>
           <a href="mailto:support@ghostmails.org" style={{ ...linkStyle, margin: '0 0.5rem' }}>Contact</a>
