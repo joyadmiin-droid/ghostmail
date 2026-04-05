@@ -852,3 +852,13 @@ export default function InboxPage() {
     </Suspense>
   );
 }
+<div style={{
+  textAlign: 'center',
+  padding: '16px',
+  fontSize: '12px',
+  color: '#555'
+}}>
+  <a href="/terms" style={{ margin: '0 8px', color: '#666' }}>Terms</a>
+  <a href="/privacy" style={{ margin: '0 8px', color: '#666' }}>Privacy</a>
+  <a href="mailto:support@ghostmails.org" style={{ margin: '0 8px', color: '#666' }}>Contact</a>
+</div>
