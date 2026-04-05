@@ -61,15 +61,15 @@ export default function LoginPage() {
 
     try {
       if (isReset) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: 'https://ghostmails.org/login',
-        });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://ghostmails.org/reset-password',
+  });
 
-        if (error) throw error;
+  if (error) throw error;
 
-        setMessage('Password reset email sent! Check your inbox.');
-        return;
-      }
+  setMessage('Password reset email sent! Check your inbox.');
+  return;
+}
 
       if (isSignup) {
         const { data, error } = await supabase.auth.signUp({
