@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [addresses, setAddresses] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [error, setError] = useState('');
+  const [emailCount, setEmailCount] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -61,6 +62,20 @@ export default function DashboardPage() {
         }
 
         setAddresses(mailboxes || []);
+
+        const { count, error: emailCountError } = await supabase
+          .from('emails')
+          .select('id', { count: 'exact', head: true });
+
+        if (!mounted) return;
+
+        if (emailCountError) {
+          console.error('Email count error:', emailCountError);
+          setEmailCount(0);
+        } else {
+          setEmailCount(count || 0);
+        }
+
         setStatus('ready');
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -132,15 +147,17 @@ export default function DashboardPage() {
 
   if (status === 'loading') {
     return (
-      <main style={{
-        minHeight: '100vh',
-        background: '#0d0d14',
-        color: '#a78bfa',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'sans-serif'
-      }}>
+      <main
+        style={{
+          minHeight: '100vh',
+          background: '#0d0d14',
+          color: '#a78bfa',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'sans-serif',
+        }}
+      >
         Loading dashboard...
       </main>
     );
@@ -148,53 +165,62 @@ export default function DashboardPage() {
 
   if (status === 'error') {
     return (
-      <main style={{
-        minHeight: '100vh',
-        background: '#0d0d14',
-        color: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-        gap: '12px',
-        fontFamily: 'sans-serif',
-        padding: '24px',
-        textAlign: 'center'
-      }}>
+      <main
+        style={{
+          minHeight: '100vh',
+          background: '#0d0d14',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: '12px',
+          fontFamily: 'sans-serif',
+          padding: '24px',
+          textAlign: 'center',
+        }}
+      >
         <h2>Dashboard failed to load</h2>
         <p style={{ color: '#f87171' }}>{error}</p>
-        <a href="/login" style={{ color: '#a78bfa' }}>Back to login</a>
+        <a href="/login" style={{ color: '#a78bfa' }}>
+          Back to login
+        </a>
       </main>
     );
   }
 
   return (
-    <main style={{
-      minHeight: '100vh',
-      background: '#0d0d14',
-      color: '#fff',
-      fontFamily: 'sans-serif',
-      padding: '24px'
-    }}>
-      <div style={{
-        maxWidth: '900px',
-        margin: '0 auto'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '24px',
-          flexWrap: 'wrap'
-        }}>
+    <main
+      style={{
+        minHeight: '100vh',
+        background: '#0d0d14',
+        color: '#fff',
+        fontFamily: 'sans-serif',
+        padding: '24px',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '24px',
+            flexWrap: 'wrap',
+          }}
+        >
           <div>
             <h1 style={{ margin: 0 }}>Dashboard</h1>
-            <p style={{ margin: '8px 0 0', color: '#aaa' }}>
-              {user?.email}
-            </p>
-            <p style={{ margin: '6px 0 0', color: '#a78bfa' }}>
-              Plan: {plan}
+            <p style={{ margin: '8px 0 0', color: '#aaa' }}>{user?.email}</p>
+            <p style={{ margin: '6px 0 0', color: '#a78bfa' }}>Plan: {plan}</p>
+            <p style={{ margin: '6px 0 0', color: '#22c55e' }}>
+              Emails received: {emailCount ?? '...'}
             </p>
           </div>
 
@@ -208,7 +234,7 @@ export default function DashboardPage() {
                 borderRadius: '10px',
                 background: '#a78bfa',
                 color: '#fff',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               {loadingCreate ? 'Generating...' : 'Generate address'}
@@ -222,7 +248,7 @@ export default function DashboardPage() {
                 borderRadius: '10px',
                 background: 'transparent',
                 color: '#f87171',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               Sign out
@@ -234,17 +260,21 @@ export default function DashboardPage() {
           <p style={{ color: '#f87171', marginBottom: '16px' }}>{error}</p>
         )}
 
-        <div style={{
-          display: 'grid',
-          gap: '12px'
-        }}>
+        <div
+          style={{
+            display: 'grid',
+            gap: '12px',
+          }}
+        >
           {addresses.length === 0 ? (
-            <div style={{
-              padding: '20px',
-              borderRadius: '14px',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)'
-            }}>
+            <div
+              style={{
+                padding: '20px',
+                borderRadius: '14px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
               No addresses yet.
             </div>
           ) : (
@@ -255,16 +285,31 @@ export default function DashboardPage() {
                   padding: '16px',
                   borderRadius: '14px',
                   background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)'
+                  border: '1px solid rgba(255,255,255,0.08)',
                 }}
               >
-                <div style={{ color: '#a78bfa', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                <div
+                  style={{
+                    color: '#a78bfa',
+                    wordBreak: 'break-all',
+                    fontFamily: 'monospace',
+                  }}
+                >
                   {addr.address}
                 </div>
+
                 <div style={{ color: '#aaa', marginTop: '8px', fontSize: '14px' }}>
                   {getExpiryLabel(addr.expires_at)}
                 </div>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '10px',
+                    marginTop: '12px',
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <button
                     onClick={() => copyAddress(addr.address)}
                     style={{
@@ -273,11 +318,12 @@ export default function DashboardPage() {
                       border: '1px solid rgba(167,139,250,0.4)',
                       background: 'transparent',
                       color: '#a78bfa',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                   >
                     Copy
                   </button>
+
                   <a
                     href={'/inbox?token=' + addr.token}
                     style={{
@@ -285,7 +331,7 @@ export default function DashboardPage() {
                       borderRadius: '8px',
                       border: '1px solid rgba(255,255,255,0.15)',
                       color: '#fff',
-                      textDecoration: 'none'
+                      textDecoration: 'none',
                     }}
                   >
                     Open inbox
