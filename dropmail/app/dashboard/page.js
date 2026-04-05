@@ -130,43 +130,42 @@ export default function DashboardPage() {
   }
 
   async function generateMailbox() {
-  setLoadingCreate(true);
-  setError('');
+    setLoadingCreate(true);
+    setError('');
 
-  // FREE PLAN LIMIT
-  if (plan === 'free' && addresses.length >= 1) {
-    setShowUpgrade(true);
-    setLoadingCreate(false);
-    return;
-  }
-
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const headers = {};
-    if (session?.access_token) {
-      headers.Authorization = 'Bearer ' + session.access_token;
+    if (plan === 'free' && addresses.length >= 1) {
+      setShowUpgrade(true);
+      setLoadingCreate(false);
+      return;
     }
 
-    const res = await fetch('/api/mailbox/create', {
-      method: 'POST',
-      headers,
-    });
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const data = await res.json();
+      const headers = {};
+      if (session?.access_token) {
+        headers.Authorization = 'Bearer ' + session.access_token;
+      }
 
-    if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
+      const res = await fetch('/api/mailbox/create', {
+        method: 'POST',
+        headers,
+      });
 
-    setAddresses(prev => [data, ...prev]);
-    setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
-  } catch (err) {
-    setError(err.message || 'Failed to generate mailbox');
-  } finally {
-    setLoadingCreate(false);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
+
+      setAddresses(prev => [data, ...prev]);
+      setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
+    } catch (err) {
+      setError(err.message || 'Failed to generate mailbox');
+    } finally {
+      setLoadingCreate(false);
+    }
   }
-}
 
   function getExpiryLabel(expiresAt) {
     const diff = new Date(expiresAt) - new Date();
@@ -503,39 +502,38 @@ export default function DashboardPage() {
 
         {error && <p style={{ color: '#f87171', marginTop: 18 }}>{error}</p>}
       </div>
+
       {showUpgrade && (
-  <div style={modalOverlay}>
-    <div style={modalBox}>
-      <div style={modalBadge}>Free plan limit reached</div>
+        <div style={modalOverlay}>
+          <div style={modalBox}>
+            <div style={modalBadge}>Free plan limit reached</div>
 
-      <h2 style={modalTitle}>
-        Upgrade to create more inboxes
-      </h2>
+            <h2 style={modalTitle}>Upgrade to create more inboxes</h2>
 
-      <p style={modalText}>
-        Your free plan includes <strong>1 active inbox</strong>.
-        Upgrade to unlock more inboxes, longer lifetimes, and smoother testing workflows.
-      </p>
+            <p style={modalText}>
+              Your free plan includes <strong>1 active inbox</strong>.
+              Upgrade to unlock more inboxes, longer lifetimes, and smoother testing workflows.
+            </p>
 
-      <div style={modalPlans}>
-        <button style={modalPrimaryBtn} onClick={() => alert('Paddle later')}>
-          Get Phantom — $4.99/mo
-        </button>
+            <div style={modalPlans}>
+              <button style={modalPrimaryBtn} onClick={() => alert('Paddle later')}>
+                Get Phantom — $4.99/mo
+              </button>
 
-        <button style={modalSecondaryBtn} onClick={() => alert('Paddle later')}>
-          Get Spectre — $8.99/mo
-        </button>
-      </div>
+              <button style={modalSecondaryBtn} onClick={() => alert('Paddle later')}>
+                Get Spectre — $8.99/mo
+              </button>
+            </div>
 
-      <button
-        style={modalCloseBtn}
-        onClick={() => setShowUpgrade(false)}
-      >
-        Maybe later
-      </button>
-    </div>
-  </div>
-)}
+            <button
+              style={modalCloseBtn}
+              onClick={() => setShowUpgrade(false)}
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -840,18 +838,6 @@ const loadingSpinner = {
   borderRadius: '50%',
   animation: 'spin 0.8s linear infinite',
 };
-const modalOverlay = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0,0,0,0.7)',
-  backdropFilter: 'blur(6px)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 999,
-};
-
-/* ================= MODAL STYLES ================= */
 
 const modalOverlay = {
   position: 'fixed',
