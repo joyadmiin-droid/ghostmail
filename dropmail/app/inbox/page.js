@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
@@ -21,8 +21,10 @@ function InboxContent() {
   const [selected, setSelected] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [autoRefreshSeconds, setAutoRefreshSeconds] = useState(0);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 980);
@@ -109,6 +111,16 @@ function InboxContent() {
   }, [fetchEmails]);
 
   useEffect(() => {
+    if (!autoRefreshSeconds || !token) return;
+
+    const interval = setInterval(() => {
+      fetchEmails(false);
+    }, autoRefreshSeconds * 1000);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshSeconds, token, fetchEmails]);
+
+  useEffect(() => {
     if (!mailbox?.expires_at) return;
 
     const tick = () => {
@@ -152,6 +164,18 @@ function InboxContent() {
     }
   }
 
+  async function copyDetectedCode(code) {
+    if (!code) return;
+
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1600);
+    } catch (err) {
+      console.error('Code copy failed:', err);
+    }
+  }
+
   async function markRead(emailId) {
     try {
       await fetch('/api/mailbox/read?id=' + emailId, { method: 'POST' });
@@ -166,6 +190,7 @@ function InboxContent() {
 
   function openEmail(email) {
     setSelected(email);
+    setCopiedCode(false);
     if (!email.is_read) {
       markRead(email.id);
     }
@@ -195,6 +220,34 @@ function InboxContent() {
     const from = email?.from_name || email?.from_address || '?';
     return from.trim().slice(0, 1).toUpperCase();
   }
+
+  function extractCode(email) {
+    if (!email) return null;
+
+    const text = [
+      email.subject || '',
+      email.body_text || '',
+      typeof email.body_html === 'string' ? email.body_html.replace(/<[^>]+>/g, ' ') : '',
+    ].join(' ');
+
+    const labeledPatterns = [
+      /(?:otp|code|verification code|verify code|security code|login code|passcode)[:\s-]*([0-9]{4,8})/i,
+      /([0-9]{4,8})\s*(?:is your otp|is your code|is your verification code|is your login code)/i,
+    ];
+
+    for (const pattern of labeledPatterns) {
+      const match = text.match(pattern);
+      if (match?.[1]) return match[1];
+    }
+
+    const genericMatches = text.match(/\b\d{4,8}\b/g) || [];
+    if (!genericMatches.length) return null;
+
+    const filtered = genericMatches.filter(code => !/^\d{4}$/.test(code) || Number(code) > 1900);
+    return (filtered[0] || genericMatches[0] || null);
+  }
+
+  const detectedCode = useMemo(() => extractCode(selected), [selected]);
 
   const visibleEmails = isLoggedIn ? emails : emails.slice(0, 1);
   const hasHiddenEmails = !isLoggedIn && emails.length > 1;
@@ -344,6 +397,19 @@ function InboxContent() {
           <div style={topInfoCard}>
             <div style={sectionLabel}>Unread</div>
             <div style={topInfoValue}>{unreadCount}</div>
+          </div>
+
+          <div style={topInfoCard}>
+            <div style={sectionLabel}>Auto refresh</div>
+            <select
+              value={autoRefreshSeconds}
+              onChange={e => setAutoRefreshSeconds(Number(e.target.value))}
+              style={autoRefreshSelect}
+            >
+              <option value={0}>Off</option>
+              <option value={5}>5s</option>
+              <option value={10}>10s</option>
+            </select>
           </div>
 
           <div style={topActionsCard}>
@@ -507,6 +573,47 @@ function InboxContent() {
                     <div style={metaCard}>
                       <div style={sectionLabel}>Received</div>
                       <div style={metaValue}>{formatFullDate(selected.received_at)}</div>
+                    </div>
+
+                    <div
+                      style={{
+                        ...metaCard,
+                        borderColor: detectedCode
+                          ? 'rgba(34,197,94,0.24)'
+                          : 'rgba(255,255,255,0.06)',
+                        boxShadow: detectedCode
+                          ? '0 12px 28px rgba(0,0,0,0.12), 0 0 24px rgba(34,197,94,0.08)'
+                          : '0 12px 28px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      <div style={sectionLabel}>Detected code</div>
+
+                      {detectedCode ? (
+                        <>
+                          <div style={{ ...metaValue, fontFamily: 'monospace', fontSize: '20px', color: '#4ade80' }}>
+                            {detectedCode}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyDetectedCode(detectedCode)}
+                            className="action-btn"
+                            style={{
+                              ...codeCopyBtn,
+                              color: copiedCode ? '#4ade80' : '#fff',
+                              borderColor: copiedCode
+                                ? 'rgba(34,197,94,0.32)'
+                                : 'rgba(255,255,255,0.10)',
+                              background: copiedCode
+                                ? 'rgba(34,197,94,0.10)'
+                                : 'rgba(255,255,255,0.03)',
+                            }}
+                          >
+                            {copiedCode ? '✓ Copied code' : 'Copy code'}
+                          </button>
+                        </>
+                      ) : (
+                        <div style={metaSubValue}>No OTP/code detected in this email.</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -828,7 +935,7 @@ const smallCta = {
 
 const topInfoGrid = {
   display: 'grid',
-  gridTemplateColumns: '2fr 1fr 1fr 1.2fr',
+  gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
   gap: '14px',
   marginBottom: '18px',
 };
@@ -867,6 +974,19 @@ const topInfoValue = {
   marginTop: '8px',
 };
 
+const autoRefreshSelect = {
+  width: '100%',
+  marginTop: '10px',
+  padding: '11px 12px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(255,255,255,0.03)',
+  color: '#fff',
+  fontSize: '14px',
+  fontWeight: 700,
+  outline: 'none',
+};
+
 const copyButtonStrong = {
   width: '100%',
   padding: '12px 14px',
@@ -875,6 +995,18 @@ const copyButtonStrong = {
   background: 'rgba(255,255,255,0.03)',
   color: '#fff',
   fontSize: '14px',
+  fontWeight: 800,
+  cursor: 'pointer',
+};
+
+const codeCopyBtn = {
+  marginTop: '12px',
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(255,255,255,0.03)',
+  fontSize: '13px',
   fontWeight: 800,
   cursor: 'pointer',
 };
