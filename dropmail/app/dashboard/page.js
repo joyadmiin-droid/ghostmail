@@ -23,6 +23,12 @@ export default function DashboardPage() {
   const [mailboxUsage, setMailboxUsage] = useState({});
   const [favorites, setFavorites] = useState({});
   const [activeFilter, setActiveFilter] = useState('all');
+  const [toast, setToast] = useState(null);
+
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  }
 
   useEffect(() => {
     try {
@@ -160,10 +166,43 @@ export default function DashboardPage() {
 
       setAddresses(prev => [data, ...prev]);
       setMailboxUsage(prev => ({ ...prev, [data.id]: 0 }));
+      showToast('New inbox created');
     } catch (err) {
       setError(err.message || 'Failed to generate mailbox');
     } finally {
       setLoadingCreate(false);
+    }
+  }
+
+  async function deleteMailbox(id) {
+    const confirmDelete = confirm('Delete this inbox?');
+    if (!confirmDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('mailboxes')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setAddresses(prev => prev.filter(a => a.id !== id));
+
+      setMailboxUsage(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+
+      setFavorites(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+
+      showToast('Inbox deleted');
+    } catch (err) {
+      alert('Failed to delete inbox');
     }
   }
 
@@ -212,40 +251,9 @@ export default function DashboardPage() {
     await navigator.clipboard.writeText(addr);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
+    showToast('Address copied');
   }
-async function deleteMailbox(id) {
-  const confirmDelete = confirm('Delete this inbox?');
 
-  if (!confirmDelete) return;
-
-  try {
-    const { error } = await supabase
-      .from('mailboxes')
-      .update({ is_active: false })
-      .eq('id', id);
-
-    if (error) throw error;
-
-    // remove from UI
-    setAddresses(prev => prev.filter(a => a.id !== id));
-
-    // cleanup usage + favorites
-    setMailboxUsage(prev => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
-
-    setFavorites(prev => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
-
-  } catch (err) {
-    alert('Failed to delete inbox');
-  }
-}
   function toggleFavorite(id) {
     setFavorites(prev => ({
       ...prev,
@@ -525,16 +533,17 @@ async function deleteMailbox(id) {
                     <a href={`/inbox?token=${addr.token}`} style={secondaryBtn}>
                       Open inbox
                     </a>
+
                     <button
-  style={{
-    ...secondaryBtn,
-    border: '1px solid rgba(248,113,113,0.4)',
-    color: '#f87171'
-  }}
-  onClick={() => deleteMailbox(addr.id)}
->
-  Delete
-</button>
+                      style={{
+                        ...secondaryBtn,
+                        border: '1px solid rgba(248,113,113,0.4)',
+                        color: '#f87171'
+                      }}
+                      onClick={() => deleteMailbox(addr.id)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               );
@@ -574,6 +583,12 @@ async function deleteMailbox(id) {
               Maybe later
             </button>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div style={toastStyle}>
+          {toast}
         </div>
       )}
     </main>
@@ -971,4 +986,20 @@ const modalCloseBtn = {
   color: '#bdb6d3',
   cursor: 'pointer',
   fontWeight: 700,
+};
+
+const toastStyle = {
+  position: 'fixed',
+  bottom: '24px',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  background: 'rgba(15,10,30,0.95)',
+  border: '1px solid rgba(167,139,250,0.3)',
+  color: '#fff',
+  padding: '12px 18px',
+  borderRadius: '12px',
+  fontSize: '14px',
+  fontWeight: 700,
+  boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+  zIndex: 9999,
 };
