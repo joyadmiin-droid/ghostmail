@@ -16,9 +16,6 @@ export default function Home() {
   const [copied, setCopied] = useState(null);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-  const [upgradeError, setUpgradeError] = useState('');
-  const [openFaq, setOpenFaq] = useState(null);
   const [totalEmails, setTotalEmails] = useState(null);
 
   useEffect(() => {
@@ -92,64 +89,37 @@ export default function Home() {
     };
   }, []);
 
-  async function handleUpgrade(planName) {
-    setUpgradeLoading(true);
-    setUpgradeError('');
+  async function generateMailbox() {
+    setLoading(true);
+    setError(null);
 
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const res = await fetch('/api/mailbox/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: planName }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data = null;
 
-      if (!res.ok) throw new Error(data.error || 'Something went wrong');
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL received');
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('Server returned invalid JSON');
       }
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate address');
+      }
+
+      setMailbox(data);
     } catch (err) {
-      setUpgradeError(err.message || 'Upgrade failed');
+      console.error('Generate mailbox error:', err);
+      setError(err.message || 'Something went wrong');
     } finally {
-      setUpgradeLoading(false);
+      setLoading(false);
     }
   }
-
-  async function generateMailbox() {
-  setLoading(true);
-  setError(null);
-
-  try {
-    const res = await fetch('/api/mailbox/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const text = await res.text();
-    let data = null;
-
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error('Server returned invalid JSON: ' + text.slice(0, 120));
-    }
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to generate address');
-    }
-
-    setMailbox(data);
-  } catch (err) {
-    console.error('Generate mailbox error:', err);
-    setError(err.message || 'Something went wrong');
-  } finally {
-    setLoading(false);
-  }
-}
 
   async function copyAddress(addr) {
     await navigator.clipboard.writeText(addr);
@@ -183,10 +153,10 @@ export default function Home() {
           <span className={styles.logoText}>GhostMail</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
-          <a href={user ? '/dashboard' : '/login'}>
+          <a href={user ? '/dashboard' : '/login'} style={{ fontWeight: '500' }}>
             {user ? 'Dashboard' : 'Sign in'}
           </a>
         </div>
@@ -205,9 +175,16 @@ export default function Home() {
 
         <p className={styles.sub}>
           Generate <strong>temporary email addresses</strong> instantly.
-          Perfect for developers, QA testing, and protecting your inbox from spam.
-          <br />
-          <br />
+          Perfect for developers, QA testing, and protecting your inbox from unwanted emails.
+        </p>
+
+        {/* TRUST LINE */}
+        <p style={{ fontSize: '13px', opacity: 0.7, marginTop: '10px' }}>
+          GhostMail is designed for developers and individuals who need temporary email for testing and privacy.
+          Abuse, spam, and illegal activity are strictly prohibited.
+        </p>
+
+        <p style={{ fontSize: '13px', opacity: 0.7 }}>
           Automatically deleted after expiration. Built for responsible use with abuse prevention.
         </p>
 
@@ -241,15 +218,7 @@ export default function Home() {
                 {getExpiryLabel(mailbox.expires_at)}
               </p>
 
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  justifyContent: 'center',
-                  flexWrap: 'wrap',
-                  marginTop: '12px',
-                }}
-              >
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '12px' }}>
                 <button onClick={() => copyAddress(mailbox.address)}>
                   {copied === mailbox.address ? 'Copied' : 'Copy'}
                 </button>
@@ -266,7 +235,15 @@ export default function Home() {
           )}
         </div>
 
-        <p style={{ fontSize: '12px', opacity: 0.6 }}>
+        {/* HOW IT WORKS */}
+        <section style={{ marginTop: '50px' }}>
+          <h3 style={{ marginBottom: '10px' }}>How it works</h3>
+          <p>1. Generate a temporary email</p>
+          <p>2. Use it for testing or signups</p>
+          <p>3. Emails appear instantly and expire automatically</p>
+        </section>
+
+        <p style={{ fontSize: '12px', opacity: 0.6, marginTop: '20px' }}>
           Built for developers and responsible use — not for abuse.
         </p>
       </section>
