@@ -27,11 +27,19 @@ export default function DashboardPage() {
   const [favorites, setFavorites] = useState({});
   const [activeFilter, setActiveFilter] = useState('all');
   const [toast, setToast] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 2000);
   }
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     try {
@@ -288,6 +296,14 @@ export default function DashboardPage() {
     return (value || 'free').toUpperCase();
   }
 
+  function formatCreatedDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
   const sortedAddresses = useMemo(() => {
     return [...addresses].sort((a, b) => {
       const aFav = isFavorite(a.id) ? 1 : 0;
@@ -319,6 +335,29 @@ export default function DashboardPage() {
     { key: 'expired', label: 'Expired' },
   ];
 
+  const stats = useMemo(() => {
+    let newCount = 0;
+    let usedCount = 0;
+    let expiredCount = 0;
+    let favoriteCount = 0;
+
+    for (const addr of addresses) {
+      const badge = getMailboxStatus(addr);
+      if (badge.label === 'New') newCount += 1;
+      if (badge.label === 'Used') usedCount += 1;
+      if (badge.label === 'Expired') expiredCount += 1;
+      if (isFavorite(addr.id)) favoriteCount += 1;
+    }
+
+    return {
+      total: addresses.length,
+      newCount,
+      usedCount,
+      expiredCount,
+      favoriteCount,
+    };
+  }, [addresses, mailboxUsage, favorites]);
+
   if (status === 'loading') {
     return (
       <main style={centerStyle}>
@@ -344,7 +383,7 @@ export default function DashboardPage() {
         * { box-sizing: border-box; }
 
         .dashboard-email-card {
-          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
 
         .dashboard-email-card:hover {
@@ -374,11 +413,20 @@ export default function DashboardPage() {
           background: rgba(255,255,255,0.08) !important;
         }
 
-          .dashboard-delete-danger:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(220,38,38,0.28);
-  filter: brightness(1.05);
-}
+        .dashboard-delete-danger:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 24px rgba(220,38,38,0.28);
+          filter: brightness(1.05);
+        }
+
+        .dashboard-action-btn {
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .dashboard-action-btn:hover {
+          transform: translateY(-1px);
+          border-color: rgba(167,139,250,0.30) !important;
+        }
       `}</style>
 
       <div style={container}>
@@ -389,7 +437,11 @@ export default function DashboardPage() {
           </div>
 
           <div style={headerActions}>
-            <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
+            <button
+              style={primaryBtn}
+              onClick={generateMailbox}
+              disabled={loadingCreate}
+            >
               {loadingCreate ? 'Generating...' : 'New Address'}
             </button>
 
@@ -399,22 +451,41 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={planCard}>
-          <div>
-            <p style={planEyebrow}>Current plan</p>
-            <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
-            <p style={planMeta}>Emails received: {emailCount ?? '...'}</p>
+        <div style={summaryGrid}>
+          <div style={{ ...summaryCard, ...summaryCardWide }}>
+            <div style={planCardHeader}>
+              <div>
+                <p style={planEyebrow}>Current plan</p>
+                <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
+                <p style={planMeta}>Emails received: {emailCount ?? '...'}</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {plan === 'free' ? (
+                  <>
+                    <button style={upgradeBtn}>Upgrade to Phantom</button>
+                    <button style={upgradeBtnSecondary}>Upgrade to Spectre</button>
+                  </>
+                ) : (
+                  <button style={manageBtn}>Manage billing</button>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {plan === 'free' && (
-              <>
-                <button style={upgradeBtn}>Upgrade to Phantom</button>
-                <button style={upgradeBtnSecondary}>Upgrade to Spectre</button>
-              </>
-            )}
+          <div style={summaryCard}>
+            <div style={summaryLabel}>Total inboxes</div>
+            <div style={summaryValue}>{stats.total}</div>
+          </div>
 
-            {plan !== 'free' && <button style={manageBtn}>Manage billing</button>}
+          <div style={summaryCard}>
+            <div style={summaryLabel}>Favorites</div>
+            <div style={summaryValue}>{stats.favoriteCount}</div>
+          </div>
+
+          <div style={summaryCard}>
+            <div style={summaryLabel}>Used inboxes</div>
+            <div style={summaryValue}>{stats.usedCount}</div>
           </div>
         </div>
 
@@ -500,6 +571,7 @@ export default function DashboardPage() {
                     <div style={cardTopRow}>
                       <div style={cardAddressWrap}>
                         <div style={addrText}>{addr.address}</div>
+                        <div style={createdText}>Created {formatCreatedDate(addr.created_at)}</div>
                       </div>
 
                       <button
@@ -522,24 +594,25 @@ export default function DashboardPage() {
                       </button>
                     </div>
 
-                    <span
-                      style={{
-                        ...statusBadge,
-                        color: badge.color,
-                        borderColor: badge.border,
-                        background: badge.bg,
-                      }}
-                    >
-                      ● {badge.label}
-                    </span>
+                    <div style={badgeRow}>
+                      <span
+                        style={{
+                          ...statusBadge,
+                          color: badge.color,
+                          borderColor: badge.border,
+                          background: badge.bg,
+                        }}
+                      >
+                        ● {badge.label}
+                      </span>
+
+                      {favorite && (
+                        <span style={favoriteMiniBadge}>Favorite</span>
+                      )}
+                    </div>
                   </div>
 
                   <div style={cardStats}>
-                    <div style={statBox}>
-                      <span style={statLabel}>Status</span>
-                      <span style={{ ...statValue, color: badge.color }}>{badge.label}</span>
-                    </div>
-
                     <div style={statBox}>
                       <span style={statLabel}>Emails</span>
                       <span style={statValue}>{usageCount}</span>
@@ -553,21 +626,25 @@ export default function DashboardPage() {
 
                   <div style={actions}>
                     <button
+                      className="dashboard-action-btn"
                       style={secondaryBtn}
                       onClick={() => copyAddress(addr.address, addr.id)}
                     >
                       {copiedId === addr.id ? 'Copied' : 'Copy'}
                     </button>
 
-                    <a href={`/inbox?token=${addr.token}`} style={secondaryBtn}>
+                    <a
+                      href={`/inbox?token=${addr.token}`}
+                      className="dashboard-action-btn"
+                      style={secondaryBtn}
+                    >
                       Open inbox
                     </a>
 
                     <button
+                      className="dashboard-action-btn"
                       style={{
-                        ...secondaryBtn,
-                        border: '1px solid rgba(248,113,113,0.4)',
-                        color: '#f87171',
+                        ...deleteBtnInline,
                       }}
                       onClick={() => openDeleteModal(addr)}
                     >
@@ -591,8 +668,8 @@ export default function DashboardPage() {
             <h2 style={modalTitle}>Upgrade to create more inboxes</h2>
 
             <p style={modalText}>
-              Your free plan includes <strong>1 active inbox</strong>.
-              Upgrade to unlock more inboxes, longer lifetimes, and smoother testing workflows.
+              Your free plan includes <strong>1 active inbox</strong>. Upgrade to unlock
+              more inboxes, longer lifetimes, and smoother testing workflows.
             </p>
 
             <div style={modalPlans}>
@@ -617,10 +694,11 @@ export default function DashboardPage() {
           <div style={deleteBox} onClick={(e) => e.stopPropagation()}>
             <div style={deleteIconWrap}>🗑️</div>
 
-            <h2 style={deleteTitle}>Delete inbox?</h2>
+            <div style={deleteEyebrow}>Delete inbox</div>
+            <h2 style={deleteTitle}>Are you sure?</h2>
 
             <p style={deleteText}>
-              This will permanently remove this inbox from your dashboard. This action cannot be undone.
+              This inbox will be removed from your dashboard. This action cannot be undone.
             </p>
 
             <div style={deleteEmailBox}>
@@ -665,10 +743,12 @@ const pageStyle = {
     'radial-gradient(circle at top, rgba(124,58,237,0.12), transparent 26%), #080010',
   color: '#fff',
   padding: '32px 20px 48px',
+  fontFamily:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const container = {
-  maxWidth: 1120,
+  maxWidth: 1180,
   margin: '0 auto',
 };
 
@@ -685,12 +765,14 @@ const pageTitle = {
   margin: 0,
   fontSize: '3rem',
   lineHeight: 1,
+  letterSpacing: '-0.04em',
 };
 
 const pageSubtitle = {
   color: '#8f89a5',
   margin: '10px 0 0',
   wordBreak: 'break-word',
+  fontSize: 16,
 };
 
 const headerActions = {
@@ -699,18 +781,51 @@ const headerActions = {
   flexWrap: 'wrap',
 };
 
-const planCard = {
+const summaryGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gap: 16,
+  marginBottom: 22,
+};
+
+const summaryCard = {
   padding: 22,
-  borderRadius: 18,
+  borderRadius: 20,
+  background: 'rgba(255,255,255,0.035)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  boxShadow: '0 14px 40px rgba(0,0,0,0.16)',
+  minHeight: 132,
+};
+
+const summaryCardWide = {
+  gridColumn: 'span 4',
   background: 'rgba(167,139,250,0.08)',
   border: '1px solid rgba(167,139,250,0.22)',
-  marginBottom: 20,
+  boxShadow: '0 0 40px rgba(167,139,250,0.15), 0 12px 40px rgba(0,0,0,0.14)',
+};
+
+const planCardHeader = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: 16,
-  boxShadow: '0 0 40px rgba(167,139,250,0.15), 0 12px 40px rgba(0,0,0,0.14)',
+};
+
+const summaryLabel = {
+  color: '#9d96b2',
+  fontSize: 13,
+  fontWeight: 700,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+};
+
+const summaryValue = {
+  marginTop: 12,
+  fontSize: 32,
+  fontWeight: 900,
+  color: '#fff',
+  letterSpacing: '-0.04em',
 };
 
 const planEyebrow = {
@@ -722,6 +837,7 @@ const planEyebrow = {
 const planName = {
   margin: '6px 0',
   fontSize: '2rem',
+  letterSpacing: '-0.03em',
 };
 
 const planMeta = {
@@ -758,16 +874,16 @@ const filterCountText = {
 
 const gridWrap = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
   gap: 18,
 };
 
 const emailCard = {
   padding: 18,
-  borderRadius: 18,
+  borderRadius: 20,
   background: 'rgba(255,255,255,0.035)',
   border: '1px solid rgba(255,255,255,0.08)',
-  minHeight: 220,
+  minHeight: 235,
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -793,11 +909,19 @@ const cardAddressWrap = {
 };
 
 const addrText = {
-  fontFamily: 'monospace',
+  fontFamily:
+    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
   color: '#a78bfa',
   fontSize: 16,
   lineHeight: 1.6,
   wordBreak: 'break-all',
+  fontWeight: 700,
+};
+
+const createdText = {
+  marginTop: 8,
+  color: '#7f7895',
+  fontSize: 12,
 };
 
 const favoriteBtn = {
@@ -811,16 +935,33 @@ const favoriteBtn = {
   flexShrink: 0,
 };
 
+const badgeRow = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  flexWrap: 'wrap',
+};
+
+const favoriteMiniBadge = {
+  padding: '7px 10px',
+  borderRadius: 999,
+  border: '1px solid rgba(250,204,21,0.28)',
+  background: 'rgba(250,204,21,0.10)',
+  color: '#facc15',
+  fontSize: 12,
+  fontWeight: 700,
+};
+
 const cardStats = {
   display: 'grid',
   gridTemplateColumns: '1fr',
   gap: 10,
   marginTop: 16,
-  marginBottom: 16,
+  marginBottom: 18,
 };
 
 const statBox = {
-  padding: '10px 12px',
+  padding: '12px 14px',
   borderRadius: 14,
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.05)',
@@ -841,28 +982,28 @@ const statLabel = {
 const statValue = {
   fontSize: 14,
   color: '#fff',
-  fontWeight: 700,
+  fontWeight: 800,
 };
 
 const statValueMuted = {
   fontSize: 14,
   color: '#d4cfe2',
-  fontWeight: 700,
+  fontWeight: 800,
 };
 
 const statusBadge = {
   width: 'fit-content',
-  padding: '7px 12px',
+  padding: '8px 12px',
   borderRadius: 999,
   border: '1px solid',
   fontSize: 13,
-  fontWeight: 700,
+  fontWeight: 800,
 };
 
 const actions = {
-  display: 'flex',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: 10,
-  flexWrap: 'wrap',
   marginTop: 'auto',
 };
 
@@ -873,7 +1014,7 @@ const primaryBtn = {
   background: 'linear-gradient(135deg,#7c3aed,#ec4899)',
   color: '#fff',
   cursor: 'pointer',
-  fontWeight: 700,
+  fontWeight: 800,
 };
 
 const upgradeBtn = {
@@ -907,17 +1048,25 @@ const manageBtn = {
 };
 
 const secondaryBtn = {
-  padding: '10px 14px',
-  borderRadius: 10,
+  padding: '11px 14px',
+  borderRadius: 12,
   border: '1px solid rgba(255,255,255,0.15)',
   background: 'transparent',
   color: '#fff',
   textDecoration: 'none',
   cursor: 'pointer',
-  fontWeight: 700,
+  fontWeight: 800,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
+  minHeight: 44,
+};
+
+const deleteBtnInline = {
+  ...secondaryBtn,
+  gridColumn: '1 / -1',
+  border: '1px solid rgba(248,113,113,0.40)',
+  color: '#f87171',
 };
 
 const dangerBtn = {
@@ -1065,7 +1214,7 @@ const deleteOverlay = {
 
 const deleteBox = {
   width: '100%',
-  maxWidth: 460,
+  maxWidth: 470,
   borderRadius: 24,
   border: '1px solid rgba(255,255,255,0.08)',
   background:
@@ -1086,6 +1235,15 @@ const deleteIconWrap = {
   justifyContent: 'center',
   fontSize: 24,
   marginBottom: 18,
+};
+
+const deleteEyebrow = {
+  color: '#fca5a5',
+  fontSize: 12,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  fontWeight: 800,
+  marginBottom: 8,
 };
 
 const deleteTitle = {
