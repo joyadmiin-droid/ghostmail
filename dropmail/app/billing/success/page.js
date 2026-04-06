@@ -1,4 +1,29 @@
+'use client';
+
+import { useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
 export default function BillingSuccess() {
+  useEffect(() => {
+    const updatePlan = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      await supabase
+        .from('profiles')
+        .update({ plan: 'spectre' })
+        .eq('id', user.id);
+    };
+
+    updatePlan();
+  }, []);
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -23,7 +48,7 @@ export default function BillingSuccess() {
         </h1>
 
         <p style={{ marginTop: 10, color: '#aaa' }}>
-          Your premium access is active. Enjoy unlimited inboxes and extended lifetime.
+          Activating your premium access...
         </p>
 
         <a
