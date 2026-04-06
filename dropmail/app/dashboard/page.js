@@ -463,8 +463,13 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {plan === 'free' ? (
                   <>
-                    <button style={upgradeBtn}>Upgrade to Phantom</button>
-                    <button style={upgradeBtnSecondary}>Upgrade to Spectre</button>
+                    <a href="/pricing" style={upgradeBtn}>
+  Upgrade plan
+</a>
+
+<p style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+  Compare Phantom and Spectre on the pricing page
+</p>
                   </>
                 ) : (
                   <button style={manageBtn}>Manage billing</button>
