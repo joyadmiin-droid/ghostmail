@@ -463,7 +463,7 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {plan === 'free' ? (
                   <>
-                    <a href="/pricing" style={upgradeBtn}>
+                    <a href="/#pricing" style={upgradeBtn}>
   Upgrade plan
 </a>
 

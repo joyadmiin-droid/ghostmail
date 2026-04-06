@@ -344,7 +344,7 @@ export default function Home() {
         </p>
       </section>
 
-      <section className={styles.pricingSection}>
+      <section id="pricing" className={styles.pricingSection}>
         <div className={styles.pricingInner}>
           <div className={styles.pricingTop}>
             <p className={styles.pricingEyebrow}>Plans</p>
