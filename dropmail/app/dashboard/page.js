@@ -906,16 +906,26 @@ const cardTopRow = {
 const cardAddressWrap = {
   minWidth: 0,
   flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
 };
 
 const addrText = {
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
-  color: '#a78bfa',
-  fontSize: 16,
-  lineHeight: 1.6,
-  wordBreak: 'break-all',
-  fontWeight: 700,
+  color: '#c4b5fd',
+  fontSize: 15,
+  lineHeight: 1.7,
+  fontWeight: 800,
+  letterSpacing: '-0.01em',
+  wordBreak: 'break-word',
+  overflowWrap: 'anywhere',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: 14,
+  padding: '12px 14px',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
 };
 
 const createdText = {
