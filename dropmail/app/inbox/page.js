@@ -32,6 +32,13 @@ function InboxContent() {
     setTimeout(() => setToast(null), 2000);
   }
 
+  function getDisplaySubject(email) {
+    const raw = email?.subject;
+    if (typeof raw !== 'string') return '(no subject)';
+    const clean = raw.replace(/\s+/g, ' ').trim();
+    return clean || '(no subject)';
+  }
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 980);
     checkMobile();
@@ -334,6 +341,23 @@ function InboxContent() {
           border-color: rgba(167,139,250,0.28) !important;
           box-shadow: 0 12px 26px rgba(0,0,0,0.18);
         }
+
+        .viewer-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(167,139,250,0.24) transparent;
+        }
+
+        .viewer-scroll::-webkit-scrollbar,
+        .email-scroll::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        .viewer-scroll::-webkit-scrollbar-thumb,
+        .email-scroll::-webkit-scrollbar-thumb {
+          background: rgba(167,139,250,0.18);
+          border-radius: 999px;
+        }
       `}</style>
 
       <header
@@ -454,6 +478,7 @@ function InboxContent() {
               <option value={0}>Off</option>
               <option value={5}>5s</option>
               <option value={10}>10s</option>
+              <option value={15}>15s</option>
             </select>
           </div>
 
@@ -488,7 +513,7 @@ function InboxContent() {
           <aside
             style={{
               ...sidebarPanel,
-              width: isMobile ? '100%' : '370px',
+              width: isMobile ? '100%' : '360px',
               maxHeight: isMobile ? '42vh' : 'calc(100vh - 290px)',
             }}
           >
@@ -517,7 +542,7 @@ function InboxContent() {
               </div>
             ) : (
               <>
-                <div style={emailListWrap}>
+                <div className="email-scroll" style={emailListWrap}>
                   {visibleEmails.map(email => {
                     const active = selected?.id === email.id;
 
@@ -564,7 +589,7 @@ function InboxContent() {
                               color: active ? '#ffffff' : '#efe9ff',
                             }}
                           >
-                            {email.subject || '(no subject)'}
+                            {getDisplaySubject(email)}
                           </div>
 
                           <div style={emailPreviewRow}>
@@ -608,25 +633,55 @@ function InboxContent() {
           >
             {selected ? (
               <div
+                className="viewer-scroll"
                 style={{
                   ...viewerInner,
                   padding: isMobile ? '18px 14px' : '26px',
+                  height: '100%',
+                  overflowY: 'auto',
                 }}
               >
-                <div style={messageHeader}>
-                  <h1
-                    style={{
-                      ...messageTitle,
-                      fontSize: isMobile ? '1.7rem' : 'clamp(24px, 3vw, 32px)',
-                    }}
-                  >
-                    {selected.subject || '(no subject)'}
-                  </h1>
+                <div style={messageHeaderCard}>
+                  <div style={messageHeaderTop}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={sectionLabel}>Selected email</div>
+                      <h1
+                        style={{
+                          ...messageTitle,
+                          fontSize: isMobile ? '1.55rem' : 'clamp(26px, 3vw, 34px)',
+                          marginBottom: '10px',
+                        }}
+                      >
+                        {getDisplaySubject(selected)}
+                      </h1>
+
+                      <div style={messageSubline}>
+                        <span>{selected.from_name || selected.from_address}</span>
+                        <span style={sublineDot}>•</span>
+                        <span>{formatFullDate(selected.received_at)}</span>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        ...messageStatusBadge,
+                        background: selected.is_read
+                          ? 'rgba(255,255,255,0.05)'
+                          : 'rgba(34,197,94,0.12)',
+                        borderColor: selected.is_read
+                          ? 'rgba(255,255,255,0.09)'
+                          : 'rgba(34,197,94,0.25)',
+                        color: selected.is_read ? '#d7d0ea' : '#4ade80',
+                      }}
+                    >
+                      {selected.is_read ? 'Read' : 'New'}
+                    </div>
+                  </div>
 
                   <div
                     style={{
                       ...messageMetaGrid,
-                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))',
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
                     }}
                   >
                     <div style={metaCard}>
@@ -688,14 +743,18 @@ function InboxContent() {
                 </div>
 
                 <div style={messageBodyWrap}>
+                  <div style={bodyTopBar}>
+                    <div style={bodyTopBarTitle}>Email content</div>
+                  </div>
+
                   {selected.body_html ? (
                     <iframe
-                      title="Email content"
+                      title={`Email content - ${getDisplaySubject(selected)}`}
                       sandbox="allow-same-origin"
                       style={{
                         ...messageIframe,
-                        height: isMobile ? '58vh' : '70vh',
-                        minHeight: isMobile ? '420px' : '520px',
+                        height: isMobile ? '56vh' : '68vh',
+                        minHeight: isMobile ? '420px' : '560px',
                       }}
                       srcDoc={`
                         <style>
@@ -828,7 +887,7 @@ const pageWrap = {
 
 const shell = {
   width: '100%',
-  maxWidth: '1260px',
+  maxWidth: '1280px',
   margin: '0 auto',
   padding: '22px 18px 30px',
 };
@@ -1307,8 +1366,22 @@ const viewerInner = {
   padding: '26px',
 };
 
-const messageHeader = {
-  marginBottom: '22px',
+const messageHeaderCard = {
+  marginBottom: '20px',
+  padding: '20px',
+  borderRadius: '22px',
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02))',
+  border: '1px solid rgba(255,255,255,0.06)',
+  boxShadow: '0 18px 40px rgba(0,0,0,0.16)',
+};
+
+const messageHeaderTop = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: '12px',
+  marginBottom: '18px',
+  flexWrap: 'wrap',
 };
 
 const messageTitle = {
@@ -1319,6 +1392,29 @@ const messageTitle = {
   lineHeight: 1.22,
   wordBreak: 'break-word',
   letterSpacing: '-0.03em',
+};
+
+const messageSubline = {
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: '8px',
+  color: '#a89fbe',
+  fontSize: '13px',
+  lineHeight: 1.6,
+};
+
+const sublineDot = {
+  color: '#71678a',
+};
+
+const messageStatusBadge = {
+  fontSize: '12px',
+  fontWeight: 800,
+  padding: '8px 12px',
+  borderRadius: '999px',
+  border: '1px solid',
+  whiteSpace: 'nowrap',
 };
 
 const messageMetaGrid = {
@@ -1357,6 +1453,22 @@ const messageBodyWrap = {
   borderRadius: '22px',
   overflow: 'hidden',
   boxShadow: '0 24px 54px rgba(0,0,0,0.24), 0 0 28px rgba(167,139,250,0.05)',
+};
+
+const bodyTopBar = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '14px 18px',
+  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  background: 'rgba(9,4,17,0.88)',
+};
+
+const bodyTopBarTitle = {
+  color: '#f3eeff',
+  fontSize: '13px',
+  fontWeight: 800,
+  letterSpacing: '0.01em',
 };
 
 const messageIframe = {
