@@ -168,7 +168,7 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.tagline}>
-          Temporary Email for Developers & Testing
+          PRIVATE EMAIL FOR DEVELOPERS & TESTING
         </div>
 
         <h1 className={styles.headline}>
@@ -295,7 +295,7 @@ We actively prevent abuse, spam, and misuse of the platform.
               <span className={styles.howStep}>03</span>
               <h3 className={styles.howCardTitle}>Auto-delete</h3>
               <p className={styles.howCardText}>
-                The inbox expires automatically, keeping your workflow clean and temporary.
+                The inbox expires automatically, keeping your workflow clean and short-lived.
               </p>
             </div>
           </div>
@@ -449,7 +449,7 @@ We actively prevent abuse, spam, and misuse of the platform.
           <a href="mailto:support@ghostmails.org">Contact</a>
         </div>
 
-        <p>© 2026 GhostMail — Built for developers, QA, and temporary email testing workflows.</p>
+        <p>© 2026 GhostMail — Built for developers, QA, and email testing workflows.</p>
       </footer>
     </main>
   );
