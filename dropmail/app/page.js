@@ -217,7 +217,7 @@ We actively prevent abuse, spam, and misuse of the platform.
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                Fast, temporary inboxes for development and testing.
+                Fast, private inboxes for development and testing.
               </p>
             </div>
           ) : (
