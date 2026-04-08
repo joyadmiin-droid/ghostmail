@@ -178,7 +178,7 @@ export default function Home() {
         </h1>
 
         <p className={styles.sub}>
-          Create secure, <strong>short-lived email inboxes,</strong> for QA testing, integrations, and protecting your primary email.
+          Create secure, <strong>short-lived email inboxes for QA testing,</strong> for QA testing, integrations, and protecting your primary email.
         </p>
 
         <p className={styles.trustLine}>
@@ -279,7 +279,7 @@ We actively prevent abuse, spam, and misuse of the platform.
               <span className={styles.howStep}>01</span>
               <h3 className={styles.howCardTitle}>Generate</h3>
               <p className={styles.howCardText}>
-                Create a temporary email address instantly with one click.
+                Create a private test inbox instantly.
               </p>
             </div>
 
@@ -332,7 +332,7 @@ We actively prevent abuse, spam, and misuse of the platform.
           <h3 className={styles.responsibleTitle}>Responsible Use</h3>
           <p className={styles.responsibleItem}>• Software testing and QA environments</p>
           <p className={styles.responsibleItem}>• Developer workflows and debugging email flows</p>
-          <p className={styles.responsibleItem}>• Temporary inboxes for testing integrations</p>
+          <p className={styles.responsibleItem}>• Short-lived inboxes for testing integrations</p>
           <p className={styles.responsibleNote}>
             GhostMail is not intended for bypassing platform restrictions, creating fake accounts, spam, or abusive activity.
           </p>
@@ -369,7 +369,7 @@ We actively prevent abuse, spam, and misuse of the platform.
               </div>
 
               <div className={styles.planFeatures}>
-                <p>• 1 temporary inbox at a time</p>
+                <p>• 1 private inbox at a time</p>
                 <p>• 10-minute expiry</p>
                 <p>• Fast generation for testing</p>
                 <p>• No account required</p>
