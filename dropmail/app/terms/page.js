@@ -141,16 +141,17 @@ export default function TermsPage() {
           }}
         >
           <div className="mb-6">
-  <p className="text-sm text-zinc-400">
-    GhostMail is intended for developers, QA testing, and responsible use only.
-  </p>
+            <p className="text-sm text-zinc-400">
+              GhostMail is intended for developers, QA testing, and responsible use only.
+            </p>
 
-  <p className="text-sm text-zinc-400 mt-2">
-    GhostMail does not provide anonymous communication services and is not intended for bypassing platform protections.
-  </p>
-</div>
+            <p className="text-sm text-zinc-400 mt-2">
+              GhostMail does not provide anonymous communication services and is not intended for bypassing platform protections.
+            </p>
+          </div>
+        </div>
 
-        {sections.map(section => (
+        {sections.map((section) => (
           <div key={section.title} style={{ marginBottom: '2rem' }}>
             <h2 style={headingStyle}>{section.title}</h2>
             <p style={paraStyle}>{section.body}</p>
