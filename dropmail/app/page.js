@@ -178,7 +178,7 @@ export default function Home() {
         </h1>
 
         <p className={styles.sub}>
-          Create secure, <strong>short-lived email inboxes for QA testing,</strong> for QA testing, integrations, and protecting your primary email.
+          Create secure, <strong>short-lived email inboxes,</strong> for QA testing, integrations, and protecting your primary email.
         </p>
 
         <p className={styles.trustLine}>
