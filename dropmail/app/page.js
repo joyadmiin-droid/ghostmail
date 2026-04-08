@@ -172,19 +172,18 @@ export default function Home() {
         </div>
 
         <h1 className={styles.headline}>
-          Your inbox.
+          Private email inbox for
           <br />
-          <span className={styles.accentLine}>Gone in minutes.</span>
+          <span className={styles.accentLine}>testing & development.</span>
         </h1>
 
         <p className={styles.sub}>
-          Generate <strong>temporary email addresses</strong> for QA testing,
-          development workflows, and protecting your primary inbox during testing.
+          Create secure, <strong>short-lived email inboxes for QA testing,</strong> for QA testing, integrations, and protecting your primary email.
         </p>
 
         <p className={styles.trustLine}>
-          GhostMail is designed for developers, QA teams, and individuals who need temporary email for testing workflows and privacy.
-          Abuse, spam, fraudulent signups, and illegal activity are strictly prohibited.
+          GhostMail is designed for developers, QA testing, and privacy protection.
+We actively prevent abuse, spam, and misuse of the platform.
         </p>
 
         <p className={styles.helperLine}>

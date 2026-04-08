@@ -140,8 +140,15 @@ export default function TermsPage() {
             fontSize: '0.92rem',
           }}
         >
-          GhostMail is intended for developers, QA testing, and responsible use only.
-        </div>
+          <div className="mb-6">
+  <p className="text-sm text-zinc-400">
+    GhostMail is intended for developers, QA testing, and responsible use only.
+  </p>
+
+  <p className="text-sm text-zinc-400 mt-2">
+    GhostMail does not provide anonymous communication services and is not intended for bypassing platform protections.
+  </p>
+</div>
 
         {sections.map(section => (
           <div key={section.title} style={{ marginBottom: '2rem' }}>
