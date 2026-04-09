@@ -27,12 +27,14 @@ export default function RootLayout({ children }) {
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           style={{
             position: 'fixed',
-            top: 20,
-            right: 20,
+            bottom: 20,
+            left: 20,
             zIndex: 99999,
             padding: '10px 14px',
             borderRadius: '12px',
-            border: '1px solid rgba(255,255,255,0.14)',
+            border: theme === 'dark'
+              ? '1px solid rgba(255,255,255,0.14)'
+              : '1px solid rgba(17,17,17,0.14)',
             background: theme === 'dark' ? 'rgba(15,10,30,0.95)' : '#ffffff',
             color: theme === 'dark' ? '#ffffff' : '#111111',
             cursor: 'pointer',

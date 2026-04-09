@@ -7,6 +7,7 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 .bg {
@@ -18,6 +19,7 @@
     radial-gradient(ellipse 80% 50% at 20% 20%, rgba(139, 92, 246, 0.18) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236, 72, 153, 0.14) 0%, transparent 60%),
     radial-gradient(ellipse 50% 60% at 60% 10%, rgba(6, 182, 212, 0.1) 0%, transparent 60%);
+  transition: opacity 0.25s ease, background 0.25s ease;
 }
 
 .grid {
@@ -29,6 +31,7 @@
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
+  transition: opacity 0.25s ease, background-image 0.25s ease;
 }
 
 .header {
@@ -143,6 +146,7 @@
   max-width: 560px;
   backdrop-filter: blur(20px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .cardInner {
@@ -220,7 +224,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   padding: 18px 20px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.25s ease;
 }
 
 .addressBox:hover {
@@ -296,7 +300,7 @@
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, color 0.25s ease;
 }
 
 .btnSecondary:hover {
@@ -322,6 +326,7 @@
   color: #767184;
   line-height: 1.6;
   margin: 0;
+  white-space: pre-line;
 }
 
 .responsibleSection {
@@ -370,61 +375,6 @@
   text-align: center;
 }
 
-@media (max-width: 768px) {
-  .header {
-    padding: 16px 20px;
-    gap: 12px;
-  }
-
-  .hero {
-    padding: 44px 18px 32px;
-  }
-
-  .headline {
-    font-size: clamp(44px, 14vw, 74px);
-  }
-
-  .sub {
-    font-size: 16px;
-  }
-
-  .trustLine,
-  .helperLine,
-  .liveStat {
-    max-width: 100%;
-  }
-
-  .card {
-    padding: 22px 18px;
-    max-width: 100%;
-  }
-
-  .addressBox {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .copyBtn {
-    width: 100%;
-  }
-
-  .metaRow {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .actionRow {
-    flex-direction: column;
-  }
-
-  .responsibleTitle {
-    font-size: 24px;
-  }
-
-  .footer {
-    padding: 18px 20px;
-  }
-}
 /* =========================
    NAV UPGRADE
 ========================= */
@@ -433,6 +383,8 @@
   display: flex;
   gap: 18px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .navLinks a {
@@ -508,7 +460,7 @@
   padding: 28px;
   text-align: left;
   position: relative;
-  transition: transform 0.2s, border-color 0.2s;
+  transition: transform 0.2s, border-color 0.2s, background 0.25s ease, box-shadow 0.25s ease;
 }
 
 .pricingCard:hover {
@@ -547,6 +499,7 @@
 .planName {
   margin: 0;
   font-size: 18px;
+  color: #fff;
 }
 
 .planDesc {
@@ -596,6 +549,7 @@
   display: block;
   text-decoration: none;
 }
+
 /* =========================
    HOW IT WORKS
 ========================= */
@@ -625,7 +579,7 @@
   border-radius: 18px;
   padding: 24px;
   text-align: left;
-  transition: 0.2s;
+  transition: 0.2s, background 0.25s ease;
 }
 
 .howCard:hover {
@@ -681,7 +635,7 @@
   border-radius: 18px;
   padding: 24px;
   text-align: left;
-  transition: 0.2s;
+  transition: 0.2s, background 0.25s ease;
 }
 
 .perfectCard:hover {
@@ -725,4 +679,241 @@
 
 .footerLinks a:hover {
   color: #fff;
+}
+
+/* =========================
+   LIGHT MODE
+========================= */
+
+html.light .main {
+  background: #f7f7fb;
+  color: #161321;
+}
+
+html.light .bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 60% 10%, rgba(6, 182, 212, 0.06) 0%, transparent 60%);
+}
+
+html.light .grid {
+  background-image:
+    linear-gradient(rgba(17, 17, 17, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 17, 17, 0.04) 1px, transparent 1px);
+}
+
+html.light .header {
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+html.light .logoText {
+  color: #171320;
+}
+
+html.light .navLinks a {
+  color: #5c556f;
+}
+
+html.light .navLinks a:hover {
+  color: #171320;
+}
+
+html.light .navCta {
+  background: rgba(124, 58, 237, 0.10);
+  border-color: rgba(124, 58, 237, 0.22);
+  color: #6d28d9 !important;
+}
+
+html.light .tagline {
+  color: #6d28d9;
+  border-color: rgba(109, 40, 217, 0.18);
+  background: rgba(109, 40, 217, 0.06);
+}
+
+html.light .headline {
+  color: #171320;
+}
+
+html.light .sub {
+  color: #5b556b;
+}
+
+html.light .sub strong {
+  color: #342a4d;
+}
+
+html.light .trustLine {
+  color: rgba(23, 19, 32, 0.74);
+}
+
+html.light .helperLine {
+  color: rgba(23, 19, 32, 0.56);
+}
+
+html.light .liveStat {
+  color: #16a34a;
+}
+
+html.light .card,
+html.light .pricingCard,
+html.light .howCard,
+html.light .perfectCard {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(17, 17, 17, 0.08);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+html.light .addressLabel,
+html.light .sectionLabel {
+  color: #6a627f;
+}
+
+html.light .addressBox {
+  background: rgba(17, 17, 17, 0.03);
+  border-color: rgba(17, 17, 17, 0.10);
+}
+
+html.light .addressText {
+  color: #171320;
+}
+
+html.light .copyBtn {
+  background: rgba(124, 58, 237, 0.10);
+  color: #6d28d9;
+  border-color: rgba(124, 58, 237, 0.22);
+}
+
+html.light .copyBtn:hover {
+  background: rgba(124, 58, 237, 0.16);
+}
+
+html.light .copied {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+html.light .expiryText,
+html.light .tokenNote,
+html.light .pricingSub,
+html.light .planDesc,
+html.light .planPeriod,
+html.light .planFeatures,
+html.light .howCardText,
+html.light .perfectCardText,
+html.light .responsibleNote,
+html.light .footer,
+html.light .footerLinks a,
+html.light .bottomNote {
+  color: #615b70;
+}
+
+html.light .btnSecondary {
+  color: #2d2740;
+  background: rgba(17, 17, 17, 0.03);
+  border-color: rgba(17, 17, 17, 0.10);
+}
+
+html.light .btnSecondary:hover {
+  background: rgba(17, 17, 17, 0.06);
+  border-color: rgba(109, 40, 217, 0.20);
+}
+
+html.light .responsibleTitle,
+html.light .pricingTitle,
+html.light .howTitle,
+html.light .perfectTitle,
+html.light .howCardTitle,
+html.light .perfectCardTitle,
+html.light .planName {
+  color: #171320;
+}
+
+html.light .responsibleItem {
+  color: #352f45;
+}
+
+html.light .pricingFeatured {
+  border-color: rgba(124, 58, 237, 0.40);
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.10);
+}
+
+html.light .pricingBadge {
+  color: #ffffff;
+  background: #7c3aed;
+}
+
+html.light .planPrice {
+  color: #171320;
+}
+
+html.light .footer {
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+html.light .footerLinks a:hover {
+  color: #171320;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 16px 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .hero {
+    padding: 44px 18px 32px;
+  }
+
+  .headline {
+    font-size: clamp(44px, 14vw, 74px);
+  }
+
+  .sub {
+    font-size: 16px;
+  }
+
+  .trustLine,
+  .helperLine,
+  .liveStat {
+    max-width: 100%;
+  }
+
+  .card {
+    padding: 22px 18px;
+    max-width: 100%;
+  }
+
+  .addressBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .copyBtn {
+    width: 100%;
+  }
+
+  .metaRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actionRow {
+    flex-direction: column;
+  }
+
+  .responsibleTitle {
+    font-size: 24px;
+  }
+
+  .footer {
+    padding: 18px 20px;
+  }
+
+  .navLinks {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
