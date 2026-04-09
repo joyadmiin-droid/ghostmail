@@ -53,14 +53,33 @@ export async function GET(request) {
       return Response.json({ error: 'Inbox not found or expired' }, { status: 404 });
     }
 
-    if (plan === 'free' && mailbox.user_id !== user.id) {
-      return Response.json({ error: 'You do not have access to this inbox' }, { status: 403 });
+    let effectiveMailbox = mailbox;
+
+    if (plan === 'free') {
+      // If mailbox was generated while logged out, claim it on first authenticated access
+      if (!mailbox.user_id) {
+        const { data: updatedMailbox, error: claimErr } = await supabase
+          .from('mailboxes')
+          .update({ user_id: user.id })
+          .eq('id', mailbox.id)
+          .select('id, address, expires_at, is_active, user_id')
+          .single();
+
+        if (claimErr || !updatedMailbox) {
+          console.error('Mailbox claim error:', claimErr);
+          return Response.json({ error: 'Failed to attach inbox to your account' }, { status: 500 });
+        }
+
+        effectiveMailbox = updatedMailbox;
+      } else if (mailbox.user_id !== user.id) {
+        return Response.json({ error: 'You do not have access to this inbox' }, { status: 403 });
+      }
     }
 
     const { data: emails, error: emailsErr } = await supabase
       .from('emails')
       .select('id, from_address, from_name, subject, body_html, body_text, received_at, is_read')
-      .eq('mailbox_id', mailbox.id)
+      .eq('mailbox_id', effectiveMailbox.id)
       .order('received_at', { ascending: false });
 
     if (emailsErr) {
@@ -69,10 +88,10 @@ export async function GET(request) {
 
     return Response.json({
       mailbox: {
-        id: mailbox.id,
-        address: mailbox.address,
-        expires_at: mailbox.expires_at,
-        is_active: mailbox.is_active,
+        id: effectiveMailbox.id,
+        address: effectiveMailbox.address,
+        expires_at: effectiveMailbox.expires_at,
+        is_active: effectiveMailbox.is_active,
       },
       emails: emails || [],
       plan,
