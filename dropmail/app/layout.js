@@ -1,72 +1,51 @@
-import { DM_Sans, DM_Serif_Display, DM_Mono } from 'next/font/google';
+'use client';
+
 import './globals.css';
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  variable: '--font-dm-sans',
-  display: 'swap',
-});
-const dmSerif = DM_Serif_Display({
-  subsets: ['latin'],
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  variable: '--font-dm-serif',
-  display: 'swap',
-});
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-dm-mono',
-  display: 'swap',
-});
-
-export const metadata = {
-  title: 'GhostMail - Email Testing Tool for Developers & QA',
-
-description:
-  'Create disposable email addresses for QA testing, development workflows, and protecting your primary inbox during testing. Built for responsible use with automatic expiration.',
-
-keywords: [
-  'temporary email',
-  'temp mail',
-  'disposable email',
-  'email testing',
-  'privacy email',
-  'qa testing email'
-],
-  authors: [{ name: 'GhostMail' }],
-  metadataBase: new URL('https://ghostmails.org'),
-  openGraph: {
-  title: 'GhostMail – Email Testing Tool for Developers & QA',
-  description:
-    'Create temporary email addresses for QA testing, development workflows, and protecting your primary inbox during testing. Built for responsible use with automatic expiration.',
-  url: 'https://ghostmails.org',
-  siteName: 'GhostMail',
-  images: [
-    {
-      url: '/og-image.png',
-      width: 1200,
-      height: 630,
-      alt: 'GhostMail – Email testing tool for developers and QA',
-    },
-  ],
-  locale: 'en_US',
-  type: 'website',
-},
-twitter: {
-  card: 'summary_large_image',
-  title: 'GhostMail – Email Testing Tool for Developers & QA',
-  description:
-  'Create temporary email addresses for QA testing, development workflows, and protecting your primary inbox during testing. Built for responsible use with automatic expiration.',
-  images: ['/og-image.png'],
-},
-  robots: { index: true, follow: true },
-};
+import { useEffect, useState } from 'react';
 
 export default function RootLayout({ children }) {
+  const [theme, setTheme] = useState('dark');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('ghostmail-theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.toggle('light', savedTheme === 'light');
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem('ghostmail-theme', theme);
+    document.documentElement.classList.toggle('light', theme === 'light');
+  }, [theme, mounted]);
+
   return (
-    <html lang="en" className={dmSans.variable + ' ' + dmSerif.variable + ' ' + dmMono.variable}>
-      <body>{children}</body>
+    <html lang="en">
+      <body>
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          style={{
+            position: 'fixed',
+            top: 20,
+            right: 20,
+            zIndex: 99999,
+            padding: '10px 14px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.14)',
+            background: theme === 'dark' ? 'rgba(15,10,30,0.95)' : '#ffffff',
+            color: theme === 'dark' ? '#ffffff' : '#111111',
+            cursor: 'pointer',
+            fontWeight: 800,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          {theme === 'dark' ? 'Light ☀️' : 'Dark 🌙'}
+        </button>
+
+        {children}
+      </body>
     </html>
   );
 }

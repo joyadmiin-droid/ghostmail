@@ -1,17 +1,18 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+html,
 body {
-  font-family: var(--font-dm-sans), sans-serif;
-  background: #0a0a0f;
-  color: #e8e6df;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+html.light,
+html.light body {
+  background: #f7f7fb !important;
+  color: #111111 !important;
+}
+
+html.light a {
+  color: inherit;
+}
+
+html.light button {
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
