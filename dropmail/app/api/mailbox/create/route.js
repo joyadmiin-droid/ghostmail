@@ -116,7 +116,7 @@ export async function POST(request) {
       if ((createdTodayCount || 0) >= 3) {
         return Response.json(
           {
-            error: 'Free plan allows up to 3 inboxes per day.',
+            error: 'Free plan allows 1 active inbox at a time.',
             code: 'FREE_DAILY_LIMIT',
           },
           { status: 403 }
