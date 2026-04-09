@@ -427,10 +427,10 @@ We actively prevent abuse, spam, and misuse of the platform.
               </div>
 
               <div className={styles.planFeatures}>
-                <p>• Unlimited active inboxes</p>
-                <p>• Long-lived testing workflow</p>
-                <p>• Better for teams and daily usage</p>
-                <p>• Designed for advanced users</p>
+                <p>Unlimited active inboxes</p>
+                <p>Up to 1-year inbox expiry</p>
+                <p>High-volume testing workflows</p>
+                <p>Built for advanced workflows and teams</p>
               </div>
 
               <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
