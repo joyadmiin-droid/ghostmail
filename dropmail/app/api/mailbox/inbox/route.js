@@ -88,7 +88,7 @@ export async function GET(request) {
 
         if (activeOwnedMailboxes && activeOwnedMailboxes.length >= 1) {
           return Response.json(
-            { error: 'You already have an active inbox. Delete it or wait until it expires.' }
+            { error: 'You already have an active inbox. Delete it or wait until it expires.' },
             { status: 403 }
           );
         }
