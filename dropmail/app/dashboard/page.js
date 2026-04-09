@@ -305,9 +305,21 @@ export default function DashboardPage() {
     if (diff <= 0) return 'Expired';
 
     const mins = Math.round(diff / 60000);
+
     if (mins > 1440) return Math.round(mins / 1440) + 'd left';
     if (mins > 60) return Math.round(mins / 60) + 'h left';
+
     return mins + 'm left';
+  }
+
+  function getProgress(expiresAt, createdAt) {
+    const total = new Date(expiresAt) - new Date(createdAt);
+    const left = new Date(expiresAt) - new Date();
+
+    if (total <= 0) return 0;
+
+    const percent = (left / total) * 100;
+    return Math.max(0, Math.min(100, percent));
   }
 
   function getMailboxStatus(addr) {
@@ -523,7 +535,25 @@ export default function DashboardPage() {
             <div style={planCardHeader}>
               <div>
                 <p style={planEyebrow}>Current plan</p>
-                <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
+
+                  <span
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      border: '1px solid rgba(167,139,250,0.3)',
+                      background: 'rgba(167,139,250,0.12)',
+                      color: '#d9cfff',
+                    }}
+                  >
+                    {plan === 'free' ? 'Free Tier' : 'Premium'}
+                  </span>
+                </div>
+
                 <p style={planMeta}>Emails received: {emailCount ?? '...'}</p>
               </div>
 
@@ -678,9 +708,7 @@ export default function DashboardPage() {
                         ● {badge.label}
                       </span>
 
-                      {favorite && (
-                        <span style={favoriteMiniBadge}>Favorite</span>
-                      )}
+                      {favorite && <span style={favoriteMiniBadge}>Favorite</span>}
                     </div>
                   </div>
 
@@ -690,9 +718,22 @@ export default function DashboardPage() {
                       <span style={statValue}>{usageCount}</span>
                     </div>
 
-                    <div style={statBox}>
-                      <span style={statLabel}>Expires</span>
-                      <span style={statValueMuted}>{getExpiryLabel(addr.expires_at)}</span>
+                    <div style={statBoxColumn}>
+                      <div style={statTopRow}>
+                        <span style={statLabel}>Expires</span>
+                        <span style={statValueMuted}>{getExpiryLabel(addr.expires_at)}</span>
+                      </div>
+
+                      <div style={progressTrack}>
+                        <div
+                          style={{
+                            ...progressFill,
+                            width: `${getProgress(addr.expires_at, addr.created_at)}%`,
+                          }}
+                        />
+                      </div>
+
+                      <div style={progressText}>Auto deletes when expired</div>
                     </div>
                   </div>
 
@@ -771,9 +812,7 @@ export default function DashboardPage() {
               This inbox will be removed from your dashboard. This action cannot be undone.
             </p>
 
-            <div style={deleteEmailBox}>
-              {selectedInbox?.address}
-            </div>
+            <div style={deleteEmailBox}>{selectedInbox?.address}</div>
 
             <div style={deleteActions}>
               <button
@@ -1049,6 +1088,41 @@ const statBox = {
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: 10,
+};
+
+const statBoxColumn = {
+  padding: '12px 14px',
+  borderRadius: 14,
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.05)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+};
+
+const statTopRow = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 10,
+};
+
+const progressTrack = {
+  height: 6,
+  borderRadius: 999,
+  background: 'rgba(255,255,255,0.08)',
+  overflow: 'hidden',
+};
+
+const progressFill = {
+  height: '100%',
+  background: 'linear-gradient(90deg,#7c3aed,#ec4899)',
+  transition: 'width 0.5s ease',
+};
+
+const progressText = {
+  fontSize: 11,
+  color: '#8f89a5',
 };
 
 const statLabel = {
