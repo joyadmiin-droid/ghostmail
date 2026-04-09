@@ -8,6 +8,21 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+function getSafeNextPath() {
+  if (typeof window === 'undefined') return '/dashboard';
+
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get('next');
+
+  if (!next) return '/dashboard';
+
+  // Only allow internal relative paths
+  if (!next.startsWith('/')) return '/dashboard';
+  if (next.startsWith('//')) return '/dashboard';
+
+  return next;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +37,8 @@ export default function LoginPage() {
     let mounted = true;
 
     const init = async () => {
+      const nextPath = getSafeNextPath();
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -29,7 +46,7 @@ export default function LoginPage() {
       if (!mounted) return;
 
       if (session?.user) {
-        window.location.replace('/dashboard');
+        window.location.replace(nextPath);
         return;
       }
 
@@ -44,7 +61,8 @@ export default function LoginPage() {
       if (!mounted) return;
 
       if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        window.location.replace('/dashboard');
+        const nextPath = getSafeNextPath();
+        window.location.replace(nextPath);
       }
     });
 
@@ -60,16 +78,18 @@ export default function LoginPage() {
     setMessage('');
 
     try {
+      const nextPath = getSafeNextPath();
+
       if (isReset) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://ghostmails.org/reset-password',
-  });
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: 'https://ghostmails.org/reset-password',
+        });
 
-  if (error) throw error;
+        if (error) throw error;
 
-  setMessage('Password reset email sent! Check your inbox.');
-  return;
-}
+        setMessage('Password reset email sent! Check your inbox.');
+        return;
+      }
 
       if (isSignup) {
         const { data, error } = await supabase.auth.signUp({
@@ -82,7 +102,7 @@ export default function LoginPage() {
         if (data?.user && !data?.session) {
           setMessage('Check your email to confirm your account!');
         } else {
-          window.location.replace('/dashboard');
+          window.location.replace(nextPath);
         }
         return;
       }
