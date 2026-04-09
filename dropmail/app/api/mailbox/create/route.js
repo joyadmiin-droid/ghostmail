@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { randomBytes } from 'crypto';
+import crypto from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -43,7 +43,7 @@ export async function POST(request) {
       }
     }
 
-    // 🔥 IMPORTANT: Restrict FREE users to 1 active inbox
+    // 🔥 Restrict FREE users to 1 active inbox
     if (userId && plan === 'free') {
       const { data: activeMailboxes } = await supabase
         .from('mailboxes')
@@ -66,22 +66,23 @@ export async function POST(request) {
     const username = generateUsername();
     const domain = 'ghostmails.org';
     const address = `${username}@${domain}`;
-    const token = randomBytes(24).toString('hex');
+    const token = crypto.randomBytes(24).toString('hex');
 
     let expiresAt;
 
     if (plan === 'spectre') {
-      expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+      expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
     } else if (plan === 'phantom') {
-      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     } else {
-      expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+      expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     }
 
     const { data: mailbox, error } = await supabase
       .from('mailboxes')
       .insert([
         {
+          username, // ✅ FIX
           address,
           token,
           user_id: userId,
@@ -95,14 +96,14 @@ export async function POST(request) {
     if (error) {
       console.error('Insert error:', error);
       return Response.json(
-  { error: error.message || error },
-  { status: 500 }
-);
+        { error: error.message || error },
+        { status: 500 }
+      );
     }
 
     return Response.json(mailbox);
   } catch (err) {
     console.error('Create mailbox error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
+    return Response.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
 }
