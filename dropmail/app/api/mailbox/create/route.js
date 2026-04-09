@@ -94,7 +94,10 @@ export async function POST(request) {
 
     if (error) {
       console.error('Insert error:', error);
-      return Response.json({ error: 'Failed to create mailbox' }, { status: 500 });
+      return Response.json(
+  { error: error.message || error },
+  { status: 500 }
+);
     }
 
     return Response.json(mailbox);
