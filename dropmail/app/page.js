@@ -246,7 +246,7 @@ export default function Home() {
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                Fast, private inboxes for development and testing.
+                Generate first. Sign in only when you want to open and manage the inbox.
               </p>
             </div>
           ) : (
@@ -295,9 +295,7 @@ export default function Home() {
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                {user
-                  ? 'Your inbox is tied to your account plan and expires automatically.'
-                  : 'Sign in is required before opening and managing this inbox.'}
+                Open Inbox will ask for login if needed. Your address is already generated.
               </p>
             </div>
           )}
@@ -311,15 +309,15 @@ export default function Home() {
               <span className={styles.howStep}>01</span>
               <h3 className={styles.howCardTitle}>Generate</h3>
               <p className={styles.howCardText}>
-                Create a private test inbox instantly.
+                Create a private test inbox instantly from the homepage.
               </p>
             </div>
 
             <div className={styles.howCard}>
               <span className={styles.howStep}>02</span>
-              <h3 className={styles.howCardTitle}>Sign in to open inbox</h3>
+              <h3 className={styles.howCardTitle}>Open inbox when ready</h3>
               <p className={styles.howCardText}>
-                Access and manage your inbox through your GhostMail account.
+                Login is only required when you want to open and manage the inbox.
               </p>
             </div>
 
@@ -404,7 +402,7 @@ export default function Home() {
                 <p>• 1 private inbox at a time</p>
                 <p>• 10-minute expiry</p>
                 <p>• Fast generation for testing</p>
-                <p>• Sign in required to open inbox</p>
+                <p>• Login only when opening inbox</p>
               </div>
 
               <button
