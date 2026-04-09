@@ -24,33 +24,50 @@ export async function POST(request) {
     let plan = 'free';
 
     if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '').trim();
+      const bearerToken = authHeader.replace('Bearer ', '').trim();
 
       const {
         data: { user },
-      } = await supabase.auth.getUser(token);
+        error: authError,
+      } = await supabase.auth.getUser(bearerToken);
+
+      if (authError) {
+        console.error('Auth error:', authError);
+      }
 
       if (user) {
         userId = user.id;
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('plan')
           .eq('id', user.id)
           .maybeSingle();
 
+        if (profileError) {
+          console.error('Profile fetch error:', profileError);
+        }
+
         plan = profile?.plan || 'free';
       }
     }
 
-    // 🔥 Restrict FREE users to 1 active inbox
+    // Free plan = 1 active inbox at a time
     if (userId && plan === 'free') {
-      const { data: activeMailboxes } = await supabase
+      const { data: activeMailboxes, error: activeError } = await supabase
         .from('mailboxes')
         .select('id')
         .eq('user_id', userId)
         .eq('is_active', true)
         .gt('expires_at', new Date().toISOString());
+
+      if (activeError) {
+        console.error('Active mailbox check error:', activeError);
+        return Response.json(
+          { error: 'Failed to check active inboxes' },
+          { status: 500 }
+        );
+      }
 
       if (activeMailboxes && activeMailboxes.length >= 1) {
         return Response.json(
@@ -63,9 +80,32 @@ export async function POST(request) {
       }
     }
 
+    // Load one active domain from DB
+    const { data: domains, error: domainsError } = await supabase
+      .from('domains')
+      .select('id, name')
+      .eq('is_active', true)
+      .limit(1);
+
+    if (domainsError) {
+      console.error('Domains fetch error:', domainsError);
+      return Response.json(
+        { error: domainsError.message || 'Failed to load domains' },
+        { status: 500 }
+      );
+    }
+
+    if (!domains || domains.length === 0) {
+      return Response.json(
+        { error: 'No active domain available' },
+        { status: 500 }
+      );
+    }
+
+    const domainRow = domains[0];
+
     const username = generateUsername();
-    const domain = 'ghostmails.org';
-    const address = `${username}@${domain}`;
+    const address = `${username}@${domainRow.name}`;
     const token = crypto.randomBytes(24).toString('hex');
 
     let expiresAt;
@@ -78,12 +118,13 @@ export async function POST(request) {
       expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     }
 
-    const { data: mailbox, error } = await supabase
+    const { data: mailbox, error: insertError } = await supabase
       .from('mailboxes')
       .insert([
         {
-          username, // ✅ FIX
+          username,
           address,
+          domain_id: domainRow.id,
           token,
           user_id: userId,
           expires_at: expiresAt.toISOString(),
@@ -93,10 +134,10 @@ export async function POST(request) {
       .select()
       .single();
 
-    if (error) {
-      console.error('Insert error:', error);
+    if (insertError) {
+      console.error('Insert error:', insertError);
       return Response.json(
-        { error: error.message || error },
+        { error: insertError.message || 'Failed to create mailbox' },
         { status: 500 }
       );
     }
@@ -104,6 +145,9 @@ export async function POST(request) {
     return Response.json(mailbox);
   } catch (err) {
     console.error('Create mailbox error:', err);
-    return Response.json({ error: err.message || 'Internal server error' }, { status: 500 });
+    return Response.json(
+      { error: err.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
