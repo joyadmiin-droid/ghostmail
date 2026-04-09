@@ -21,7 +21,7 @@ function normalizePlan(plan) {
 function getPlanLifetimeMs(plan) {
   if (plan === 'spectre') return 365 * 24 * 60 * 60 * 1000;
   if (plan === 'phantom') return 24 * 60 * 60 * 1000;
-  return 10 * 60 * 1000;
+  return 10 * 60 * 1000; // default free/guest
 }
 
 function generateUsername() {
@@ -32,26 +32,22 @@ function generateUsername() {
 }
 
 async function generateUniqueAddress(domainName, attempts = 8) {
-  for (let i = 0; i < attempts; i += 1) {
+  for (let i = 0; i < attempts; i++) {
     const username = generateUsername();
     const address = `${username}@${domainName}`;
 
-    const { data: existing, error } = await supabase
+    const { data: existing } = await supabase
       .from('mailboxes')
       .select('id')
       .eq('address', address)
       .limit(1);
-
-    if (error) {
-      throw new Error(error.message || 'Failed to validate mailbox address');
-    }
 
     if (!existing || existing.length === 0) {
       return { username, address };
     }
   }
 
-  throw new Error('Could not generate a unique mailbox. Please try again.');
+  throw new Error('Failed to generate unique address');
 }
 
 export async function POST(request) {
@@ -61,77 +57,37 @@ export async function POST(request) {
     let userId = null;
     let plan = 'free';
 
+    // ✅ OPTIONAL AUTH (NOT REQUIRED ANYMORE)
     if (authHeader?.startsWith('Bearer ')) {
-      const bearerToken = authHeader.replace('Bearer ', '').trim();
+      const token = authHeader.replace('Bearer ', '').trim();
 
       const {
         data: { user },
-        error: authError,
-      } = await supabase.auth.getUser(bearerToken);
-
-      if (authError) {
-        console.error('Auth error:', authError);
-      }
+      } = await supabase.auth.getUser(token);
 
       if (user) {
         userId = user.id;
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('plan')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
-        }
-
         plan = normalizePlan(profile?.plan);
       }
     }
 
-    if (!userId) {
-      return Response.json(
-        { error: 'You must be logged in to create a mailbox.' },
-        { status: 401 }
-      );
-    }
-
     const nowIso = new Date().toISOString();
 
-    // Always clean expired active mailboxes first for this user.
-    const { error: cleanupError } = await supabase
-      .from('mailboxes')
-      .update({ is_active: false })
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .lte('expires_at', nowIso);
-
-    if (cleanupError) {
-      console.error('Expired mailbox cleanup error:', cleanupError);
-      return Response.json(
-        { error: 'Failed to clean expired inboxes' },
-        { status: 500 }
-      );
-    }
-
-    // Free plan = 1 active inbox at a time.
-    // Phantom/Spectre can create more, but expired ones are still auto-cleaned above.
-    if (plan === 'free') {
-      const { data: activeMailboxes, error: activeError } = await supabase
+    // ✅ ONLY APPLY LIMITS IF USER EXISTS
+    if (userId && plan === 'free') {
+      const { data: activeMailboxes } = await supabase
         .from('mailboxes')
         .select('id')
         .eq('user_id', userId)
         .eq('is_active', true)
         .gt('expires_at', nowIso);
-
-      if (activeError) {
-        console.error('Active mailbox check error:', activeError);
-        return Response.json(
-          { error: 'Failed to check active inboxes' },
-          { status: 500 }
-        );
-      }
 
       if (activeMailboxes && activeMailboxes.length >= 1) {
         return Response.json(
@@ -144,19 +100,12 @@ export async function POST(request) {
       }
     }
 
-    const { data: domains, error: domainsError } = await supabase
+    // ✅ GET DOMAIN
+    const { data: domains } = await supabase
       .from('domains')
       .select('id, name')
       .eq('is_active', true)
       .limit(1);
-
-    if (domainsError) {
-      console.error('Domains fetch error:', domainsError);
-      return Response.json(
-        { error: domainsError.message || 'Failed to load domains' },
-        { status: 500 }
-      );
-    }
 
     if (!domains || domains.length === 0) {
       return Response.json(
@@ -166,8 +115,10 @@ export async function POST(request) {
     }
 
     const domainRow = domains[0];
+
     const { username, address } = await generateUniqueAddress(domainRow.name);
     const token = crypto.randomBytes(24).toString('hex');
+
     const expiresAt = new Date(Date.now() + getPlanLifetimeMs(plan));
 
     const { data: mailbox, error: insertError } = await supabase
@@ -178,7 +129,7 @@ export async function POST(request) {
           address,
           domain_id: domainRow.id,
           token,
-          user_id: userId,
+          user_id: userId, // 👈 can be NULL now
           expires_at: expiresAt.toISOString(),
           is_active: true,
         },
@@ -187,18 +138,16 @@ export async function POST(request) {
       .single();
 
     if (insertError) {
-      console.error('Insert error:', insertError);
       return Response.json(
-        { error: insertError.message || 'Failed to create mailbox' },
+        { error: insertError.message },
         { status: 500 }
       );
     }
 
     return Response.json(mailbox);
   } catch (err) {
-    console.error('Create mailbox error:', err);
     return Response.json(
-      { error: err.message || 'Internal server error' },
+      { error: err.message || 'Internal error' },
       { status: 500 }
     );
   }
