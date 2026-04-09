@@ -1,6 +1,8 @@
+// app/dashboard/page.js
+
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -27,19 +29,18 @@ export default function DashboardPage() {
   const [favorites, setFavorites] = useState({});
   const [activeFilter, setActiveFilter] = useState('all');
   const [toast, setToast] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
+
+  function normalizePlan(value) {
+    const v = String(value || 'free').toLowerCase();
+    if (v === 'spectre') return 'spectre';
+    if (v === 'phantom') return 'phantom';
+    return 'free';
+  }
 
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 2000);
   }
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   useEffect(() => {
     try {
@@ -60,86 +61,164 @@ export default function DashboardPage() {
     }
   }, [favorites]);
 
-  useEffect(() => {
-    let mounted = true;
+  const removeInactiveFromLocalState = useCallback((ids) => {
+    if (!ids?.length) return;
 
-    async function loadDashboard() {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+    setAddresses((prev) => prev.filter((a) => !ids.includes(a.id)));
 
-        if (!mounted) return;
+    setMailboxUsage((prev) => {
+      const next = { ...prev };
+      for (const id of ids) delete next[id];
+      return next;
+    });
 
-        if (!session?.user) {
-          window.location.replace('/login');
-          return;
-        }
+    setFavorites((prev) => {
+      const next = { ...prev };
+      for (const id of ids) delete next[id];
+      return next;
+    });
+  }, []);
 
-        setUser(session.user);
+  const cleanupExpiredMailboxes = useCallback(async (userId) => {
+    const nowIso = new Date().toISOString();
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('plan')
-          .eq('id', session.user.id)
-          .maybeSingle();
+    const { data: expiredRows, error: findError } = await supabase
+      .from('mailboxes')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .lte('expires_at', nowIso);
 
-        if (profile?.plan) setPlan(profile.plan);
+    if (findError) {
+      console.error('Failed to find expired mailboxes:', findError);
+      return;
+    }
 
-        const { data: mailboxes } = await supabase
-          .from('mailboxes')
-          .select('id, address, token, expires_at, created_at')
-          .eq('user_id', session.user.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
+    if (!expiredRows || expiredRows.length === 0) return;
 
-        const mailboxList = mailboxes || [];
-        setAddresses(mailboxList);
+    const expiredIds = expiredRows.map((row) => row.id);
 
-        const { count } = await supabase
+    const { error: deactivateError } = await supabase
+      .from('mailboxes')
+      .update({ is_active: false })
+      .in('id', expiredIds);
+
+    if (deactivateError) {
+      console.error('Failed to deactivate expired mailboxes:', deactivateError);
+      return;
+    }
+
+    removeInactiveFromLocalState(expiredIds);
+  }, [removeInactiveFromLocalState]);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      setError('');
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        window.location.replace('/login');
+        return;
+      }
+
+      setUser(session.user);
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      const nextPlan = normalizePlan(profile?.plan);
+      setPlan(nextPlan);
+
+      await cleanupExpiredMailboxes(session.user.id);
+
+      const { data: mailboxes, error: mailboxError } = await supabase
+        .from('mailboxes')
+        .select('id, address, token, expires_at, created_at')
+        .eq('user_id', session.user.id)
+        .eq('is_active', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (mailboxError) throw mailboxError;
+
+      const mailboxList = mailboxes || [];
+      setAddresses(mailboxList);
+
+      const { count } = await supabase
+        .from('emails')
+        .select('id', { count: 'exact', head: true });
+
+      setEmailCount(count || 0);
+
+      if (mailboxList.length > 0) {
+        const mailboxIds = mailboxList.map((m) => m.id);
+
+        const { data: emailsData, error: usageError } = await supabase
           .from('emails')
-          .select('id', { count: 'exact', head: true });
+          .select('id, mailbox_id')
+          .in('mailbox_id', mailboxIds);
 
-        setEmailCount(count || 0);
-
-        if (mailboxList.length > 0) {
-          const mailboxIds = mailboxList.map((m) => m.id);
-
-          const { data: emailsData, error: usageError } = await supabase
-            .from('emails')
-            .select('id, mailbox_id')
-            .in('mailbox_id', mailboxIds);
-
-          if (!usageError && emailsData) {
-            const usageMap = {};
-            for (const mailbox of mailboxList) {
-              usageMap[mailbox.id] = 0;
-            }
-            for (const email of emailsData) {
-              if (email.mailbox_id) {
-                usageMap[email.mailbox_id] = (usageMap[email.mailbox_id] || 0) + 1;
-              }
-            }
-            setMailboxUsage(usageMap);
-          } else {
-            setMailboxUsage({});
+        if (!usageError && emailsData) {
+          const usageMap = {};
+          for (const mailbox of mailboxList) {
+            usageMap[mailbox.id] = 0;
           }
+          for (const email of emailsData) {
+            if (email.mailbox_id) {
+              usageMap[email.mailbox_id] = (usageMap[email.mailbox_id] || 0) + 1;
+            }
+          }
+          setMailboxUsage(usageMap);
         } else {
           setMailboxUsage({});
         }
-
-        setStatus('ready');
-      } catch (err) {
-        setError(err.message || 'Failed to load dashboard');
-        setStatus('error');
+      } else {
+        setMailboxUsage({});
       }
-    }
 
+      setStatus('ready');
+    } catch (err) {
+      setError(err.message || 'Failed to load dashboard');
+      setStatus('error');
+    }
+  }, [cleanupExpiredMailboxes]);
+
+  useEffect(() => {
     loadDashboard();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !addresses.length) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const expiredIds = addresses
+        .filter((addr) => new Date(addr.expires_at).getTime() <= now)
+        .map((addr) => addr.id);
+
+      if (expiredIds.length) {
+        supabase
+          .from('mailboxes')
+          .update({ is_active: false })
+          .in('id', expiredIds)
+          .then(({ error: deactivateError }) => {
+            if (deactivateError) {
+              console.error('Live expiry cleanup failed:', deactivateError);
+              return;
+            }
+            removeInactiveFromLocalState(expiredIds);
+          });
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [status, addresses, removeInactiveFromLocalState]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -150,30 +229,30 @@ export default function DashboardPage() {
     setLoadingCreate(true);
     setError('');
 
-    if (plan === 'free' && addresses.length >= 1) {
-      setShowUpgrade(true);
-      setLoadingCreate(false);
-      return;
-    }
-
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      const headers = {};
-      if (session?.access_token) {
-        headers.Authorization = 'Bearer ' + session.access_token;
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to create an inbox');
       }
 
       const res = await fetch('/api/mailbox/create', {
         method: 'POST',
-        headers,
+        headers: {
+          Authorization: 'Bearer ' + session.access_token,
+        },
       });
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Failed to generate mailbox');
+      if (!res.ok) {
+        if (data?.code === 'FREE_PLAN_LIMIT') {
+          setShowUpgrade(true);
+        }
+        throw new Error(data.error || 'Failed to generate mailbox');
+      }
 
       setAddresses((prev) => [data, ...prev]);
       setMailboxUsage((prev) => ({ ...prev, [data.id]: 0 }));
@@ -202,26 +281,14 @@ export default function DashboardPage() {
     try {
       setDeleting(true);
 
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('mailboxes')
         .update({ is_active: false })
         .eq('id', selectedInbox.id);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
 
-      setAddresses((prev) => prev.filter((a) => a.id !== selectedInbox.id));
-
-      setMailboxUsage((prev) => {
-        const copy = { ...prev };
-        delete copy[selectedInbox.id];
-        return copy;
-      });
-
-      setFavorites((prev) => {
-        const copy = { ...prev };
-        delete copy[selectedInbox.id];
-        return copy;
-      });
+      removeInactiveFromLocalState([selectedInbox.id]);
 
       setDeleteModalOpen(false);
       setSelectedInbox(null);
@@ -293,7 +360,7 @@ export default function DashboardPage() {
   }
 
   function getPlanDisplayName(value) {
-    return (value || 'free').toUpperCase();
+    return normalizePlan(value).toUpperCase();
   }
 
   function formatCreatedDate(ts) {
@@ -464,12 +531,12 @@ export default function DashboardPage() {
                 {plan === 'free' ? (
                   <>
                     <a href="/#pricing" style={upgradeBtn}>
-  Upgrade plan
-</a>
+                      Upgrade plan
+                    </a>
 
-<p style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
-  Compare Phantom and Spectre on the pricing page
-</p>
+                    <p style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+                      Compare Phantom and Spectre on the pricing page
+                    </p>
                   </>
                 ) : (
                   <button style={manageBtn}>Manage billing</button>
@@ -648,9 +715,7 @@ export default function DashboardPage() {
 
                     <button
                       className="dashboard-action-btn"
-                      style={{
-                        ...deleteBtnInline,
-                      }}
+                      style={deleteBtnInline}
                       onClick={() => openDeleteModal(addr)}
                     >
                       Delete
@@ -1040,16 +1105,10 @@ const upgradeBtn = {
   color: '#fff',
   cursor: 'pointer',
   fontWeight: 700,
-};
-
-const upgradeBtnSecondary = {
-  padding: '10px 16px',
-  borderRadius: 10,
-  border: '1px solid #7c3aed',
-  background: 'transparent',
-  color: '#a78bfa',
-  cursor: 'pointer',
-  fontWeight: 700,
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 const manageBtn = {
