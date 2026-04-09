@@ -88,7 +88,7 @@ export async function GET(request) {
 
         if (activeOwnedMailboxes && activeOwnedMailboxes.length >= 1) {
           return Response.json(
-            { error: 'Free plan already has an active inbox' },
+            { error: 'You already have an active inbox. Delete it or wait until it expires.' }
             { status: 403 }
           );
         }
