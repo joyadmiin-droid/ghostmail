@@ -12,202 +12,94 @@ const NOUNS = ['fox', 'hawk', 'wolf', 'bear', 'lynx', 'crow', 'dart', 'ember', '
 function generateUsername() {
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  const num = Math.floor(100 + Math.random() * 900);
+  const num = Math.floor(Math.random() * 1000);
   return `${adj}${noun}${num}`;
-}
-
-function generateToken() {
-  return randomBytes(32).toString('hex');
-}
-
-function getExpiryForPlan(plan) {
-  switch (plan) {
-    case 'spectre':
-      return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-    case 'phantom':
-      return new Date(Date.now() + 24 * 60 * 60 * 1000);
-    default:
-      return new Date(Date.now() + 10 * 60 * 1000);
-  }
-}
-
-function getStartOfTodayIso() {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now.toISOString();
 }
 
 export async function POST(request) {
   try {
-    let plan = 'free';
-    let userId = null;
-
     const authHeader = request.headers.get('Authorization');
+
+    let userId = null;
+    let plan = 'free';
 
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '').trim();
 
-      if (token) {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser(token);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser(token);
 
-        if (userError) {
-          console.error('Auth getUser error:', userError);
-        }
+      if (user) {
+        userId = user.id;
 
-        if (user) {
-          userId = user.id;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', user.id)
+          .maybeSingle();
 
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('plan')
-            .eq('id', user.id)
-            .maybeSingle();
-
-          if (profileError) {
-            console.error('Profile fetch error:', profileError);
-          }
-
-          if (profile?.plan) {
-            plan = profile.plan;
-          }
-        }
+        plan = profile?.plan || 'free';
       }
     }
 
-    if (plan === 'free' && userId) {
-      const nowIso = new Date().toISOString();
-
-      const { count: activeInboxCount, error: activeCountErr } = await supabase
+    // 🔥 IMPORTANT: Restrict FREE users to 1 active inbox
+    if (userId && plan === 'free') {
+      const { data: activeMailboxes } = await supabase
         .from('mailboxes')
-        .select('id', { count: 'exact', head: true })
+        .select('id')
         .eq('user_id', userId)
         .eq('is_active', true)
-        .gt('expires_at', nowIso);
+        .gt('expires_at', new Date().toISOString());
 
-      if (activeCountErr) {
-        console.error('Active inbox count error:', activeCountErr);
-        return Response.json({ error: 'Failed to check active inbox limit' }, { status: 500 });
-      }
-
-      if ((activeInboxCount || 0) >= 1) {
-        return Response.json(
-          {
-            error: 'Free plan allows only 1 active inbox at a time.',
-            code: 'FREE_ACTIVE_LIMIT',
-          },
-          { status: 403 }
-        );
-      }
-
-      const { count: createdTodayCount, error: dailyCountErr } = await supabase
-        .from('mailboxes')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', getStartOfTodayIso());
-
-      if (dailyCountErr) {
-        console.error('Daily inbox count error:', dailyCountErr);
-        return Response.json({ error: 'Failed to check daily inbox limit' }, { status: 500 });
-      }
-
-      if ((createdTodayCount || 0) >= 3) {
+      if (activeMailboxes && activeMailboxes.length >= 1) {
         return Response.json(
           {
             error: 'Free plan allows 1 active inbox at a time.',
-            code: 'FREE_DAILY_LIMIT',
+            code: 'FREE_PLAN_LIMIT',
           },
           { status: 403 }
         );
       }
     }
 
-    const { data: domains, error: domainErr } = await supabase
-      .from('domains')
-      .select('id, name')
-      .eq('is_active', true)
-      .limit(10);
+    const username = generateUsername();
+    const domain = 'ghostmails.org';
+    const address = `${username}@${domain}`;
+    const token = randomBytes(24).toString('hex');
 
-    if (domainErr) {
-      console.error('Domain fetch error:', domainErr);
-      return Response.json({ error: 'Failed to load active domains' }, { status: 500 });
+    let expiresAt;
+
+    if (plan === 'spectre') {
+      expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+    } else if (plan === 'phantom') {
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+    } else {
+      expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
     }
 
-    if (!domains?.length) {
-      return Response.json({ error: 'No active domains available' }, { status: 503 });
-    }
-
-    const domain = domains[Math.floor(Math.random() * domains.length)];
-
-    let username;
-    let address;
-    let existing = null;
-    let attempts = 0;
-
-    do {
-      username = generateUsername();
-      address = `${username}@${domain.name}`;
-
-      const { data, error: existingErr } = await supabase
-        .from('mailboxes')
-        .select('id')
-        .eq('address', address)
-        .maybeSingle();
-
-      if (existingErr) {
-        console.error('Mailbox uniqueness check error:', existingErr);
-        return Response.json({ error: 'Failed to verify mailbox uniqueness' }, { status: 500 });
-      }
-
-      existing = data;
-      attempts++;
-    } while (existing && attempts < 5);
-
-    if (existing) {
-      return Response.json({ error: 'Could not generate unique address, try again' }, { status: 500 });
-    }
-
-    const token = generateToken();
-    const expiresAt = getExpiryForPlan(plan);
-
-    const { data: mailbox, error: insertErr } = await supabase
+    const { data: mailbox, error } = await supabase
       .from('mailboxes')
-      .insert({
-        address,
-        username,
-        domain_id: domain.id,
-        token,
-        expires_at: expiresAt.toISOString(),
-        is_active: true,
-        user_id: userId,
-      })
-      .select('id, address, token, expires_at, created_at')
+      .insert([
+        {
+          address,
+          token,
+          user_id: userId,
+          expires_at: expiresAt.toISOString(),
+          is_active: true,
+        },
+      ])
+      .select()
       .single();
 
-    if (insertErr) {
-      console.error('Mailbox insert error:', insertErr);
-      return Response.json(
-        { error: insertErr.message || 'Failed to create mailbox' },
-        { status: 500 }
-      );
+    if (error) {
+      console.error('Insert error:', error);
+      return Response.json({ error: 'Failed to create mailbox' }, { status: 500 });
     }
 
-    return Response.json({
-      id: mailbox.id,
-      address: mailbox.address,
-      token: mailbox.token,
-      expires_at: mailbox.expires_at,
-      created_at: mailbox.created_at,
-      plan,
-    });
+    return Response.json(mailbox);
   } catch (err) {
-    console.error('Unexpected mailbox route error:', err);
+    console.error('Create mailbox error:', err);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-export async function GET() {
-  return Response.json({ error: 'Method not allowed' }, { status: 405 });
 }
