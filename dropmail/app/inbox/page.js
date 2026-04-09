@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import { useState, useEffect, useCallback, Suspense, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
@@ -27,6 +27,9 @@ function InboxContent() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [autoRefreshSeconds, setAutoRefreshSeconds] = useState(0);
+  const [mailboxExpired, setMailboxExpired] = useState(false);
+
+  const hasCleanedExpiredMailbox = useRef(false);
 
   function showToast(message) {
     setToast(message);
@@ -98,6 +101,25 @@ function InboxContent() {
     };
   }, [token]);
 
+  const cleanupExpiredMailbox = useCallback(async (mailboxId) => {
+    if (!mailboxId || hasCleanedExpiredMailbox.current) return;
+
+    hasCleanedExpiredMailbox.current = true;
+
+    try {
+      const { error: deactivateError } = await supabase
+        .from('mailboxes')
+        .update({ is_active: false })
+        .eq('id', mailboxId);
+
+      if (deactivateError) {
+        console.error('Failed to deactivate expired mailbox:', deactivateError);
+      }
+    } catch (err) {
+      console.error('Expired mailbox cleanup failed:', err);
+    }
+  }, []);
+
   const fetchEmails = useCallback(
     async (showRefreshState = false) => {
       if (!token || !isLoggedIn) {
@@ -129,16 +151,30 @@ function InboxContent() {
           throw new Error(data.error || 'Failed to load inbox');
         }
 
+        const nextMailbox = data.mailbox || null;
         const nextEmails = data.emails || [];
 
-        setMailbox(data.mailbox || null);
+        if (nextMailbox?.expires_at && new Date(nextMailbox.expires_at) <= new Date()) {
+          setMailbox(nextMailbox);
+          setEmails([]);
+          setMailboxExpired(true);
+          await cleanupExpiredMailbox(nextMailbox.id);
+          setError('This inbox has expired.');
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+
+        setMailbox(nextMailbox);
         setEmails(nextEmails);
+        setMailboxExpired(false);
+        hasCleanedExpiredMailbox.current = false;
         setError(null);
 
-        setSelected(prev => {
+        setSelected((prev) => {
           if (!nextEmails.length) return null;
           if (!prev) return nextEmails[0];
-          const stillExists = nextEmails.find(e => e.id === prev.id);
+          const stillExists = nextEmails.find((e) => e.id === prev.id);
           return stillExists || nextEmails[0];
         });
       } catch (err) {
@@ -148,7 +184,7 @@ function InboxContent() {
         setRefreshing(false);
       }
     },
-    [token, isLoggedIn]
+    [token, isLoggedIn, cleanupExpiredMailbox]
   );
 
   useEffect(() => {
@@ -157,23 +193,25 @@ function InboxContent() {
   }, [fetchEmails, authChecked, isLoggedIn]);
 
   useEffect(() => {
-    if (!autoRefreshSeconds || !token || !isLoggedIn) return;
+    if (!autoRefreshSeconds || !token || !isLoggedIn || mailboxExpired) return;
 
     const interval = setInterval(() => {
       fetchEmails(false);
     }, autoRefreshSeconds * 1000);
 
     return () => clearInterval(interval);
-  }, [autoRefreshSeconds, token, fetchEmails, isLoggedIn]);
+  }, [autoRefreshSeconds, token, fetchEmails, isLoggedIn, mailboxExpired]);
 
   useEffect(() => {
     if (!mailbox?.expires_at) return;
 
-    const tick = () => {
+    const tick = async () => {
       const diff = new Date(mailbox.expires_at) - new Date();
 
       if (diff <= 0) {
         setTimeLeft('Expired');
+        setMailboxExpired(true);
+        await cleanupExpiredMailbox(mailbox.id);
         return;
       }
 
@@ -196,7 +234,7 @@ function InboxContent() {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [mailbox]);
+  }, [mailbox, cleanupExpiredMailbox]);
 
   async function copyAddress() {
     if (!mailbox?.address) return;
@@ -227,10 +265,10 @@ function InboxContent() {
   async function markRead(emailId) {
     try {
       await fetch('/api/mailbox/read?id=' + emailId, { method: 'POST' });
-      setEmails(prev =>
-        prev.map(e => (e.id === emailId ? { ...e, is_read: true } : e))
+      setEmails((prev) =>
+        prev.map((e) => (e.id === emailId ? { ...e, is_read: true } : e))
       );
-      setSelected(prev => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
+      setSelected((prev) => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
     } catch (err) {
       console.error('Mark read failed:', err);
     }
@@ -291,16 +329,17 @@ function InboxContent() {
     const genericMatches = text.match(/\b\d{4,8}\b/g) || [];
     if (!genericMatches.length) return null;
 
-    const filtered = genericMatches.filter(code => !/^\d{4}$/.test(code) || Number(code) > 1900);
+    const filtered = genericMatches.filter((code) => !/^\d{4}$/.test(code) || Number(code) > 1900);
     return filtered[0] || genericMatches[0] || null;
   }
 
   const detectedCode = useMemo(() => extractCode(selected), [selected]);
-  const unreadCount = emails.filter(e => !e.is_read).length;
+  const unreadCount = emails.filter((e) => !e.is_read).length;
   const isExpiringSoon =
     mailbox &&
     mailbox.expires_at &&
-    new Date(mailbox.expires_at) < new Date(Date.now() + 2 * 60 * 1000);
+    new Date(mailbox.expires_at) < new Date(Date.now() + 2 * 60 * 1000) &&
+    !mailboxExpired;
 
   if (!token) {
     return (
@@ -326,15 +365,20 @@ function InboxContent() {
     );
   }
 
-  if (error) {
+  if (error || mailboxExpired) {
     return (
       <main style={centerWrap}>
         <div style={emptyCard}>
           <div style={emptyIcon}>📭</div>
-          <h2 style={emptyTitle}>Inbox not found</h2>
-          <p style={emptyText}>This inbox may have expired or the link is invalid.</p>
-          <p style={errorText}>{error}</p>
-          <a href="/" style={primaryLink}>Generate a new address</a>
+          <h2 style={emptyTitle}>Inbox expired</h2>
+          <p style={emptyText}>
+            This inbox has expired and was removed automatically from your active inboxes.
+          </p>
+          <p style={errorText}>{error || 'Please generate a new address.'}</p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/dashboard" style={primaryLink}>Back to dashboard</a>
+            <a href="/" style={secondaryLink}>Go home</a>
+          </div>
         </div>
       </main>
     );
@@ -390,94 +434,86 @@ function InboxContent() {
         }
       `}</style>
 
-      <header
-        style={{
-          ...topHeader,
-          padding: isMobile ? '12px 14px' : '14px 18px',
-        }}
-      >
-        <a href="/" style={brandLink}>
-          <span style={brandIcon}>✦</span>
-          <span style={brandText}>GhostMail</span>
-        </a>
-
+      <header style={topHeader}>
         <div
           style={{
-            ...headerActions,
-            width: isMobile ? '100%' : 'auto',
-            justifyContent: isMobile ? 'space-between' : 'flex-end',
+            ...topHeaderInner,
+            padding: isMobile ? '12px 14px' : '14px 18px',
           }}
         >
-          {timeLeft && (
-            <div
-              style={{
-                ...timeBadge,
-                background: isExpiringSoon
-                  ? 'rgba(248,113,113,0.14)'
-                  : 'rgba(167,139,250,0.12)',
-                borderColor: isExpiringSoon
-                  ? 'rgba(248,113,113,0.34)'
-                  : 'rgba(167,139,250,0.30)',
-                boxShadow: isExpiringSoon
-                  ? '0 0 26px rgba(248,113,113,0.10)'
-                  : '0 0 22px rgba(167,139,250,0.08)',
-              }}
-            >
-              <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
-              <span
-                style={{
-                  color: isExpiringSoon ? '#fca5a5' : '#e8deff',
-                  fontFamily: 'monospace',
-                  fontWeight: 800,
-                }}
-              >
-                {timeLeft}
-              </span>
-            </div>
-          )}
+          <a href="/" style={brandLink}>
+            <span style={brandIcon}>✦</span>
+            <span style={brandText}>GhostMail</span>
+          </a>
 
-          <button
-            type="button"
-            onClick={async () => {
-              await fetchEmails(true);
-              showToast('Inbox updated');
-            }}
-            disabled={refreshing}
-            className="action-btn"
+          <div
             style={{
-              ...ghostButton,
-              opacity: refreshing ? 0.75 : 1,
-              cursor: refreshing ? 'default' : 'pointer',
+              ...headerActions,
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: isMobile ? 'space-between' : 'flex-end',
             }}
           >
-            <div style={{ display: 'flex', gap: '10px' }}>
-  <button
-    onClick={fetchInbox}
-    disabled={refreshing}
-    className="action-btn"
-    style={{
-      ...ghostButton,
-      opacity: refreshing ? 0.75 : 1,
-      cursor: refreshing ? 'default' : 'pointer',
-    }}
-  >
-    {refreshing ? 'Refreshing...' : 'Refresh'}
-  </button>
+            {timeLeft && (
+              <div
+                style={{
+                  ...timeBadge,
+                  background: isExpiringSoon
+                    ? 'rgba(248,113,113,0.14)'
+                    : 'rgba(167,139,250,0.12)',
+                  borderColor: isExpiringSoon
+                    ? 'rgba(248,113,113,0.34)'
+                    : 'rgba(167,139,250,0.30)',
+                  boxShadow: isExpiringSoon
+                    ? '0 0 26px rgba(248,113,113,0.10)'
+                    : '0 0 22px rgba(167,139,250,0.08)',
+                }}
+              >
+                <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
+                <span
+                  style={{
+                    color: isExpiringSoon ? '#fca5a5' : '#e8deff',
+                    fontFamily: 'monospace',
+                    fontWeight: 800,
+                  }}
+                >
+                  {timeLeft}
+                </span>
+              </div>
+            )}
 
-  <a
-    href="/dashboard"
-    style={{
-      ...ghostButton,
-      textDecoration: 'none',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}
-  >
-    Dashboard
-  </a>
-</div>
-          </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetchEmails(true);
+                  showToast('Inbox updated');
+                }}
+                disabled={refreshing}
+                className="action-btn"
+                style={{
+                  ...ghostButton,
+                  opacity: refreshing ? 0.75 : 1,
+                  cursor: refreshing ? 'default' : 'pointer',
+                }}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+
+              <a
+                href="/dashboard"
+                className="action-btn"
+                style={{
+                  ...ghostButton,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                Dashboard
+              </a>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -522,7 +558,7 @@ function InboxContent() {
             <div style={sectionLabel}>Auto refresh</div>
             <select
               value={autoRefreshSeconds}
-              onChange={e => setAutoRefreshSeconds(Number(e.target.value))}
+              onChange={(e) => setAutoRefreshSeconds(Number(e.target.value))}
               style={autoRefreshSelect}
             >
               <option value={0}>Off</option>
@@ -592,7 +628,7 @@ function InboxContent() {
               </div>
             ) : (
               <div className="email-scroll" style={emailListWrap}>
-                {emails.map(email => {
+                {emails.map((email) => {
                   const active = selected?.id === email.id;
 
                   return (
@@ -983,6 +1019,17 @@ const primaryLink = {
   fontWeight: 800,
   display: 'inline-block',
   boxShadow: '0 12px 30px rgba(139,92,246,0.28)',
+};
+
+const secondaryLink = {
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  padding: '11px 24px',
+  borderRadius: '999px',
+  textDecoration: 'none',
+  fontWeight: 800,
+  display: 'inline-block',
+  border: '1px solid rgba(255,255,255,0.10)',
 };
 
 const spinner = {
