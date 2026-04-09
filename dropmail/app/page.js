@@ -77,6 +77,8 @@ export default function Home() {
 
         if (profile?.plan && mounted) {
           setPlan(profile.plan);
+        } else {
+          setPlan('free');
         }
       } else {
         setPlan('free');
@@ -94,9 +96,21 @@ export default function Home() {
     setError(null);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/mailbox/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       });
 
       const text = await res.text();
@@ -125,6 +139,21 @@ export default function Home() {
     await navigator.clipboard.writeText(addr);
     setCopied(addr);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleOpenInbox() {
+    if (!mailbox?.token) return;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      window.location.href = `/login?next=${encodeURIComponent(`/inbox?token=${mailbox.token}`)}`;
+      return;
+    }
+
+    window.location.href = `/inbox?token=${mailbox.token}`;
   }
 
   function getExpiryLabel(expiresAt) {
@@ -178,12 +207,12 @@ export default function Home() {
         </h1>
 
         <p className={styles.sub}>
-          Create secure, <strong>short-lived email inboxes for QA testing,</strong> for QA testing, integrations, and protecting your primary email.
+          Create secure, <strong>short-lived email inboxes for QA testing,</strong> integrations, and protecting your primary email.
         </p>
 
         <p className={styles.trustLine}>
           GhostMail is designed for developers, QA testing, and privacy protection.
-We actively prevent abuse, spam, and misuse of the platform.
+          We actively prevent abuse, spam, and misuse of the platform.
         </p>
 
         <p className={styles.helperLine}>
@@ -246,12 +275,13 @@ We actively prevent abuse, spam, and misuse of the platform.
               </div>
 
               <div className={styles.actionRow}>
-                <a
-                  href={`/inbox?token=${mailbox.token}`}
+                <button
+                  onClick={handleOpenInbox}
                   className={`${styles.btnSecondary} ${styles.linkButton}`}
+                  type="button"
                 >
                   Open Inbox
-                </a>
+                </button>
 
                 <button
                   onClick={generateMailbox}
@@ -265,7 +295,9 @@ We actively prevent abuse, spam, and misuse of the platform.
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                Bookmark your inbox link if you want quick access before expiry.
+                {user
+                  ? 'Your inbox is tied to your account plan and expires automatically.'
+                  : 'Sign in is required before opening and managing this inbox.'}
               </p>
             </div>
           )}
@@ -285,9 +317,9 @@ We actively prevent abuse, spam, and misuse of the platform.
 
             <div className={styles.howCard}>
               <span className={styles.howStep}>02</span>
-              <h3 className={styles.howCardTitle}>Receive</h3>
+              <h3 className={styles.howCardTitle}>Sign in to open inbox</h3>
               <p className={styles.howCardText}>
-                Use it for testing signups, onboarding flows, OTPs, and app emails.
+                Access and manage your inbox through your GhostMail account.
               </p>
             </div>
 
@@ -372,7 +404,7 @@ We actively prevent abuse, spam, and misuse of the platform.
                 <p>• 1 private inbox at a time</p>
                 <p>• 10-minute expiry</p>
                 <p>• Fast generation for testing</p>
-                <p>• No account required</p>
+                <p>• Sign in required to open inbox</p>
               </div>
 
               <button

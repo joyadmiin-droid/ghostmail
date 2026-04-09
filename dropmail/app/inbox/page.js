@@ -24,6 +24,7 @@ function InboxContent() {
   const [copied, setCopied] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [autoRefreshSeconds, setAutoRefreshSeconds] = useState(0);
 
@@ -56,10 +57,22 @@ function InboxContent() {
         } = await supabase.auth.getSession();
 
         if (!mounted) return;
-        setIsLoggedIn(!!session?.user);
+
+        const loggedIn = !!session?.user;
+        setIsLoggedIn(loggedIn);
+        setAuthChecked(true);
+
+        if (!loggedIn && token) {
+          window.location.href = `/login?next=${encodeURIComponent(`/inbox?token=${token}`)}`;
+        }
       } catch {
         if (!mounted) return;
         setIsLoggedIn(false);
+        setAuthChecked(true);
+
+        if (token) {
+          window.location.href = `/login?next=${encodeURIComponent(`/inbox?token=${token}`)}`;
+        }
       }
     }
 
@@ -69,18 +82,25 @@ function InboxContent() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      setIsLoggedIn(!!session?.user);
+
+      const loggedIn = !!session?.user;
+      setIsLoggedIn(loggedIn);
+      setAuthChecked(true);
+
+      if (!loggedIn && token) {
+        window.location.href = `/login?next=${encodeURIComponent(`/inbox?token=${token}`)}`;
+      }
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [token]);
 
   const fetchEmails = useCallback(
     async (showRefreshState = false) => {
-      if (!token) {
+      if (!token || !isLoggedIn) {
         setLoading(false);
         return;
       }
@@ -90,7 +110,19 @@ function InboxContent() {
       }
 
       try {
-        const res = await fetch('/api/mailbox/inbox?token=' + encodeURIComponent(token));
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const headers = {};
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+
+        const res = await fetch('/api/mailbox/inbox?token=' + encodeURIComponent(token), {
+          headers,
+        });
+
         const data = await res.json();
 
         if (!res.ok) {
@@ -116,22 +148,23 @@ function InboxContent() {
         setRefreshing(false);
       }
     },
-    [token]
+    [token, isLoggedIn]
   );
 
   useEffect(() => {
+    if (!authChecked || !isLoggedIn) return;
     fetchEmails(false);
-  }, [fetchEmails]);
+  }, [fetchEmails, authChecked, isLoggedIn]);
 
   useEffect(() => {
-    if (!autoRefreshSeconds || !token) return;
+    if (!autoRefreshSeconds || !token || !isLoggedIn) return;
 
     const interval = setInterval(() => {
       fetchEmails(false);
     }, autoRefreshSeconds * 1000);
 
     return () => clearInterval(interval);
-  }, [autoRefreshSeconds, token, fetchEmails]);
+  }, [autoRefreshSeconds, token, fetchEmails, isLoggedIn]);
 
   useEffect(() => {
     if (!mailbox?.expires_at) return;
@@ -263,9 +296,6 @@ function InboxContent() {
   }
 
   const detectedCode = useMemo(() => extractCode(selected), [selected]);
-
-  const visibleEmails = isLoggedIn ? emails : emails.slice(0, 1);
-  const hasHiddenEmails = !isLoggedIn && emails.length > 1;
   const unreadCount = emails.filter(e => !e.is_read).length;
   const isExpiringSoon =
     mailbox &&
@@ -285,7 +315,7 @@ function InboxContent() {
     );
   }
 
-  if (loading) {
+  if (!authChecked || loading) {
     return (
       <main style={centerWrap}>
         <div style={{ textAlign: 'center' }}>
@@ -422,12 +452,6 @@ function InboxContent() {
           >
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-
-          {!isLoggedIn && (
-            <a href="/login" style={smallCta}>
-              Sign in
-            </a>
-          )}
         </div>
       </header>
 
@@ -541,87 +565,70 @@ function InboxContent() {
                 </p>
               </div>
             ) : (
-              <>
-                <div className="email-scroll" style={emailListWrap}>
-                  {visibleEmails.map(email => {
-                    const active = selected?.id === email.id;
+              <div className="email-scroll" style={emailListWrap}>
+                {emails.map(email => {
+                  const active = selected?.id === email.id;
 
-                    return (
-                      <button
-                        key={email.id}
-                        type="button"
-                        onClick={() => openEmail(email)}
-                        className="mail-card"
-                        style={{
-                          ...emailRow,
-                          padding: isMobile ? '14px' : '16px',
-                          background: active
-                            ? 'linear-gradient(180deg, rgba(167,139,250,0.17), rgba(167,139,250,0.07))'
-                            : 'rgba(255,255,255,0.03)',
-                          borderColor: active
-                            ? 'rgba(167,139,250,0.42)'
-                            : 'rgba(255,255,255,0.05)',
-                          boxShadow: active
-                            ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 30px rgba(167,139,250,0.10), 0 20px 38px rgba(0,0,0,0.18)'
-                            : '0 12px 24px rgba(0,0,0,0.10)',
-                        }}
-                      >
-                        <div style={avatarCircle}>{getInitials(email)}</div>
+                  return (
+                    <button
+                      key={email.id}
+                      type="button"
+                      onClick={() => openEmail(email)}
+                      className="mail-card"
+                      style={{
+                        ...emailRow,
+                        padding: isMobile ? '14px' : '16px',
+                        background: active
+                          ? 'linear-gradient(180deg, rgba(167,139,250,0.17), rgba(167,139,250,0.07))'
+                          : 'rgba(255,255,255,0.03)',
+                        borderColor: active
+                          ? 'rgba(167,139,250,0.42)'
+                          : 'rgba(255,255,255,0.05)',
+                        boxShadow: active
+                          ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 30px rgba(167,139,250,0.10), 0 20px 38px rgba(0,0,0,0.18)'
+                          : '0 12px 24px rgba(0,0,0,0.10)',
+                      }}
+                    >
+                      <div style={avatarCircle}>{getInitials(email)}</div>
 
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={emailRowTop}>
-                            <span
-                              style={{
-                                ...senderText,
-                                color: email.is_read ? '#d4cdea' : '#ffffff',
-                                fontWeight: email.is_read ? 600 : 800,
-                              }}
-                            >
-                              {email.from_name || email.from_address}
-                            </span>
-
-                            <span style={emailDate}>{formatTime(email.received_at)}</span>
-                          </div>
-
-                          <div
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={emailRowTop}>
+                          <span
                             style={{
-                              ...emailSubject,
-                              color: active ? '#ffffff' : '#efe9ff',
+                              ...senderText,
+                              color: email.is_read ? '#d4cdea' : '#ffffff',
+                              fontWeight: email.is_read ? 600 : 800,
                             }}
                           >
-                            {getDisplaySubject(email)}
-                          </div>
+                            {email.from_name || email.from_address}
+                          </span>
 
-                          <div style={emailPreviewRow}>
-                            <span style={previewText}>
-                              {email.body_text
-                                ? email.body_text.replace(/\s+/g, ' ').trim()
-                                : email.from_address || 'No preview available'}
-                            </span>
-
-                            {!email.is_read && <span style={unreadDot} />}
-                          </div>
+                          <span style={emailDate}>{formatTime(email.received_at)}</span>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
 
-                {hasHiddenEmails && (
-                  <div style={lockedBox}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔐</div>
-                    <div style={lockedTitle}>
-                      {emails.length - 1} more email{emails.length - 1 !== 1 ? 's' : ''}
-                    </div>
-                    <div style={lockedText}>
-                      Sign up free to unlock all emails, keep inboxes longer, and manage them better.
-                    </div>
-                    <a href="/login" style={primaryLinkSmall}>
-                      Sign up free
-                    </a>
-                  </div>
-                )}
-              </>
+                        <div
+                          style={{
+                            ...emailSubject,
+                            color: active ? '#ffffff' : '#efe9ff',
+                          }}
+                        >
+                          {getDisplaySubject(email)}
+                        </div>
+
+                        <div style={emailPreviewRow}>
+                          <span style={previewText}>
+                            {email.body_text
+                              ? email.body_text.replace(/\s+/g, ' ').trim()
+                              : email.from_address || 'No preview available'}
+                          </span>
+
+                          {!email.is_read && <span style={unreadDot} />}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </aside>
 
@@ -824,19 +831,6 @@ function InboxContent() {
             )}
           </section>
         </div>
-
-        {!isLoggedIn && (
-          <div style={bottomPromo}>
-            <div style={promoText}>
-              👻 <span style={{ color: '#e9ddff', fontWeight: 800 }}>Free plan</span> — addresses expire in 10 minutes. Sign up for longer-lived inboxes.
-            </div>
-
-            <div style={headerActions}>
-              <a href="/login" style={primaryLinkSmall}>Sign up free</a>
-              <a href="/login" style={secondaryLink}>Sign in</a>
-            </div>
-          </div>
-        )}
       </div>
 
       {toast && (
@@ -965,28 +959,6 @@ const primaryLink = {
   boxShadow: '0 12px 30px rgba(139,92,246,0.28)',
 };
 
-const primaryLinkSmall = {
-  background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
-  color: '#fff',
-  padding: '9px 14px',
-  borderRadius: '10px',
-  textDecoration: 'none',
-  fontSize: '13px',
-  fontWeight: 800,
-  boxShadow: '0 10px 24px rgba(139,92,246,0.18)',
-};
-
-const secondaryLink = {
-  padding: '8px 14px',
-  borderRadius: '10px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  color: '#d1cae8',
-  background: 'rgba(255,255,255,0.03)',
-  fontSize: '13px',
-  fontWeight: 700,
-  textDecoration: 'none',
-};
-
 const spinner = {
   width: '34px',
   height: '34px',
@@ -1062,17 +1034,6 @@ const ghostButton = {
   color: '#fff',
   fontSize: '13px',
   fontWeight: 700,
-};
-
-const smallCta = {
-  background: 'rgba(167,139,250,0.14)',
-  color: '#d8ccff',
-  border: '1px solid rgba(167,139,250,0.28)',
-  borderRadius: '999px',
-  padding: '8px 14px',
-  fontSize: '13px',
-  fontWeight: 800,
-  textDecoration: 'none',
 };
 
 const topInfoGrid = {
@@ -1338,30 +1299,6 @@ const emailDate = {
   flexShrink: 0,
 };
 
-const lockedBox = {
-  margin: '14px',
-  padding: '18px',
-  background: 'rgba(167,139,250,0.07)',
-  border: '1px solid rgba(167,139,250,0.18)',
-  borderRadius: '18px',
-  textAlign: 'center',
-  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
-};
-
-const lockedTitle = {
-  fontSize: '14px',
-  fontWeight: 800,
-  color: '#fff',
-  marginBottom: '6px',
-};
-
-const lockedText = {
-  fontSize: '12px',
-  color: '#a095be',
-  marginBottom: '14px',
-  lineHeight: 1.6,
-};
-
 const viewerInner = {
   padding: '26px',
 };
@@ -1519,25 +1456,6 @@ const noSelectionText = {
   fontSize: '14px',
   color: '#9289ab',
   margin: 0,
-};
-
-const bottomPromo = {
-  marginTop: '18px',
-  borderTop: '1px solid rgba(167,139,250,0.14)',
-  background: 'rgba(167,139,250,0.05)',
-  padding: '14px 18px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  flexWrap: 'wrap',
-  gap: '12px',
-  borderRadius: '18px',
-};
-
-const promoText = {
-  fontSize: '13px',
-  color: '#b0a7c9',
-  lineHeight: 1.6,
 };
 
 const footerWrap = {
