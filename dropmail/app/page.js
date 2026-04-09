@@ -295,7 +295,8 @@ export default function Home() {
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                Open Inbox will ask for login if needed. Your address is already generated.
+                Login only when you open the inbox.
+No signup needed to generate.
               </p>
             </div>
           )}
