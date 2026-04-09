@@ -450,7 +450,33 @@ function InboxContent() {
               cursor: refreshing ? 'default' : 'pointer',
             }}
           >
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            <div style={{ display: 'flex', gap: '10px' }}>
+  <button
+    onClick={fetchInbox}
+    disabled={refreshing}
+    className="action-btn"
+    style={{
+      ...ghostButton,
+      opacity: refreshing ? 0.75 : 1,
+      cursor: refreshing ? 'default' : 'pointer',
+    }}
+  >
+    {refreshing ? 'Refreshing...' : 'Refresh'}
+  </button>
+
+  <a
+    href="/dashboard"
+    style={{
+      ...ghostButton,
+      textDecoration: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    Dashboard
+  </a>
+</div>
           </button>
         </div>
       </header>
