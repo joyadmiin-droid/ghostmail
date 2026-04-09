@@ -38,9 +38,7 @@ export default function Home() {
             .eq('id', session.user.id)
             .maybeSingle();
 
-          if (profile?.plan && mounted) {
-            setPlan(profile.plan);
-          }
+          setPlan(profile?.plan || 'free');
         }
 
         const today = new Date();
@@ -75,19 +73,49 @@ export default function Home() {
           .eq('id', session.user.id)
           .maybeSingle();
 
-        if (profile?.plan && mounted) {
-          setPlan(profile.plan);
-        } else {
-          setPlan('free');
-        }
+        setPlan(profile?.plan || 'free');
       } else {
         setPlan('free');
       }
     });
 
+    // 🔥 FIX: refresh session when tab becomes active again
+    const handleFocus = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        setUser(session.user);
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        setPlan(profile?.plan || 'free');
+      } else {
+        setUser(null);
+        setPlan('free');
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleFocus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -113,14 +141,7 @@ export default function Home() {
         headers,
       });
 
-      const text = await res.text();
-      let data = null;
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('Server returned invalid JSON');
-      }
+      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.error || 'Failed to generate address');
@@ -196,10 +217,6 @@ export default function Home() {
       </header>
 
       <section className={styles.hero}>
-        <div className={styles.tagline}>
-          PRIVATE EMAIL FOR DEVELOPERS & TESTING
-        </div>
-
         <h1 className={styles.headline}>
           Private email inbox for
           <br />
@@ -207,16 +224,7 @@ export default function Home() {
         </h1>
 
         <p className={styles.sub}>
-          Create secure, <strong>short-lived email inboxes for QA testing,</strong> integrations, and protecting your primary email.
-        </p>
-
-        <p className={styles.trustLine}>
-          GhostMail is designed for developers, QA testing, and privacy protection.
-          We actively prevent abuse, spam, and misuse of the platform.
-        </p>
-
-        <p className={styles.helperLine}>
-          Built for responsible use with automatic expiration and abuse prevention.
+          Create secure, <strong>short-lived email inboxes for QA testing</strong>.
         </p>
 
         {totalEmails !== null && (
@@ -227,262 +235,30 @@ export default function Home() {
 
         <div className={styles.card}>
           {!mailbox ? (
-            <div className={styles.cardInner}>
-              <button
-                className={styles.btnPrimary}
-                onClick={generateMailbox}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className={styles.spinner}></span>
-                    Generating...
-                  </>
-                ) : (
-                  'Generate My Address'
-                )}
-              </button>
-
-              {error && <p className={styles.errorMsg}>{error}</p>}
-
-              <p className={styles.tokenNote}>
-                Fast, private inboxes for development and testing.
-              </p>
-            </div>
+            <button
+              className={styles.btnPrimary}
+              onClick={generateMailbox}
+              disabled={loading}
+            >
+              {loading ? 'Generating...' : 'Generate My Address'}
+            </button>
           ) : (
-            <div className={styles.cardInner}>
-              <div className={styles.addressRow}>
-                <span className={styles.addressLabel}>Your temporary inbox</span>
+            <>
+              <div>{mailbox.address}</div>
 
-                <div className={styles.addressBox}>
-                  <span className={styles.addressText}>{mailbox.address}</span>
-
-                  <button
-                    onClick={() => copyAddress(mailbox.address)}
-                    className={`${styles.copyBtn} ${copied === mailbox.address ? styles.copied : ''}`}
-                    type="button"
-                  >
-                    {copied === mailbox.address ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.metaRow}>
-                <span className={styles.activePill}>● Active</span>
-                <span className={styles.expiryText}>
-                  {getExpiryLabel(mailbox.expires_at)}
-                </span>
-              </div>
-
-              <div className={styles.actionRow}>
-                <button
-                  onClick={handleOpenInbox}
-                  className={`${styles.btnSecondary} ${styles.linkButton}`}
-                  type="button"
-                >
-                  Open Inbox
-                </button>
-
-                <button
-                  onClick={generateMailbox}
-                  className={styles.btnSecondary}
-                  type="button"
-                >
-                  New Address
-                </button>
-              </div>
-
-              {error && <p className={styles.errorMsg}>{error}</p>}
-
-              <p className={styles.tokenNote}>
-                {user
-                  ? 'Your inbox is tied to your account plan and expires automatically.'
-                  : 'Sign in is required before opening and managing this inbox.'}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <section className={styles.howSection}>
-          <h2 className={styles.howTitle}>How it works</h2>
-
-          <div className={styles.howGrid}>
-            <div className={styles.howCard}>
-              <span className={styles.howStep}>01</span>
-              <h3 className={styles.howCardTitle}>Generate</h3>
-              <p className={styles.howCardText}>
-                Create a private test inbox instantly.
-              </p>
-            </div>
-
-            <div className={styles.howCard}>
-              <span className={styles.howStep}>02</span>
-              <h3 className={styles.howCardTitle}>Sign in to open inbox</h3>
-              <p className={styles.howCardText}>
-                Access and manage your inbox through your GhostMail account.
-              </p>
-            </div>
-
-            <div className={styles.howCard}>
-              <span className={styles.howStep}>03</span>
-              <h3 className={styles.howCardTitle}>Auto-delete</h3>
-              <p className={styles.howCardText}>
-                The inbox expires automatically, keeping your workflow clean and short-lived.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.perfectSection}>
-          <h2 className={styles.perfectTitle}>Perfect for</h2>
-
-          <div className={styles.perfectGrid}>
-            <div className={styles.perfectCard}>
-              <h3 className={styles.perfectCardTitle}>QA testing</h3>
-              <p className={styles.perfectCardText}>
-                Test registration flows, password resets, OTPs, and welcome emails safely.
-              </p>
-            </div>
-
-            <div className={styles.perfectCard}>
-              <h3 className={styles.perfectCardTitle}>Developers</h3>
-              <p className={styles.perfectCardText}>
-                Verify integrations, debug email delivery, and test app notifications fast.
-              </p>
-            </div>
-
-            <div className={styles.perfectCard}>
-              <h3 className={styles.perfectCardTitle}>Privacy-conscious users</h3>
-              <p className={styles.perfectCardText}>
-                Protect your main inbox when you need a short-lived address for testing.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.responsibleSection}>
-          <h3 className={styles.responsibleTitle}>Responsible Use</h3>
-          <p className={styles.responsibleItem}>• Software testing and QA environments</p>
-          <p className={styles.responsibleItem}>• Developer workflows and debugging email flows</p>
-          <p className={styles.responsibleItem}>• Short-lived inboxes for testing integrations</p>
-          <p className={styles.responsibleNote}>
-            GhostMail is not intended for bypassing platform restrictions, creating fake accounts, spam, or abusive activity.
-          </p>
-        </section>
-
-        <p className={styles.bottomNote}>
-          Built for developers and responsible use — not for abuse.
-        </p>
-      </section>
-
-      <section id="pricing" className={styles.pricingSection}>
-        <div className={styles.pricingInner}>
-          <div className={styles.pricingTop}>
-            <p className={styles.pricingEyebrow}>Plans</p>
-            <h2 className={styles.pricingTitle}>Simple pricing for every workflow</h2>
-            <p className={styles.pricingSub}>
-              Start free, then upgrade when you need more inboxes, longer lifetimes, and a smoother workflow.
-            </p>
-          </div>
-
-          <div className={styles.pricingGrid}>
-            <div className={styles.pricingCard}>
-              <div className={styles.planHeader}>
-                <span className={styles.planIcon}>👻</span>
-                <div>
-                  <h3 className={styles.planName}>Ghost</h3>
-                  <p className={styles.planDesc}>Free forever</p>
-                </div>
-              </div>
-
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$0</span>
-                <span className={styles.planPeriod}>/ month</span>
-              </div>
-
-              <div className={styles.planFeatures}>
-                <p>• 1 private inbox at a time</p>
-                <p>• 10-minute expiry</p>
-                <p>• Fast generation for testing</p>
-                <p>• Sign in required to open inbox</p>
-              </div>
-
-              <button
-                className={styles.planButton}
-                onClick={generateMailbox}
-                type="button"
-              >
-                Start free
+              <button onClick={handleOpenInbox}>
+                Open Inbox
               </button>
-            </div>
 
-            <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
-              <div className={styles.pricingBadge}>Most popular</div>
+              <button onClick={generateMailbox}>
+                New Address
+              </button>
+            </>
+          )}
 
-              <div className={styles.planHeader}>
-                <span className={styles.planIcon}>⚡</span>
-                <div>
-                  <h3 className={styles.planName}>Phantom</h3>
-                  <p className={styles.planDesc}>For heavier testing</p>
-                </div>
-              </div>
-
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$4.99</span>
-                <span className={styles.planPeriod}>/ month</span>
-              </div>
-
-              <div className={styles.planFeatures}>
-                <p>• Up to 5 active inboxes</p>
-                <p>• 24-hour expiry window</p>
-                <p>• Better workflow for QA sessions</p>
-                <p>• Ideal for repeated testing</p>
-              </div>
-
-              <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
-                Get Phantom
-              </a>
-            </div>
-
-            <div className={styles.pricingCard}>
-              <div className={styles.planHeader}>
-                <span className={styles.planIcon}>🚀</span>
-                <div>
-                  <h3 className={styles.planName}>Spectre</h3>
-                  <p className={styles.planDesc}>For power users</p>
-                </div>
-              </div>
-
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$8.99</span>
-                <span className={styles.planPeriod}>/ month</span>
-              </div>
-
-              <div className={styles.planFeatures}>
-                <p>Unlimited active inboxes</p>
-                <p>Up to 1-year inbox expiry</p>
-                <p>High-volume testing workflows</p>
-                <p>Built for advanced workflows and teams</p>
-              </div>
-
-              <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
-                Get Spectre
-              </a>
-            </div>
-          </div>
+          {error && <p className={styles.errorMsg}>{error}</p>}
         </div>
       </section>
-
-      <footer className={styles.footer}>
-        <div className={styles.footerLinks}>
-          <a href="/about">About</a>
-          <a href="/terms">Terms</a>
-          <a href="/privacy">Privacy</a>
-          <a href="mailto:support@ghostmails.org">Contact</a>
-        </div>
-
-        <p>© 2026 GhostMail — Built for developers, QA, and email testing workflows.</p>
-      </footer>
     </main>
   );
 }
