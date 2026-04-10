@@ -328,9 +328,9 @@ export default function DashboardPage() {
     if (expired) {
       return {
         label: 'Expired',
-        color: '#f87171',
-        bg: 'rgba(248,113,113,0.10)',
-        border: 'rgba(248,113,113,0.28)',
+        color: '#ef4444',
+        bg: 'rgba(239,68,68,0.10)',
+        border: 'rgba(239,68,68,0.22)',
       };
     }
 
@@ -341,7 +341,7 @@ export default function DashboardPage() {
         label: 'Used',
         color: '#f59e0b',
         bg: 'rgba(245,158,11,0.10)',
-        border: 'rgba(245,158,11,0.28)',
+        border: 'rgba(245,158,11,0.24)',
       };
     }
 
@@ -349,7 +349,7 @@ export default function DashboardPage() {
       label: 'New',
       color: '#22c55e',
       bg: 'rgba(34,197,94,0.10)',
-      border: 'rgba(34,197,94,0.28)',
+      border: 'rgba(34,197,94,0.24)',
     };
   }
 
@@ -450,7 +450,7 @@ export default function DashboardPage() {
     return (
       <main style={centerStyle}>
         <h2 style={{ margin: 0, color: 'var(--text)' }}>Error loading dashboard</h2>
-        <p style={{ color: '#f87171', margin: 0 }}>{error}</p>
+        <p style={{ color: '#ef4444', margin: 0 }}>{error}</p>
       </main>
     );
   }
@@ -467,8 +467,8 @@ export default function DashboardPage() {
 
         .dashboard-email-card:hover {
           transform: translateY(-4px);
-          border-color: rgba(167,139,250,0.35) !important;
-          box-shadow: 0 0 28px rgba(167,139,250,0.10), 0 18px 44px rgba(0,0,0,0.12) !important;
+          border-color: rgba(167,139,250,0.30) !important;
+          box-shadow: 0 0 24px rgba(167,139,250,0.08), 0 18px 44px rgba(15,23,42,0.10) !important;
         }
 
         .dashboard-filter-btn {
@@ -477,7 +477,7 @@ export default function DashboardPage() {
 
         .dashboard-filter-btn:hover {
           transform: translateY(-1px);
-          border-color: rgba(167,139,250,0.34) !important;
+          border-color: rgba(167,139,250,0.30) !important;
         }
 
         .dashboard-fav-btn {
@@ -489,13 +489,13 @@ export default function DashboardPage() {
         }
 
         .dashboard-delete-secondary:hover {
-          background: var(--surface-hover, rgba(255,255,255,0.08)) !important;
+          background: var(--surface-soft, rgba(255,255,255,0.08)) !important;
         }
 
         .dashboard-delete-danger:hover {
           transform: translateY(-1px);
-          box-shadow: 0 10px 24px rgba(220,38,38,0.22);
-          filter: brightness(1.05);
+          box-shadow: 0 10px 24px rgba(220,38,38,0.18);
+          filter: brightness(1.03);
         }
 
         .dashboard-action-btn {
@@ -504,14 +504,43 @@ export default function DashboardPage() {
 
         .dashboard-action-btn:hover {
           transform: translateY(-1px);
-          border-color: rgba(167,139,250,0.30) !important;
+          border-color: rgba(167,139,250,0.26) !important;
+          background: rgba(124,58,237,0.04) !important;
+        }
+
+        @media (max-width: 900px) {
+          .dashboard-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
+          .dashboard-summary-wide {
+            grid-column: span 2 !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .dashboard-summary-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .dashboard-summary-wide {
+            grid-column: span 1 !important;
+          }
+
+          .dashboard-actions-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .dashboard-page-title {
+            font-size: 2.3rem !important;
+          }
         }
       `}</style>
 
       <div style={container}>
         <div style={header}>
           <div style={{ minWidth: 0 }}>
-            <h1 style={pageTitle}>Dashboard</h1>
+            <h1 style={pageTitle} className="dashboard-page-title">Dashboard</h1>
             <p style={pageSubtitle}>{user?.email}</p>
           </div>
 
@@ -530,8 +559,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div style={summaryGrid}>
-          <div style={{ ...summaryCard, ...summaryCardWide }}>
+        <div style={summaryGrid} className="dashboard-summary-grid">
+          <div style={{ ...summaryCard, ...summaryCardWide }} className="dashboard-summary-wide">
             <div style={planCardHeader}>
               <div>
                 <p style={planEyebrow}>Current plan</p>
@@ -545,8 +574,8 @@ export default function DashboardPage() {
                       borderRadius: 999,
                       fontSize: 11,
                       fontWeight: 800,
-                      border: '1px solid rgba(167,139,250,0.3)',
-                      background: 'rgba(167,139,250,0.12)',
+                      border: '1px solid rgba(167,139,250,0.24)',
+                      background: 'rgba(167,139,250,0.10)',
                       color: 'var(--text)',
                     }}
                   >
@@ -606,14 +635,14 @@ export default function DashboardPage() {
                     style={{
                       ...filterBtn,
                       background: active
-                        ? 'rgba(167,139,250,0.16)'
-                        : 'var(--surface-soft, rgba(255,255,255,0.03))',
+                        ? 'rgba(167,139,250,0.14)'
+                        : 'var(--surface, rgba(255,255,255,0.94))',
                       color: active ? 'var(--text)' : 'var(--muted)',
                       borderColor: active
-                        ? 'rgba(167,139,250,0.36)'
-                        : 'var(--border-soft, rgba(255,255,255,0.08))',
+                        ? 'rgba(167,139,250,0.30)'
+                        : 'var(--border-soft, rgba(15,23,42,0.10))',
                       boxShadow: active
-                        ? '0 0 20px rgba(167,139,250,0.10)'
+                        ? '0 0 18px rgba(167,139,250,0.08)'
                         : 'none',
                     }}
                   >
@@ -661,11 +690,11 @@ export default function DashboardPage() {
                   style={{
                     ...emailCard,
                     borderColor: favorite
-                      ? 'rgba(250,204,21,0.26)'
-                      : 'var(--border-soft, rgba(255,255,255,0.08))',
+                      ? 'rgba(250,204,21,0.24)'
+                      : 'var(--border-soft, rgba(15,23,42,0.10))',
                     boxShadow: favorite
-                      ? '0 14px 40px rgba(0,0,0,0.10), 0 0 28px rgba(250,204,21,0.08)'
-                      : '0 14px 40px rgba(0,0,0,0.10)',
+                      ? '0 14px 40px rgba(15,23,42,0.08), 0 0 24px rgba(250,204,21,0.06)'
+                      : '0 14px 40px rgba(15,23,42,0.08)',
                   }}
                   className="dashboard-email-card"
                 >
@@ -683,13 +712,13 @@ export default function DashboardPage() {
                         onClick={() => toggleFavorite(addr.id)}
                         style={{
                           ...favoriteBtn,
-                          color: favorite ? '#facc15' : 'var(--muted)',
+                          color: favorite ? '#f59e0b' : 'var(--muted)',
                           borderColor: favorite
-                            ? 'rgba(250,204,21,0.30)'
-                            : 'var(--border-soft, rgba(255,255,255,0.08))',
+                            ? 'rgba(245,158,11,0.26)'
+                            : 'var(--border-soft, rgba(15,23,42,0.10))',
                           background: favorite
-                            ? 'rgba(250,204,21,0.10)'
-                            : 'var(--surface-soft, rgba(255,255,255,0.03))',
+                            ? 'rgba(245,158,11,0.10)'
+                            : 'var(--surface-soft, rgba(15,23,42,0.03))',
                         }}
                       >
                         {favorite ? '★' : '☆'}
@@ -737,7 +766,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div style={actions}>
+                  <div style={actions} className="dashboard-actions-grid">
                     <button
                       className="dashboard-action-btn"
                       style={secondaryBtn}
@@ -768,7 +797,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {error && <p style={{ color: '#f87171', marginTop: 18 }}>{error}</p>}
+        {error && <p style={{ color: '#ef4444', marginTop: 18 }}>{error}</p>}
       </div>
 
       {showUpgrade && (
@@ -849,7 +878,7 @@ export default function DashboardPage() {
 const pageStyle = {
   minHeight: '100vh',
   background:
-    'radial-gradient(circle at top, rgba(124,58,237,0.10), transparent 26%), var(--bg)',
+    'linear-gradient(180deg, rgba(124,58,237,0.04) 0%, rgba(124,58,237,0.01) 22%, transparent 44%), var(--bg)',
   color: 'var(--text)',
   padding: '32px 20px 48px',
   fontFamily:
@@ -901,17 +930,17 @@ const summaryGrid = {
 const summaryCard = {
   padding: 22,
   borderRadius: 20,
-  background: 'var(--surface, rgba(255,255,255,0.035))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
-  boxShadow: '0 14px 40px rgba(0,0,0,0.10)',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
   minHeight: 132,
 };
 
 const summaryCardWide = {
   gridColumn: 'span 4',
-  background: 'var(--surface-strong, rgba(167,139,250,0.08))',
+  background: 'linear-gradient(180deg, rgba(167,139,250,0.10), rgba(167,139,250,0.06))',
   border: '1px solid rgba(167,139,250,0.22)',
-  boxShadow: '0 0 30px rgba(167,139,250,0.08), 0 12px 40px rgba(0,0,0,0.08)',
+  boxShadow: '0 14px 36px rgba(124,58,237,0.06)',
 };
 
 const planCardHeader = {
@@ -970,8 +999,8 @@ const filtersRow = {
 const filterBtn = {
   padding: '10px 14px',
   borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
-  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
   color: 'var(--muted)',
   fontWeight: 700,
   cursor: 'pointer',
@@ -992,13 +1021,13 @@ const gridWrap = {
 const emailCard = {
   padding: 18,
   borderRadius: 20,
-  background: 'var(--surface, rgba(255,255,255,0.035))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
   minHeight: 235,
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
-  boxShadow: '0 14px 40px rgba(0,0,0,0.10)',
+  boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
 };
 
 const cardTop = {
@@ -1032,11 +1061,11 @@ const addrText = {
   letterSpacing: '-0.01em',
   wordBreak: 'break-word',
   overflowWrap: 'anywhere',
-  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
+  background: 'rgba(15,23,42,0.025)',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
   borderRadius: 14,
   padding: '12px 14px',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5)',
 };
 
 const createdText = {
@@ -1049,8 +1078,8 @@ const favoriteBtn = {
   width: 38,
   height: 38,
   borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
-  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  background: 'var(--surface-soft, rgba(15,23,42,0.03))',
   fontSize: 18,
   cursor: 'pointer',
   flexShrink: 0,
@@ -1066,9 +1095,9 @@ const badgeRow = {
 const favoriteMiniBadge = {
   padding: '7px 10px',
   borderRadius: 999,
-  border: '1px solid rgba(250,204,21,0.28)',
-  background: 'rgba(250,204,21,0.10)',
-  color: '#facc15',
+  border: '1px solid rgba(245,158,11,0.24)',
+  background: 'rgba(245,158,11,0.10)',
+  color: '#b45309',
   fontSize: 12,
   fontWeight: 700,
 };
@@ -1084,8 +1113,8 @@ const cardStats = {
 const statBox = {
   padding: '12px 14px',
   borderRadius: 14,
-  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.05))',
+  background: 'rgba(15,23,42,0.02)',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -1095,8 +1124,8 @@ const statBox = {
 const statBoxColumn = {
   padding: '12px 14px',
   borderRadius: 14,
-  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.05))',
+  background: 'rgba(15,23,42,0.02)',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
@@ -1112,7 +1141,7 @@ const statTopRow = {
 const progressTrack = {
   height: 6,
   borderRadius: 999,
-  background: 'var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'rgba(15,23,42,0.08)',
   overflow: 'hidden',
 };
 
@@ -1171,6 +1200,7 @@ const primaryBtn = {
   color: '#fff',
   cursor: 'pointer',
   fontWeight: 800,
+  boxShadow: '0 10px 24px rgba(124,58,237,0.18)',
 };
 
 const upgradeBtn = {
@@ -1185,13 +1215,14 @@ const upgradeBtn = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
+  boxShadow: '0 10px 24px rgba(124,58,237,0.14)',
 };
 
 const manageBtn = {
   padding: '10px 16px',
   borderRadius: 10,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.2))',
-  background: 'transparent',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
   color: 'var(--text)',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1200,8 +1231,8 @@ const manageBtn = {
 const secondaryBtn = {
   padding: '11px 14px',
   borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.15))',
-  background: 'transparent',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
   color: 'var(--text)',
   textDecoration: 'none',
   cursor: 'pointer',
@@ -1210,21 +1241,23 @@ const secondaryBtn = {
   alignItems: 'center',
   justifyContent: 'center',
   minHeight: 44,
+  boxShadow: '0 4px 14px rgba(15,23,42,0.04)',
 };
 
 const deleteBtnInline = {
   ...secondaryBtn,
   gridColumn: '1 / -1',
-  border: '1px solid rgba(248,113,113,0.40)',
-  color: '#f87171',
+  border: '1px solid rgba(239,68,68,0.24)',
+  color: '#dc2626',
+  background: 'rgba(239,68,68,0.04)',
 };
 
 const dangerBtn = {
   padding: '12px 18px',
   borderRadius: 12,
-  border: '1px solid rgba(248,113,113,0.4)',
-  background: 'transparent',
-  color: '#f87171',
+  border: '1px solid rgba(239,68,68,0.22)',
+  background: 'rgba(239,68,68,0.04)',
+  color: '#dc2626',
   cursor: 'pointer',
   fontWeight: 700,
 };
@@ -1232,9 +1265,10 @@ const dangerBtn = {
 const emptyCard = {
   padding: 32,
   borderRadius: 18,
-  background: 'var(--surface, rgba(255,255,255,0.035))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
   textAlign: 'center',
+  boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
 };
 
 const centerStyle = {
@@ -1260,7 +1294,7 @@ const loadingSpinner = {
 const modalOverlay = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.60)',
+  background: 'rgba(15,23,42,0.30)',
   backdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
@@ -1271,13 +1305,13 @@ const modalOverlay = {
 
 const modalBox = {
   background: 'var(--surface-elevated, #ffffff)',
-  border: '1px solid var(--border-soft, rgba(167,139,250,0.22))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
   borderRadius: 24,
   padding: 32,
   maxWidth: 500,
   width: '100%',
   textAlign: 'center',
-  boxShadow: '0 30px 80px rgba(0,0,0,0.18)',
+  boxShadow: '0 30px 80px rgba(15,23,42,0.14)',
 };
 
 const modalBadge = {
@@ -1285,7 +1319,7 @@ const modalBadge = {
   marginBottom: 16,
   padding: '8px 12px',
   borderRadius: 999,
-  border: '1px solid rgba(167,139,250,0.25)',
+  border: '1px solid rgba(167,139,250,0.24)',
   background: 'rgba(167,139,250,0.10)',
   color: 'var(--text)',
   fontSize: 12,
@@ -1330,8 +1364,8 @@ const modalSecondaryBtn = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: 14,
-  border: '1px solid rgba(167,139,250,0.30)',
-  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid rgba(167,139,250,0.24)',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
   color: 'var(--text)',
   fontWeight: 800,
   fontSize: 15,
@@ -1342,7 +1376,7 @@ const modalCloseBtn = {
   marginTop: 18,
   padding: '10px 14px',
   borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.14))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
   background: 'transparent',
   color: 'var(--muted)',
   cursor: 'pointer',
@@ -1352,7 +1386,7 @@ const modalCloseBtn = {
 const deleteOverlay = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(3, 1, 10, 0.60)',
+  background: 'rgba(15,23,42,0.34)',
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
   display: 'flex',
@@ -1366,9 +1400,9 @@ const deleteBox = {
   width: '100%',
   maxWidth: 470,
   borderRadius: 24,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
   background: 'var(--surface-elevated, #ffffff)',
-  boxShadow: '0 30px 80px rgba(0,0,0,0.22)',
+  boxShadow: '0 30px 80px rgba(15,23,42,0.16)',
   padding: 28,
   color: 'var(--text)',
 };
@@ -1377,8 +1411,8 @@ const deleteIconWrap = {
   width: 56,
   height: 56,
   borderRadius: 18,
-  background: 'rgba(239,68,68,0.12)',
-  border: '1px solid rgba(239,68,68,0.22)',
+  background: 'rgba(239,68,68,0.10)',
+  border: '1px solid rgba(239,68,68,0.18)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -1387,7 +1421,7 @@ const deleteIconWrap = {
 };
 
 const deleteEyebrow = {
-  color: '#fca5a5',
+  color: '#ef4444',
   fontSize: 12,
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
@@ -1414,8 +1448,8 @@ const deleteText = {
 const deleteEmailBox = {
   padding: '14px 16px',
   borderRadius: 16,
-  background: 'var(--surface-soft, rgba(255,255,255,0.04))',
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'rgba(15,23,42,0.02)',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
   color: 'var(--text)',
   fontSize: 14,
   wordBreak: 'break-word',
@@ -1432,8 +1466,8 @@ const deleteActions = {
 const deleteCancelBtn = {
   padding: '12px 18px',
   borderRadius: 14,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
-  background: 'var(--surface-soft, rgba(255,255,255,0.04))',
+  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
   color: 'var(--text)',
   fontWeight: 600,
   cursor: 'pointer',
@@ -1443,7 +1477,7 @@ const deleteConfirmBtn = {
   padding: '12px 18px',
   transition: 'all 0.2s ease',
   borderRadius: 14,
-  border: '1px solid rgba(239,68,68,0.28)',
+  border: '1px solid rgba(239,68,68,0.22)',
   background: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
   color: '#fff',
   fontWeight: 700,
@@ -1456,13 +1490,13 @@ const toastStyle = {
   bottom: '24px',
   left: '50%',
   transform: 'translateX(-50%)',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.95))',
-  border: '1px solid rgba(167,139,250,0.3)',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.98))',
+  border: '1px solid rgba(167,139,250,0.24)',
   color: 'var(--text)',
   padding: '12px 18px',
   borderRadius: '12px',
   fontSize: '14px',
   fontWeight: 700,
-  boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
+  boxShadow: '0 10px 30px rgba(15,23,42,0.10)',
   zIndex: 9999,
 };
