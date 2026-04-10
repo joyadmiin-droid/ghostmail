@@ -22,7 +22,7 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
 
-    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const savedTheme = localStorage.getItem('ghostmail-theme') || 'dark';
     setTheme(savedTheme);
     document.documentElement.classList.toggle('light', savedTheme === 'light');
 
@@ -99,7 +99,7 @@ export default function Home() {
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    localStorage.setItem('ghostmail-theme', newTheme);
     document.documentElement.classList.toggle('light', newTheme === 'light');
   };
 
