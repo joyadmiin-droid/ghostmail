@@ -11,6 +11,7 @@ const supabase = createClient(
 
 export default function Home() {
   const [plan, setPlan] = useState('free');
+  const [theme, setTheme] = useState('dark');
   const [mailbox, setMailbox] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(null);
@@ -20,6 +21,10 @@ export default function Home() {
 
   useEffect(() => {
     let mounted = true;
+
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.toggle('light', savedTheme === 'light');
 
     const init = async () => {
       try {
@@ -90,6 +95,13 @@ export default function Home() {
       subscription.unsubscribe();
     };
   }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('light', newTheme === 'light');
+  };
 
   async function generateMailbox() {
     setLoading(true);
@@ -183,6 +195,16 @@ export default function Home() {
         </div>
 
         <div className={styles.navLinks}>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={styles.themeToggleIcon}
+            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+
           <a href="/about">About</a>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
@@ -296,7 +318,7 @@ export default function Home() {
 
               <p className={styles.tokenNote}>
                 Login only when you open the inbox.
-No signup needed to generate.
+                No signup needed to generate.
               </p>
             </div>
           )}
