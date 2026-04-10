@@ -2,12 +2,24 @@
   --bg: #0a0a12;
   --text: #e2e2f0;
   --muted: #9ca3af;
+
+  --surface: rgba(255,255,255,0.035);
+  --surface-soft: rgba(255,255,255,0.03);
+  --surface-strong: rgba(167,139,250,0.08);
+  --surface-elevated: #14101d;
+  --border-soft: rgba(255,255,255,0.08);
 }
 
 html.light {
   --bg: #f5f7fb;
   --text: #111111;
   --muted: #6b7280;
+
+  --surface: rgba(255,255,255,0.88);
+  --surface-soft: rgba(17,17,17,0.03);
+  --surface-strong: rgba(124,58,237,0.08);
+  --surface-elevated: #ffffff;
+  --border-soft: rgba(17,17,17,0.10);
 }
 
 *, *::before, *::after {
@@ -39,19 +51,4 @@ a {
 
 button {
   transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
-}
-:root {
-  --surface: rgba(255,255,255,0.035);
-  --surface-soft: rgba(255,255,255,0.03);
-  --surface-strong: rgba(167,139,250,0.08);
-  --surface-elevated: #14101d;
-  --border-soft: rgba(255,255,255,0.08);
-}
-
-html.light {
-  --surface: rgba(255,255,255,0.88);
-  --surface-soft: rgba(17,17,17,0.03);
-  --surface-strong: rgba(124,58,237,0.08);
-  --surface-elevated: #ffffff;
-  --border-soft: rgba(17,17,17,0.10);
 }

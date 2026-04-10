@@ -396,14 +396,14 @@ function InboxContent() {
         }
 
         select option {
-          background: #0f0a1a;
-          color: #ffffff;
+          background: var(--surface-elevated, #0f0a1a);
+          color: var(--text);
         }
 
         .mail-card:hover {
           transform: translateY(-2px);
           border-color: rgba(167,139,250,0.26) !important;
-          box-shadow: 0 18px 34px rgba(0,0,0,0.18), 0 0 24px rgba(167,139,250,0.08) !important;
+          box-shadow: 0 18px 34px rgba(0,0,0,0.14), 0 0 24px rgba(167,139,250,0.08) !important;
         }
 
         .action-btn {
@@ -413,7 +413,7 @@ function InboxContent() {
         .action-btn:hover {
           transform: translateY(-1px);
           border-color: rgba(167,139,250,0.28) !important;
-          box-shadow: 0 12px 26px rgba(0,0,0,0.18);
+          box-shadow: 0 12px 26px rgba(0,0,0,0.12);
         }
 
         .viewer-scroll {
@@ -471,7 +471,7 @@ function InboxContent() {
                 <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
                 <span
                   style={{
-                    color: isExpiringSoon ? '#fca5a5' : '#e8deff',
+                    color: isExpiringSoon ? '#fca5a5' : 'var(--text)',
                     fontFamily: 'monospace',
                     fontWeight: 800,
                   }}
@@ -578,10 +578,10 @@ function InboxContent() {
                 borderColor: copied
                   ? 'rgba(34,197,94,0.35)'
                   : 'rgba(167,139,250,0.24)',
-                color: copied ? '#4ade80' : '#f5f3ff',
+                color: copied ? '#4ade80' : 'var(--text)',
                 background: copied
                   ? 'rgba(34,197,94,0.10)'
-                  : 'rgba(255,255,255,0.03)',
+                  : 'var(--surface-soft, rgba(255,255,255,0.03))',
               }}
             >
               {copied ? '✓ Copied' : 'Copy address'}
@@ -642,13 +642,13 @@ function InboxContent() {
                         padding: isMobile ? '14px' : '16px',
                         background: active
                           ? 'linear-gradient(180deg, rgba(167,139,250,0.17), rgba(167,139,250,0.07))'
-                          : 'rgba(255,255,255,0.03)',
+                          : 'var(--surface-soft, rgba(255,255,255,0.03))',
                         borderColor: active
                           ? 'rgba(167,139,250,0.42)'
-                          : 'rgba(255,255,255,0.05)',
+                          : 'var(--border-soft, rgba(255,255,255,0.05))',
                         boxShadow: active
-                          ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 30px rgba(167,139,250,0.10), 0 20px 38px rgba(0,0,0,0.18)'
-                          : '0 12px 24px rgba(0,0,0,0.10)',
+                          ? '0 0 0 1px rgba(167,139,250,0.16) inset, 0 0 30px rgba(167,139,250,0.10), 0 20px 38px rgba(0,0,0,0.14)'
+                          : '0 12px 24px rgba(0,0,0,0.08)',
                       }}
                     >
                       <div style={avatarCircle}>{getInitials(email)}</div>
@@ -658,7 +658,7 @@ function InboxContent() {
                           <span
                             style={{
                               ...senderText,
-                              color: email.is_read ? '#d4cdea' : '#ffffff',
+                              color: email.is_read ? 'var(--muted)' : 'var(--text)',
                               fontWeight: email.is_read ? 600 : 800,
                             }}
                           >
@@ -671,7 +671,7 @@ function InboxContent() {
                         <div
                           style={{
                             ...emailSubject,
-                            color: active ? '#ffffff' : '#efe9ff',
+                            color: active ? 'var(--text)' : 'var(--text)',
                           }}
                         >
                           {getDisplaySubject(email)}
@@ -735,12 +735,12 @@ function InboxContent() {
                       style={{
                         ...messageStatusBadge,
                         background: selected.is_read
-                          ? 'rgba(255,255,255,0.05)'
+                          ? 'var(--surface-soft, rgba(255,255,255,0.05))'
                           : 'rgba(34,197,94,0.12)',
                         borderColor: selected.is_read
-                          ? 'rgba(255,255,255,0.09)'
+                          ? 'var(--border-soft, rgba(255,255,255,0.09))'
                           : 'rgba(34,197,94,0.25)',
-                        color: selected.is_read ? '#d7d0ea' : '#4ade80',
+                        color: selected.is_read ? 'var(--muted)' : '#4ade80',
                       }}
                     >
                       {selected.is_read ? 'Read' : 'New'}
@@ -773,10 +773,10 @@ function InboxContent() {
                         ...metaCard,
                         borderColor: detectedCode
                           ? 'rgba(34,197,94,0.24)'
-                          : 'rgba(255,255,255,0.06)',
+                          : 'var(--border-soft, rgba(255,255,255,0.06))',
                         boxShadow: detectedCode
-                          ? '0 12px 28px rgba(0,0,0,0.12), 0 0 24px rgba(34,197,94,0.08)'
-                          : '0 12px 28px rgba(0,0,0,0.12)',
+                          ? '0 12px 28px rgba(0,0,0,0.10), 0 0 24px rgba(34,197,94,0.08)'
+                          : '0 12px 28px rgba(0,0,0,0.08)',
                       }}
                     >
                       <div style={sectionLabel}>Detected code</div>
@@ -792,13 +792,13 @@ function InboxContent() {
                             className="action-btn"
                             style={{
                               ...codeCopyBtn,
-                              color: copiedCode ? '#4ade80' : '#fff',
+                              color: copiedCode ? '#4ade80' : 'var(--text)',
                               borderColor: copiedCode
                                 ? 'rgba(34,197,94,0.32)'
-                                : 'rgba(255,255,255,0.10)',
+                                : 'var(--border-soft, rgba(255,255,255,0.10))',
                               background: copiedCode
                                 ? 'rgba(34,197,94,0.10)'
-                                : 'rgba(255,255,255,0.03)',
+                                : 'var(--surface-soft, rgba(255,255,255,0.03))',
                             }}
                           >
                             {copiedCode ? '✓ Copied code' : 'Copy code'}
@@ -830,8 +830,8 @@ function InboxContent() {
                           html, body {
                             margin: 0 !important;
                             padding: 0 !important;
-                            background: #0b0712 !important;
-                            color: #f5f3ff !important;
+                            background: #ffffff !important;
+                            color: #111111 !important;
                             font-family: Arial, sans-serif !important;
                             line-height: 1.75 !important;
                             font-size: 15px !important;
@@ -863,10 +863,10 @@ function InboxContent() {
                             margin: 0 !important;
                             padding-left: 14px !important;
                             border-left: 3px solid rgba(167,139,250,0.45) !important;
-                            color: #d9d2ef !important;
+                            color: #4b5563 !important;
                           }
                           a {
-                            color: #c4b5fd !important;
+                            color: #7c3aed !important;
                           }
                         </style>
                         ${selected.body_html}
@@ -916,7 +916,7 @@ export default function InboxPage() {
     <Suspense
       fallback={
         <main style={fallbackMain}>
-          <p style={{ color: '#8c84a4', marginBottom: '18px' }}>Loading...</p>
+          <p style={{ color: 'var(--muted)', marginBottom: '18px' }}>Loading...</p>
           <div style={footerWrap}>
             <a href="/terms" style={footerLink}>Terms</a>
             <a href="/privacy" style={footerLink}>Privacy</a>
@@ -934,11 +934,12 @@ export default function InboxPage() {
 
 const pageWrap = {
   minHeight: '100vh',
-  background: 'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
+  background: 'radial-gradient(circle at top, rgba(91,33,182,0.12), transparent 24%), var(--bg)',
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   display: 'flex',
   flexDirection: 'column',
+  color: 'var(--text)',
 };
 
 const shell = {
@@ -950,7 +951,7 @@ const shell = {
 
 const fallbackMain = {
   minHeight: '100vh',
-  background: '#07010d',
+  background: 'var(--bg)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -961,7 +962,7 @@ const fallbackMain = {
 
 const centerWrap = {
   minHeight: '100vh',
-  background: 'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), #07010d',
+  background: 'radial-gradient(circle at top, rgba(91,33,182,0.12), transparent 24%), var(--bg)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -973,11 +974,11 @@ const centerWrap = {
 const emptyCard = {
   textAlign: 'center',
   maxWidth: '480px',
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: 'var(--surface, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.07))',
   borderRadius: '24px',
   padding: '32px 28px',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.32)',
+  boxShadow: '0 20px 60px rgba(0,0,0,0.14)',
 };
 
 const emptyIcon = {
@@ -991,14 +992,14 @@ const emptyIconSmall = {
 };
 
 const emptyTitle = {
-  color: '#fff',
+  color: 'var(--text)',
   margin: '0 0 10px',
   fontSize: '28px',
   fontWeight: 800,
 };
 
 const emptyText = {
-  color: '#9d95b6',
+  color: 'var(--muted)',
   marginBottom: '18px',
   lineHeight: 1.7,
   fontSize: '14px',
@@ -1018,18 +1019,18 @@ const primaryLink = {
   textDecoration: 'none',
   fontWeight: 800,
   display: 'inline-block',
-  boxShadow: '0 12px 30px rgba(139,92,246,0.28)',
+  boxShadow: '0 12px 30px rgba(139,92,246,0.22)',
 };
 
 const secondaryLink = {
-  background: 'rgba(255,255,255,0.04)',
-  color: '#fff',
+  background: 'var(--surface-soft, rgba(255,255,255,0.04))',
+  color: 'var(--text)',
   padding: '11px 24px',
   borderRadius: '999px',
   textDecoration: 'none',
   fontWeight: 800,
   display: 'inline-block',
-  border: '1px solid rgba(255,255,255,0.10)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
 };
 
 const spinner = {
@@ -1043,14 +1044,14 @@ const spinner = {
 };
 
 const loadingText = {
-  color: '#9f96bb',
+  color: 'var(--muted)',
   marginTop: '14px',
   fontSize: '14px',
 };
 
 const topHeader = {
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
-  background: 'rgba(7,1,13,0.84)',
+  borderBottom: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
+  background: 'var(--surface-elevated, rgba(7,1,13,0.84))',
   backdropFilter: 'blur(12px)',
   position: 'sticky',
   top: 0,
@@ -1081,7 +1082,7 @@ const brandIcon = {
 };
 
 const brandText = {
-  color: '#ffffff',
+  color: 'var(--text)',
   fontSize: '16px',
   fontWeight: 800,
   letterSpacing: '-0.02em',
@@ -1107,9 +1108,9 @@ const timeBadge = {
 const ghostButton = {
   padding: '8px 14px',
   borderRadius: '10px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.03)',
-  color: '#fff',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  color: 'var(--text)',
   fontSize: '13px',
   fontWeight: 700,
 };
@@ -1122,34 +1123,34 @@ const topInfoGrid = {
 };
 
 const topInfoCardWide = {
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: 'var(--surface, rgba(255,255,255,0.035))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.07))',
   borderRadius: '20px',
   padding: '18px',
-  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.08)',
 };
 
 const topInfoCard = {
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: 'var(--surface, rgba(255,255,255,0.035))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.07))',
   borderRadius: '20px',
   padding: '18px',
-  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.08)',
 };
 
 const topActionsCard = {
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: 'var(--surface, rgba(255,255,255,0.035))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.07))',
   borderRadius: '20px',
   padding: '18px',
-  boxShadow: '0 16px 34px rgba(0,0,0,0.14)',
+  boxShadow: '0 16px 34px rgba(0,0,0,0.08)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
 const topInfoValue = {
-  color: '#ffffff',
+  color: 'var(--text)',
   fontSize: '24px',
   fontWeight: 900,
   marginTop: '8px',
@@ -1160,9 +1161,9 @@ const autoRefreshSelect = {
   marginTop: '10px',
   padding: '11px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: '#0f0a1a',
-  color: '#ffffff',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
+  background: 'var(--surface-elevated, #0f0a1a)',
+  color: 'var(--text)',
   fontSize: '14px',
   fontWeight: 700,
   outline: 'none',
@@ -1173,9 +1174,9 @@ const copyButtonStrong = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.03)',
-  color: '#fff',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  color: 'var(--text)',
   fontSize: '14px',
   fontWeight: 800,
   cursor: 'pointer',
@@ -1186,8 +1187,8 @@ const codeCopyBtn = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
   fontSize: '13px',
   fontWeight: 800,
   cursor: 'pointer',
@@ -1195,7 +1196,7 @@ const codeCopyBtn = {
 
 const sectionLabel = {
   fontSize: '11px',
-  color: '#7f7698',
+  color: 'var(--muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.12em',
   fontWeight: 800,
@@ -1205,7 +1206,7 @@ const addressText = {
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
   fontSize: '15px',
-  color: '#c8b6ff',
+  color: 'var(--text)',
   fontWeight: 800,
   wordBreak: 'break-all',
   marginTop: '8px',
@@ -1219,46 +1220,46 @@ const contentWrap = {
 };
 
 const sidebarPanel = {
-  background: 'rgba(255,255,255,0.02)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--surface, rgba(255,255,255,0.02))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
   borderRadius: '24px',
   overflow: 'hidden',
-  boxShadow: '0 20px 46px rgba(0,0,0,0.18)',
+  boxShadow: '0 20px 46px rgba(0,0,0,0.10)',
   display: 'flex',
   flexDirection: 'column',
 };
 
 const viewerPanel = {
   flex: 1,
-  background: 'rgba(255,255,255,0.02)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--surface, rgba(255,255,255,0.02))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
   borderRadius: '24px',
   overflow: 'hidden',
-  boxShadow: '0 20px 46px rgba(0,0,0,0.18)',
+  boxShadow: '0 20px 46px rgba(0,0,0,0.10)',
   minHeight: 'calc(100vh - 290px)',
 };
 
 const sidebarHeader = {
   padding: '18px',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  borderBottom: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '12px',
-  background: 'rgba(10,2,18,0.94)',
+  background: 'var(--surface-elevated, rgba(10,2,18,0.94))',
 };
 
 const sidebarSubtext = {
   fontSize: '12px',
-  color: '#9a91b5',
+  color: 'var(--muted)',
   marginTop: '6px',
 };
 
 const pillNeutral = {
   fontSize: '12px',
-  color: '#d6cff1',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  color: 'var(--text)',
+  background: 'var(--surface-soft, rgba(255,255,255,0.05))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.07))',
   borderRadius: '999px',
   padding: '7px 10px',
   whiteSpace: 'nowrap',
@@ -1270,21 +1271,21 @@ const waitingWrap = {
 };
 
 const waitingTitle = {
-  color: '#fff',
+  color: 'var(--text)',
   fontWeight: 800,
   margin: '0 0 8px',
   fontSize: '15px',
 };
 
 const waitingText = {
-  color: '#958cab',
+  color: 'var(--muted)',
   fontSize: '13px',
   lineHeight: 1.7,
   margin: 0,
 };
 
 const waitingAddress = {
-  color: '#c9b7ff',
+  color: '#a78bfa',
   wordBreak: 'break-all',
 };
 
@@ -1302,7 +1303,7 @@ const emailRow = {
   cursor: 'pointer',
   textAlign: 'left',
   borderRadius: '18px',
-  border: '1px solid rgba(255,255,255,0.05)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.05))',
   display: 'flex',
   gap: '12px',
 };
@@ -1355,7 +1356,7 @@ const emailPreviewRow = {
 
 const previewText = {
   fontSize: '12px',
-  color: '#9289ab',
+  color: 'var(--muted)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -1373,7 +1374,7 @@ const unreadDot = {
 
 const emailDate = {
   fontSize: '11px',
-  color: '#7f7698',
+  color: 'var(--muted)',
   flexShrink: 0,
 };
 
@@ -1385,9 +1386,9 @@ const messageHeaderCard = {
   marginBottom: '20px',
   padding: '20px',
   borderRadius: '22px',
-  background: 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02))',
-  border: '1px solid rgba(255,255,255,0.06)',
-  boxShadow: '0 18px 40px rgba(0,0,0,0.16)',
+  background: 'linear-gradient(180deg, var(--surface-soft, rgba(255,255,255,0.03)), var(--surface, rgba(255,255,255,0.02)))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
+  boxShadow: '0 18px 40px rgba(0,0,0,0.10)',
 };
 
 const messageHeaderTop = {
@@ -1400,7 +1401,7 @@ const messageHeaderTop = {
 };
 
 const messageTitle = {
-  color: '#fff',
+  color: 'var(--text)',
   fontSize: 'clamp(24px, 3vw, 32px)',
   fontWeight: 900,
   margin: '0 0 18px',
@@ -1414,13 +1415,13 @@ const messageSubline = {
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: '8px',
-  color: '#a89fbe',
+  color: 'var(--muted)',
   fontSize: '13px',
   lineHeight: 1.6,
 };
 
 const sublineDot = {
-  color: '#71678a',
+  color: 'var(--muted)',
 };
 
 const messageStatusBadge = {
@@ -1439,16 +1440,16 @@ const messageMetaGrid = {
 };
 
 const metaCard = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
   borderRadius: '18px',
   padding: '16px',
-  boxShadow: '0 12px 28px rgba(0,0,0,0.12)',
+  boxShadow: '0 12px 28px rgba(0,0,0,0.08)',
 };
 
 const metaValue = {
   fontSize: '14px',
-  color: '#f1edff',
+  color: 'var(--text)',
   marginTop: '6px',
   wordBreak: 'break-word',
   fontWeight: 700,
@@ -1457,17 +1458,17 @@ const metaValue = {
 
 const metaSubValue = {
   fontSize: '12px',
-  color: '#9f96b8',
+  color: 'var(--muted)',
   marginTop: '6px',
   wordBreak: 'break-word',
 };
 
 const messageBodyWrap = {
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
   borderRadius: '22px',
   overflow: 'hidden',
-  boxShadow: '0 24px 54px rgba(0,0,0,0.24), 0 0 28px rgba(167,139,250,0.05)',
+  boxShadow: '0 24px 54px rgba(0,0,0,0.10), 0 0 28px rgba(167,139,250,0.05)',
 };
 
 const bodyTopBar = {
@@ -1475,12 +1476,12 @@ const bodyTopBar = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '14px 18px',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
-  background: 'rgba(9,4,17,0.88)',
+  borderBottom: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
+  background: 'var(--surface-elevated, rgba(9,4,17,0.88))',
 };
 
 const bodyTopBarTitle = {
-  color: '#f3eeff',
+  color: 'var(--text)',
   fontSize: '13px',
   fontWeight: 800,
   letterSpacing: '0.01em',
@@ -1491,12 +1492,12 @@ const messageIframe = {
   height: '70vh',
   minHeight: '520px',
   border: 'none',
-  background: '#0b0712',
+  background: '#ffffff',
   display: 'block',
 };
 
 const messagePre = {
-  color: '#eee9ff',
+  color: 'var(--text)',
   fontSize: '14px',
   lineHeight: 1.9,
   whiteSpace: 'pre-wrap',
@@ -1524,7 +1525,7 @@ const noSelectionIcon = {
 };
 
 const noSelectionTitle = {
-  color: '#fff',
+  color: 'var(--text)',
   fontWeight: 800,
   margin: '0 0 8px',
   fontSize: '16px',
@@ -1532,7 +1533,7 @@ const noSelectionTitle = {
 
 const noSelectionText = {
   fontSize: '14px',
-  color: '#9289ab',
+  color: 'var(--muted)',
   margin: 0,
 };
 
@@ -1540,12 +1541,12 @@ const footerWrap = {
   textAlign: 'center',
   padding: '16px',
   fontSize: '12px',
-  color: '#6d6582',
+  color: 'var(--muted)',
 };
 
 const footerLink = {
   margin: '0 8px',
-  color: '#7a728e',
+  color: 'var(--muted)',
   textDecoration: 'none',
 };
 
@@ -1554,13 +1555,13 @@ const toastStyle = {
   bottom: '24px',
   left: '50%',
   transform: 'translateX(-50%)',
-  background: 'rgba(15,10,30,0.95)',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.95))',
   border: '1px solid rgba(167,139,250,0.3)',
-  color: '#fff',
+  color: 'var(--text)',
   padding: '12px 18px',
   borderRadius: '12px',
   fontSize: '14px',
   fontWeight: 700,
-  boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
   zIndex: 9999,
 };
