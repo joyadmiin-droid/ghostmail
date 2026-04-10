@@ -1,33 +1,49 @@
 :root {
-  --bg: #0a0a12;
-  --text: #e2e2f0;
+  --bg: #0b0b12;
+  --text: #ececf4;
   --muted: #9ca3af;
 
-  --surface: rgba(255,255,255,0.035);
+  --surface: rgba(255, 255, 255, 0.06);
   --surface-soft: rgba(255,255,255,0.03);
   --surface-strong: rgba(167,139,250,0.08);
   --surface-elevated: #14101d;
+
+  --border: rgba(255,255,255,0.12);
   --border-soft: rgba(255,255,255,0.08);
+
+  /* ✨ NEW (makes UI feel premium) */
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139,92,246,0.15);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.35);
 }
 
 html.light {
-  --bg: #f5f7fb;
-  --text: #111111;
-  --muted: #6b7280;
+  --bg: #f4f7fb;
+  --text: #0f172a;
+  --muted: #475569;
 
-  --surface: rgba(255,255,255,0.88);
+  --surface: rgba(255, 255, 255, 0.92);
   --surface-soft: rgba(17,17,17,0.03);
   --surface-strong: rgba(124,58,237,0.08);
   --surface-elevated: #ffffff;
+
+  --border: rgba(15,23,42,0.08);
   --border-soft: rgba(17,17,17,0.10);
+
+  /* ✨ stronger light accents */
+  --accent: #7c3aed;
+  --accent-soft: rgba(124,58,237,0.12);
+  --shadow-lg: 0 20px 50px rgba(15,23,42,0.08);
 }
 
+/* RESET */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* BASE */
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
@@ -40,15 +56,45 @@ body {
   color: var(--text);
 }
 
+/* SMOOTH TRANSITIONS */
 html,
 body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
+/* LINKS */
 a {
   color: inherit;
+  text-decoration: none;
 }
 
+/* BUTTONS */
 button {
-  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+/* ✨ PREMIUM BUTTON FEEL */
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* ✨ CARD / SURFACE HELPERS (you can use later) */
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
 }

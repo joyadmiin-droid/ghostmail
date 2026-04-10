@@ -23,15 +23,7 @@
 }
 
 .grid {
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity 0.25s ease, background-image 0.25s ease;
+  display: none;
 }
 
 .header {
@@ -695,12 +687,6 @@
     radial-gradient(ellipse 80% 50% at 20% 20%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 60%),
     radial-gradient(ellipse 50% 60% at 60% 10%, rgba(6, 182, 212, 0.06) 0%, transparent 60%);
-}
-
-:global(html.light) .grid {
-  background-image:
-    linear-gradient(rgba(17, 17, 17, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17, 17, 17, 0.04) 1px, transparent 1px);
 }
 
 :global(html.light) .header {

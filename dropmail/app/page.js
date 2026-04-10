@@ -185,8 +185,7 @@ export default function Home() {
 
   return (
     <main className={styles.main}>
-      <div className={styles.bg} />
-      <div className={styles.grid} />
+  <div className={styles.bg} />
 
       <header className={styles.header}>
         <div className={styles.logo}>
