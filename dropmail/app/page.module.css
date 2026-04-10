@@ -685,174 +685,170 @@
    LIGHT MODE
 ========================= */
 
-html.light .main {
+:global(html.light) .main {
   background: #f7f7fb;
   color: #161321;
 }
 
-html.light .bg {
+:global(html.light) .bg {
   background:
     radial-gradient(ellipse 80% 50% at 20% 20%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 60%),
     radial-gradient(ellipse 50% 60% at 60% 10%, rgba(6, 182, 212, 0.06) 0%, transparent 60%);
 }
 
-html.light .grid {
+:global(html.light) .grid {
   background-image:
     linear-gradient(rgba(17, 17, 17, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(17, 17, 17, 0.04) 1px, transparent 1px);
 }
 
-html.light .header {
+:global(html.light) .header {
   border-bottom: 1px solid rgba(17, 17, 17, 0.08);
 }
 
-html.light .logoText {
+:global(html.light) .logoText {
   color: #171320;
 }
 
-html.light .navLinks a {
+:global(html.light) .navLinks a {
   color: #5c556f;
 }
 
-html.light .navLinks a:hover {
+:global(html.light) .navLinks a:hover {
   color: #171320;
 }
 
-html.light .navCta {
+:global(html.light) .navCta {
   background: rgba(124, 58, 237, 0.10);
   border-color: rgba(124, 58, 237, 0.22);
   color: #6d28d9 !important;
 }
 
-html.light .tagline {
+:global(html.light) .tagline {
   color: #6d28d9;
   border-color: rgba(109, 40, 217, 0.18);
   background: rgba(109, 40, 217, 0.06);
 }
 
-html.light .headline {
+:global(html.light) .headline {
   color: #171320;
 }
 
-html.light .sub {
+:global(html.light) .sub {
   color: #5b556b;
 }
 
-html.light .sub strong {
+:global(html.light) .sub strong {
   color: #342a4d;
 }
 
-html.light .trustLine {
+:global(html.light) .trustLine {
   color: rgba(23, 19, 32, 0.74);
 }
 
-html.light .helperLine {
+:global(html.light) .helperLine {
   color: rgba(23, 19, 32, 0.56);
 }
 
-html.light .liveStat {
+:global(html.light) .liveStat {
   color: #16a34a;
 }
 
-html.light .card,
-html.light .pricingCard,
-html.light .howCard,
-html.light .perfectCard {
-  background: rgba(255, 255, 255, 0.78);
+:global(html.light) .card,
+:global(html.light) .pricingCard,
+:global(html.light) .howCard,
+:global(html.light) .perfectCard {
+  background: rgba(255, 255, 255, 0.85);
   border-color: rgba(17, 17, 17, 0.08);
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
 }
 
-html.light .addressLabel,
-html.light .sectionLabel {
+:global(html.light) .addressLabel {
   color: #6a627f;
 }
 
-html.light .addressBox {
+:global(html.light) .addressBox {
   background: rgba(17, 17, 17, 0.03);
   border-color: rgba(17, 17, 17, 0.10);
 }
 
-html.light .addressText {
+:global(html.light) .addressText {
   color: #171320;
 }
 
-html.light .copyBtn {
+:global(html.light) .copyBtn {
   background: rgba(124, 58, 237, 0.10);
   color: #6d28d9;
   border-color: rgba(124, 58, 237, 0.22);
 }
 
-html.light .copyBtn:hover {
+:global(html.light) .copyBtn:hover {
   background: rgba(124, 58, 237, 0.16);
 }
 
-html.light .copied {
+:global(html.light) .copied {
   background: rgba(34, 197, 94, 0.12);
   color: #15803d;
   border-color: rgba(34, 197, 94, 0.22);
 }
 
-html.light .expiryText,
-html.light .tokenNote,
-html.light .pricingSub,
-html.light .planDesc,
-html.light .planPeriod,
-html.light .planFeatures,
-html.light .howCardText,
-html.light .perfectCardText,
-html.light .responsibleNote,
-html.light .footer,
-html.light .footerLinks a,
-html.light .bottomNote {
+:global(html.light) .expiryText,
+:global(html.light) .tokenNote,
+:global(html.light) .pricingSub,
+:global(html.light) .planDesc,
+:global(html.light) .planPeriod,
+:global(html.light) .planFeatures,
+:global(html.light) .howCardText,
+:global(html.light) .perfectCardText,
+:global(html.light) .responsibleNote,
+:global(html.light) .footer,
+:global(html.light) .footerLinks a,
+:global(html.light) .bottomNote {
   color: #615b70;
 }
 
-html.light .btnSecondary {
+:global(html.light) .btnSecondary {
   color: #2d2740;
   background: rgba(17, 17, 17, 0.03);
   border-color: rgba(17, 17, 17, 0.10);
 }
 
-html.light .btnSecondary:hover {
+:global(html.light) .btnSecondary:hover {
   background: rgba(17, 17, 17, 0.06);
   border-color: rgba(109, 40, 217, 0.20);
 }
 
-html.light .responsibleTitle,
-html.light .pricingTitle,
-html.light .howTitle,
-html.light .perfectTitle,
-html.light .howCardTitle,
-html.light .perfectCardTitle,
-html.light .planName {
+:global(html.light) .responsibleTitle,
+:global(html.light) .pricingTitle,
+:global(html.light) .howTitle,
+:global(html.light) .perfectTitle,
+:global(html.light) .howCardTitle,
+:global(html.light) .perfectCardTitle,
+:global(html.light) .planName,
+:global(html.light) .planPrice {
   color: #171320;
 }
 
-html.light .responsibleItem {
+:global(html.light) .responsibleItem {
   color: #352f45;
 }
 
-html.light .pricingFeatured {
+:global(html.light) .pricingFeatured {
   border-color: rgba(124, 58, 237, 0.40);
   box-shadow: 0 0 24px rgba(124, 58, 237, 0.10);
 }
 
-html.light .pricingBadge {
+:global(html.light) .pricingBadge {
   color: #ffffff;
   background: #7c3aed;
 }
 
-html.light .planPrice {
-  color: #171320;
-}
-
-html.light .footer {
+:global(html.light) .footer {
   border-top: 1px solid rgba(17, 17, 17, 0.08);
 }
 
-html.light .footerLinks a:hover {
+:global(html.light) .footerLinks a:hover {
   color: #171320;
 }
 
