@@ -18,22 +18,21 @@
 }
 
 html.light {
-  --bg: #f4f7fb;
+  --bg: #eef3f8;
   --text: #0f172a;
-  --muted: #475569;
+  --muted: #334155;
 
-  --surface: rgba(255, 255, 255, 0.92);
-  --surface-soft: rgba(17,17,17,0.03);
-  --surface-strong: rgba(124,58,237,0.08);
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-soft: rgba(15, 23, 42, 0.04);
+  --surface-strong: rgba(124, 58, 237, 0.12);
   --surface-elevated: #ffffff;
 
-  --border: rgba(15,23,42,0.08);
-  --border-soft: rgba(17,17,17,0.10);
+  --border: rgba(15, 23, 42, 0.12);
+  --border-soft: rgba(15, 23, 42, 0.12);
 
-  /* ✨ stronger light accents */
   --accent: #7c3aed;
-  --accent-soft: rgba(124,58,237,0.12);
-  --shadow-lg: 0 20px 50px rgba(15,23,42,0.08);
+  --accent-soft: rgba(124, 58, 237, 0.14);
+  --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.10);
 }
 
 /* RESET */
@@ -97,4 +96,43 @@ button:active {
 
 .shadow-lg {
   box-shadow: var(--shadow-lg);
+}
+html.light body {
+  color: var(--text);
+}
+
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #0f172a;
+}
+
+html.light p,
+html.light li {
+  color: #334155;
+}
+
+html.light strong,
+html.light b {
+  color: #0f172a;
+}
+
+html.light a {
+  color: #7c3aed;
+}
+
+html.light input,
+html.light textarea,
+html.light select {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+html.light ::placeholder {
+  color: #64748b;
+  opacity: 1;
 }
