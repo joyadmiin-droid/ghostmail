@@ -6,11 +6,11 @@ export default function TermsPage() {
     color: '#e2e2f0',
     marginBottom: '0.6rem',
     paddingBottom: '0.4rem',
-    borderBottom: '1px solid #1a1a2e',
+    borderBottom: '1px solid rgba(0,0,0,0.1)',
   };
 
   const paraStyle = {
-    color: '#666',
+    color: 'var(--muted)',
     lineHeight: '1.8',
     fontSize: '0.95rem',
   };
@@ -50,9 +50,9 @@ export default function TermsPage() {
   return (
     <div
       style={{
-        background: '#0a0a12',
+        background: 'var(--bg)',
         minHeight: '100vh',
-        color: '#e2e2f0',
+        color: 'var(--text)',
         fontFamily: 'Georgia, serif',
       }}
     >
@@ -63,7 +63,7 @@ export default function TermsPage() {
           alignItems: 'center',
           padding: '1.2rem 2rem',
           borderBottom: '1px solid #1a1a2e',
-          background: '#0f0f1c',
+          background: 'var(--bg)',
         }}
       >
         <a
@@ -120,7 +120,7 @@ export default function TermsPage() {
 
         <p
           style={{
-            color: '#555',
+            color: 'var(--muted)',
             fontSize: '0.85rem',
             fontFamily: 'sans-serif',
             marginBottom: '3rem',
@@ -136,7 +136,7 @@ export default function TermsPage() {
             padding: '1rem 1.2rem',
             borderRadius: '0 8px 8px 0',
             marginBottom: '2rem',
-            color: '#888',
+            color: 'var(--muted)',
             fontSize: '0.92rem',
           }}
         >

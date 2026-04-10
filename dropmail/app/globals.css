@@ -1,3 +1,15 @@
+:root {
+  --bg: #0a0a12;
+  --text: #e2e2f0;
+  --muted: #9ca3af;
+}
+
+html.light {
+  --bg: #f5f7fb;
+  --text: #111111;
+  --muted: #6b7280;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -12,24 +24,19 @@ html {
 
 body {
   font-family: var(--font-dm-sans), sans-serif;
-  background: #0a0a0f;
-  color: #e8e6df;
+  background: var(--bg);
+  color: var(--text);
 }
+
 html,
 body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
-html.light,
-html.light body {
-  background: #f7f7fb !important;
-  color: #111111 !important;
-}
-
-html.light a {
+a {
   color: inherit;
 }
 
-html.light button {
+button {
   transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
