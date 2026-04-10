@@ -15,8 +15,6 @@ function getSafeNextPath() {
   const next = params.get('next');
 
   if (!next) return '/dashboard';
-
-  // Only allow internal relative paths
   if (!next.startsWith('/')) return '/dashboard';
   if (next.startsWith('//')) return '/dashboard';
 
@@ -125,20 +123,21 @@ export default function LoginPage() {
   const inputStyle = {
     width: '100%',
     padding: '14px 16px',
-    background: 'rgba(0,0,0,0.4)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--surface-elevated)',
+    border: '1px solid var(--border-soft)',
     borderRadius: '12px',
-    color: '#f5f3ee',
+    color: 'var(--text)',
     fontSize: '15px',
     fontFamily: 'inherit',
     outline: 'none',
     boxSizing: 'border-box',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)',
   };
 
   const linkBtnStyle = {
     background: 'none',
     border: 'none',
-    color: '#a78bfa',
+    color: 'var(--accent)',
     cursor: 'pointer',
     fontWeight: '600',
     fontSize: '14px',
@@ -151,11 +150,11 @@ export default function LoginPage() {
       <main
         style={{
           minHeight: '100vh',
-          background: '#080010',
+          background: 'var(--bg)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#a78bfa',
+          color: 'var(--accent)',
           fontFamily: 'DM Sans, sans-serif',
         }}
       >
@@ -168,7 +167,7 @@ export default function LoginPage() {
     <main
       style={{
         minHeight: '100vh',
-        background: '#080010',
+        background: 'var(--bg)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -176,6 +175,7 @@ export default function LoginPage() {
         fontFamily: 'DM Sans, sans-serif',
         padding: '24px',
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
       <div
@@ -183,9 +183,12 @@ export default function LoginPage() {
           position: 'fixed',
           inset: 0,
           pointerEvents: 'none',
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
+          background: `
+            radial-gradient(circle at 20% 15%, rgba(124, 58, 237, 0.16), transparent 28%),
+            radial-gradient(circle at 80% 0%, rgba(236, 72, 153, 0.12), transparent 24%),
+            radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.10), transparent 26%)
+          `,
+          zIndex: 0,
         }}
       />
 
@@ -200,29 +203,31 @@ export default function LoginPage() {
           zIndex: 1,
         }}
       >
-        <span style={{ color: '#a78bfa', fontSize: '20px' }}>&#10022;</span>
-        <span style={{ color: '#fff', fontSize: '18px', fontWeight: '700' }}>
+        <span style={{ color: 'var(--accent)', fontSize: '20px' }}>&#10022;</span>
+        <span style={{ color: 'var(--text)', fontSize: '18px', fontWeight: '700' }}>
           GhostMail
         </span>
       </a>
 
       <div
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: '24px',
           padding: '40px',
           width: '100%',
           maxWidth: '420px',
           backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
           position: 'relative',
           zIndex: 1,
           boxSizing: 'border-box',
+          boxShadow: 'var(--shadow-lg)',
         }}
       >
         <h1
           style={{
-            color: '#fff',
+            color: 'var(--text)',
             fontSize: '24px',
             fontWeight: '700',
             marginBottom: '8px',
@@ -234,7 +239,7 @@ export default function LoginPage() {
 
         <p
           style={{
-            color: '#6b6b7a',
+            color: 'var(--muted)',
             fontSize: '14px',
             textAlign: 'center',
             marginBottom: '32px',
@@ -252,7 +257,7 @@ export default function LoginPage() {
             style={{
               display: 'block',
               fontSize: '12px',
-              color: '#6b6b7a',
+              color: 'var(--muted)',
               marginBottom: '8px',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
@@ -264,7 +269,7 @@ export default function LoginPage() {
           <input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             style={inputStyle}
             autoComplete="email"
@@ -277,7 +282,7 @@ export default function LoginPage() {
               style={{
                 display: 'block',
                 fontSize: '12px',
-                color: '#6b6b7a',
+                color: 'var(--muted)',
                 marginBottom: '8px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
@@ -289,9 +294,9 @@ export default function LoginPage() {
             <input
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               style={inputStyle}
               autoComplete={isSignup ? 'new-password' : 'current-password'}
             />
@@ -309,7 +314,7 @@ export default function LoginPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#a78bfa',
+                color: 'var(--accent)',
                 cursor: 'pointer',
                 fontSize: '12px',
                 padding: '4px 0',
@@ -326,7 +331,7 @@ export default function LoginPage() {
         {error && (
           <p
             style={{
-              color: '#f87171',
+              color: '#ef4444',
               fontSize: '13px',
               marginBottom: '16px',
               textAlign: 'center',
@@ -339,7 +344,7 @@ export default function LoginPage() {
         {message && (
           <p
             style={{
-              color: '#22c55e',
+              color: '#16a34a',
               fontSize: '13px',
               marginBottom: '16px',
               textAlign: 'center',
@@ -365,13 +370,14 @@ export default function LoginPage() {
             fontFamily: 'inherit',
             marginBottom: '20px',
             opacity: loading ? 0.7 : 1,
+            boxShadow: '0 14px 30px rgba(124,58,237,0.18)',
           }}
         >
           {loading ? 'Loading...' : isReset ? 'Send reset link' : isSignup ? 'Create account' : 'Sign in'}
         </button>
 
         {isReset ? (
-          <p style={{ textAlign: 'center', fontSize: '14px', color: '#6b6b7a' }}>
+          <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--muted)' }}>
             <button
               onClick={() => {
                 setIsReset(false);
@@ -384,7 +390,7 @@ export default function LoginPage() {
             </button>
           </p>
         ) : (
-          <p style={{ textAlign: 'center', fontSize: '14px', color: '#6b6b7a' }}>
+          <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--muted)' }}>
             {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               onClick={() => {
@@ -404,24 +410,24 @@ export default function LoginPage() {
             textAlign: 'center',
             marginTop: '2rem',
             fontSize: '12px',
-            color: '#444',
+            color: 'var(--muted)',
           }}
         >
           <a
             href="/terms"
-            style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}
+            style={{ color: 'var(--muted)', textDecoration: 'none', margin: '0 8px' }}
           >
             Terms
           </a>
           <a
             href="/privacy"
-            style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}
+            style={{ color: 'var(--muted)', textDecoration: 'none', margin: '0 8px' }}
           >
             Privacy
           </a>
           <a
             href="mailto:support@ghostmails.org"
-            style={{ color: '#555', textDecoration: 'none', margin: '0 8px' }}
+            style={{ color: 'var(--muted)', textDecoration: 'none', margin: '0 8px' }}
           >
             Contact
           </a>
