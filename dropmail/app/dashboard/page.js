@@ -441,7 +441,7 @@ export default function DashboardPage() {
     return (
       <main style={centerStyle}>
         <div style={loadingSpinner} />
-        <p style={{ color: '#b6b0c8' }}>Loading dashboard...</p>
+        <p style={{ color: 'var(--muted)' }}>Loading dashboard...</p>
       </main>
     );
   }
@@ -449,7 +449,7 @@ export default function DashboardPage() {
   if (status === 'error') {
     return (
       <main style={centerStyle}>
-        <h2 style={{ margin: 0 }}>Error loading dashboard</h2>
+        <h2 style={{ margin: 0, color: 'var(--text)' }}>Error loading dashboard</h2>
         <p style={{ color: '#f87171', margin: 0 }}>{error}</p>
       </main>
     );
@@ -468,7 +468,7 @@ export default function DashboardPage() {
         .dashboard-email-card:hover {
           transform: translateY(-4px);
           border-color: rgba(167,139,250,0.35) !important;
-          box-shadow: 0 0 28px rgba(167,139,250,0.10), 0 18px 44px rgba(0,0,0,0.20) !important;
+          box-shadow: 0 0 28px rgba(167,139,250,0.10), 0 18px 44px rgba(0,0,0,0.12) !important;
         }
 
         .dashboard-filter-btn {
@@ -489,12 +489,12 @@ export default function DashboardPage() {
         }
 
         .dashboard-delete-secondary:hover {
-          background: rgba(255,255,255,0.08) !important;
+          background: var(--surface-hover, rgba(255,255,255,0.08)) !important;
         }
 
         .dashboard-delete-danger:hover {
           transform: translateY(-1px);
-          box-shadow: 0 10px 24px rgba(220,38,38,0.28);
+          box-shadow: 0 10px 24px rgba(220,38,38,0.22);
           filter: brightness(1.05);
         }
 
@@ -547,7 +547,7 @@ export default function DashboardPage() {
                       fontWeight: 800,
                       border: '1px solid rgba(167,139,250,0.3)',
                       background: 'rgba(167,139,250,0.12)',
-                      color: '#d9cfff',
+                      color: 'var(--text)',
                     }}
                   >
                     {plan === 'free' ? 'Free Tier' : 'Premium'}
@@ -564,7 +564,7 @@ export default function DashboardPage() {
                       Upgrade plan
                     </a>
 
-                    <p style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+                    <p style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
                       Compare Phantom and Spectre on the pricing page
                     </p>
                   </>
@@ -607,11 +607,11 @@ export default function DashboardPage() {
                       ...filterBtn,
                       background: active
                         ? 'rgba(167,139,250,0.16)'
-                        : 'rgba(255,255,255,0.03)',
-                      color: active ? '#f3edff' : '#cfc8e7',
+                        : 'var(--surface-soft, rgba(255,255,255,0.03))',
+                      color: active ? 'var(--text)' : 'var(--muted)',
                       borderColor: active
                         ? 'rgba(167,139,250,0.36)'
-                        : 'rgba(255,255,255,0.08)',
+                        : 'var(--border-soft, rgba(255,255,255,0.08))',
                       boxShadow: active
                         ? '0 0 20px rgba(167,139,250,0.10)'
                         : 'none',
@@ -632,8 +632,8 @@ export default function DashboardPage() {
         {addresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>📭</div>
-            <h3 style={{ margin: '0 0 8px', color: '#fff' }}>No addresses yet</h3>
-            <p style={{ margin: '0 0 18px', color: '#9f9ab2', lineHeight: 1.6 }}>
+            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>No addresses yet</h3>
+            <p style={{ margin: '0 0 18px', color: 'var(--muted)', lineHeight: 1.6 }}>
               Generate your first address to start receiving emails.
             </p>
             <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
@@ -643,8 +643,8 @@ export default function DashboardPage() {
         ) : filteredAddresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>🗂️</div>
-            <h3 style={{ margin: '0 0 8px', color: '#fff' }}>No inboxes in this filter</h3>
-            <p style={{ margin: 0, color: '#9f9ab2', lineHeight: 1.6 }}>
+            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>No inboxes in this filter</h3>
+            <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.6 }}>
               Try another filter or create a new address.
             </p>
           </div>
@@ -662,10 +662,10 @@ export default function DashboardPage() {
                     ...emailCard,
                     borderColor: favorite
                       ? 'rgba(250,204,21,0.26)'
-                      : 'rgba(255,255,255,0.08)',
+                      : 'var(--border-soft, rgba(255,255,255,0.08))',
                     boxShadow: favorite
-                      ? '0 14px 40px rgba(0,0,0,0.16), 0 0 28px rgba(250,204,21,0.08)'
-                      : '0 14px 40px rgba(0,0,0,0.16)',
+                      ? '0 14px 40px rgba(0,0,0,0.10), 0 0 28px rgba(250,204,21,0.08)'
+                      : '0 14px 40px rgba(0,0,0,0.10)',
                   }}
                   className="dashboard-email-card"
                 >
@@ -683,13 +683,13 @@ export default function DashboardPage() {
                         onClick={() => toggleFavorite(addr.id)}
                         style={{
                           ...favoriteBtn,
-                          color: favorite ? '#facc15' : '#8f89a5',
+                          color: favorite ? '#facc15' : 'var(--muted)',
                           borderColor: favorite
                             ? 'rgba(250,204,21,0.30)'
-                            : 'rgba(255,255,255,0.08)',
+                            : 'var(--border-soft, rgba(255,255,255,0.08))',
                           background: favorite
                             ? 'rgba(250,204,21,0.10)'
-                            : 'rgba(255,255,255,0.03)',
+                            : 'var(--surface-soft, rgba(255,255,255,0.03))',
                         }}
                       >
                         {favorite ? '★' : '☆'}
@@ -849,8 +849,8 @@ export default function DashboardPage() {
 const pageStyle = {
   minHeight: '100vh',
   background:
-    'radial-gradient(circle at top, rgba(124,58,237,0.12), transparent 26%), #080010',
-  color: '#fff',
+    'radial-gradient(circle at top, rgba(124,58,237,0.10), transparent 26%), var(--bg)',
+  color: 'var(--text)',
   padding: '32px 20px 48px',
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -875,10 +875,11 @@ const pageTitle = {
   fontSize: '3rem',
   lineHeight: 1,
   letterSpacing: '-0.04em',
+  color: 'var(--text)',
 };
 
 const pageSubtitle = {
-  color: '#8f89a5',
+  color: 'var(--muted)',
   margin: '10px 0 0',
   wordBreak: 'break-word',
   fontSize: 16,
@@ -900,17 +901,17 @@ const summaryGrid = {
 const summaryCard = {
   padding: 22,
   borderRadius: 20,
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  boxShadow: '0 14px 40px rgba(0,0,0,0.16)',
+  background: 'var(--surface, rgba(255,255,255,0.035))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  boxShadow: '0 14px 40px rgba(0,0,0,0.10)',
   minHeight: 132,
 };
 
 const summaryCardWide = {
   gridColumn: 'span 4',
-  background: 'rgba(167,139,250,0.08)',
+  background: 'var(--surface-strong, rgba(167,139,250,0.08))',
   border: '1px solid rgba(167,139,250,0.22)',
-  boxShadow: '0 0 40px rgba(167,139,250,0.15), 0 12px 40px rgba(0,0,0,0.14)',
+  boxShadow: '0 0 30px rgba(167,139,250,0.08), 0 12px 40px rgba(0,0,0,0.08)',
 };
 
 const planCardHeader = {
@@ -922,7 +923,7 @@ const planCardHeader = {
 };
 
 const summaryLabel = {
-  color: '#9d96b2',
+  color: 'var(--muted)',
   fontSize: 13,
   fontWeight: 700,
   letterSpacing: '0.04em',
@@ -933,13 +934,13 @@ const summaryValue = {
   marginTop: 12,
   fontSize: 32,
   fontWeight: 900,
-  color: '#fff',
+  color: 'var(--text)',
   letterSpacing: '-0.04em',
 };
 
 const planEyebrow = {
   margin: 0,
-  color: '#9d96b2',
+  color: 'var(--muted)',
   fontSize: 14,
 };
 
@@ -947,6 +948,7 @@ const planName = {
   margin: '6px 0',
   fontSize: '2rem',
   letterSpacing: '-0.03em',
+  color: 'var(--text)',
 };
 
 const planMeta = {
@@ -968,16 +970,16 @@ const filtersRow = {
 const filterBtn = {
   padding: '10px 14px',
   borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.08)',
-  background: 'rgba(255,255,255,0.03)',
-  color: '#cfc8e7',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  color: 'var(--muted)',
   fontWeight: 700,
   cursor: 'pointer',
 };
 
 const filterCountText = {
   marginTop: 10,
-  color: '#938baa',
+  color: 'var(--muted)',
   fontSize: 13,
 };
 
@@ -990,13 +992,13 @@ const gridWrap = {
 const emailCard = {
   padding: 18,
   borderRadius: 20,
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'var(--surface, rgba(255,255,255,0.035))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
   minHeight: 235,
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
-  boxShadow: '0 14px 40px rgba(0,0,0,0.16)',
+  boxShadow: '0 14px 40px rgba(0,0,0,0.10)',
 };
 
 const cardTop = {
@@ -1023,15 +1025,15 @@ const cardAddressWrap = {
 const addrText = {
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
-  color: '#c4b5fd',
+  color: 'var(--text)',
   fontSize: 15,
   lineHeight: 1.7,
   fontWeight: 800,
   letterSpacing: '-0.01em',
   wordBreak: 'break-word',
   overflowWrap: 'anywhere',
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.06))',
   borderRadius: 14,
   padding: '12px 14px',
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
@@ -1039,7 +1041,7 @@ const addrText = {
 
 const createdText = {
   marginTop: 8,
-  color: '#7f7895',
+  color: 'var(--muted)',
   fontSize: 12,
 };
 
@@ -1047,8 +1049,8 @@ const favoriteBtn = {
   width: 38,
   height: 38,
   borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.08)',
-  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
   fontSize: 18,
   cursor: 'pointer',
   flexShrink: 0,
@@ -1082,8 +1084,8 @@ const cardStats = {
 const statBox = {
   padding: '12px 14px',
   borderRadius: 14,
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.05)',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.05))',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -1093,8 +1095,8 @@ const statBox = {
 const statBoxColumn = {
   padding: '12px 14px',
   borderRadius: 14,
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.05)',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.05))',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
@@ -1110,7 +1112,7 @@ const statTopRow = {
 const progressTrack = {
   height: 6,
   borderRadius: 999,
-  background: 'rgba(255,255,255,0.08)',
+  background: 'var(--border-soft, rgba(255,255,255,0.08))',
   overflow: 'hidden',
 };
 
@@ -1122,12 +1124,12 @@ const progressFill = {
 
 const progressText = {
   fontSize: 11,
-  color: '#8f89a5',
+  color: 'var(--muted)',
 };
 
 const statLabel = {
   fontSize: 12,
-  color: '#8f89a5',
+  color: 'var(--muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
   fontWeight: 700,
@@ -1135,13 +1137,13 @@ const statLabel = {
 
 const statValue = {
   fontSize: 14,
-  color: '#fff',
+  color: 'var(--text)',
   fontWeight: 800,
 };
 
 const statValueMuted = {
   fontSize: 14,
-  color: '#d4cfe2',
+  color: 'var(--text)',
   fontWeight: 800,
 };
 
@@ -1188,9 +1190,9 @@ const upgradeBtn = {
 const manageBtn = {
   padding: '10px 16px',
   borderRadius: 10,
-  border: '1px solid rgba(255,255,255,0.2)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.2))',
   background: 'transparent',
-  color: '#fff',
+  color: 'var(--text)',
   cursor: 'pointer',
   fontWeight: 700,
 };
@@ -1198,9 +1200,9 @@ const manageBtn = {
 const secondaryBtn = {
   padding: '11px 14px',
   borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.15)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.15))',
   background: 'transparent',
-  color: '#fff',
+  color: 'var(--text)',
   textDecoration: 'none',
   cursor: 'pointer',
   fontWeight: 800,
@@ -1230,8 +1232,8 @@ const dangerBtn = {
 const emptyCard = {
   padding: 32,
   borderRadius: 18,
-  background: 'rgba(255,255,255,0.035)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'var(--surface, rgba(255,255,255,0.035))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
   textAlign: 'center',
 };
 
@@ -1240,8 +1242,8 @@ const centerStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#080010',
-  color: '#fff',
+  background: 'var(--bg)',
+  color: 'var(--text)',
   flexDirection: 'column',
   gap: 12,
 };
@@ -1258,7 +1260,7 @@ const loadingSpinner = {
 const modalOverlay = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.72)',
+  background: 'rgba(0,0,0,0.60)',
   backdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
@@ -1268,14 +1270,14 @@ const modalOverlay = {
 };
 
 const modalBox = {
-  background: 'linear-gradient(180deg, rgba(20,10,34,0.98), rgba(10,4,20,0.98))',
-  border: '1px solid rgba(167,139,250,0.22)',
+  background: 'var(--surface-elevated, #ffffff)',
+  border: '1px solid var(--border-soft, rgba(167,139,250,0.22))',
   borderRadius: 24,
   padding: 32,
   maxWidth: 500,
   width: '100%',
   textAlign: 'center',
-  boxShadow: '0 30px 80px rgba(0,0,0,0.55), 0 0 40px rgba(167,139,250,0.10)',
+  boxShadow: '0 30px 80px rgba(0,0,0,0.18)',
 };
 
 const modalBadge = {
@@ -1285,7 +1287,7 @@ const modalBadge = {
   borderRadius: 999,
   border: '1px solid rgba(167,139,250,0.25)',
   background: 'rgba(167,139,250,0.10)',
-  color: '#d9cfff',
+  color: 'var(--text)',
   fontSize: 12,
   fontWeight: 800,
   letterSpacing: '0.06em',
@@ -1296,11 +1298,11 @@ const modalTitle = {
   margin: '0 0 14px',
   fontSize: '2rem',
   lineHeight: 1.1,
-  color: '#fff',
+  color: 'var(--text)',
 };
 
 const modalText = {
-  color: '#b3acc8',
+  color: 'var(--muted)',
   lineHeight: 1.7,
   fontSize: 15,
   margin: '0 0 24px',
@@ -1329,8 +1331,8 @@ const modalSecondaryBtn = {
   padding: '14px 16px',
   borderRadius: 14,
   border: '1px solid rgba(167,139,250,0.30)',
-  background: 'rgba(255,255,255,0.03)',
-  color: '#e9ddff',
+  background: 'var(--surface-soft, rgba(255,255,255,0.03))',
+  color: 'var(--text)',
   fontWeight: 800,
   fontSize: 15,
   cursor: 'pointer',
@@ -1340,9 +1342,9 @@ const modalCloseBtn = {
   marginTop: 18,
   padding: '10px 14px',
   borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.14)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.14))',
   background: 'transparent',
-  color: '#bdb6d3',
+  color: 'var(--muted)',
   cursor: 'pointer',
   fontWeight: 700,
 };
@@ -1350,7 +1352,7 @@ const modalCloseBtn = {
 const deleteOverlay = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(3, 1, 10, 0.76)',
+  background: 'rgba(3, 1, 10, 0.60)',
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
   display: 'flex',
@@ -1364,12 +1366,11 @@ const deleteBox = {
   width: '100%',
   maxWidth: 470,
   borderRadius: 24,
-  border: '1px solid rgba(255,255,255,0.08)',
-  background:
-    'linear-gradient(180deg, rgba(20,10,35,0.96) 0%, rgba(10,5,20,0.98) 100%)',
-  boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  background: 'var(--surface-elevated, #ffffff)',
+  boxShadow: '0 30px 80px rgba(0,0,0,0.22)',
   padding: 28,
-  color: '#fff',
+  color: 'var(--text)',
 };
 
 const deleteIconWrap = {
@@ -1400,10 +1401,11 @@ const deleteTitle = {
   margin: 0,
   marginBottom: 10,
   letterSpacing: '-0.02em',
+  color: 'var(--text)',
 };
 
 const deleteText = {
-  color: 'rgba(255,255,255,0.72)',
+  color: 'var(--muted)',
   fontSize: 15,
   lineHeight: 1.6,
   marginBottom: 18,
@@ -1412,9 +1414,9 @@ const deleteText = {
 const deleteEmailBox = {
   padding: '14px 16px',
   borderRadius: 16,
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: '#c4b5fd',
+  background: 'var(--surface-soft, rgba(255,255,255,0.04))',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
+  color: 'var(--text)',
   fontSize: 14,
   wordBreak: 'break-word',
   marginBottom: 24,
@@ -1430,9 +1432,9 @@ const deleteActions = {
 const deleteCancelBtn = {
   padding: '12px 18px',
   borderRadius: 14,
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.04)',
-  color: '#fff',
+  border: '1px solid var(--border-soft, rgba(255,255,255,0.10))',
+  background: 'var(--surface-soft, rgba(255,255,255,0.04))',
+  color: 'var(--text)',
   fontWeight: 600,
   cursor: 'pointer',
 };
@@ -1454,13 +1456,13 @@ const toastStyle = {
   bottom: '24px',
   left: '50%',
   transform: 'translateX(-50%)',
-  background: 'rgba(15,10,30,0.95)',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.95))',
   border: '1px solid rgba(167,139,250,0.3)',
-  color: '#fff',
+  color: 'var(--text)',
   padding: '12px 18px',
   borderRadius: '12px',
   fontSize: '14px',
   fontWeight: 700,
-  boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
   zIndex: 9999,
 };
