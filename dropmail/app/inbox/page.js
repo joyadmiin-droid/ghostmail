@@ -396,15 +396,15 @@ function InboxContent() {
         }
 
         select option {
-          background: #0c1017;
-          color: #edf2ff;
+          background: #ffffff;
+          color: #0f172a;
         }
 
         .mail-card:hover {
-          transform: translateY(-2px);
-          border-color: rgba(167,139,250,0.34) !important;
-          box-shadow: 0 20px 36px rgba(0,0,0,0.34), 0 0 24px rgba(167,139,250,0.10) !important;
-          background: rgba(255,255,255,0.03) !important;
+          transform: translateY(-1px);
+          background: #f8fafc !important;
+          border-color: rgba(15,23,42,0.22) !important;
+          box-shadow: 0 10px 24px rgba(15,23,42,0.08) !important;
         }
 
         .action-btn {
@@ -413,14 +413,14 @@ function InboxContent() {
 
         .action-btn:hover {
           transform: translateY(-1px);
-          border-color: rgba(167,139,250,0.30) !important;
-          box-shadow: 0 14px 28px rgba(0,0,0,0.28);
-          background: rgba(255,255,255,0.04) !important;
+          border-color: rgba(15,23,42,0.18) !important;
+          box-shadow: 0 8px 18px rgba(15,23,42,0.08);
+          background: #ffffff !important;
         }
 
         .viewer-scroll {
           scrollbar-width: thin;
-          scrollbar-color: rgba(167,139,250,0.26) transparent;
+          scrollbar-color: rgba(148,163,184,0.55) transparent;
         }
 
         .viewer-scroll::-webkit-scrollbar,
@@ -431,7 +431,7 @@ function InboxContent() {
 
         .viewer-scroll::-webkit-scrollbar-thumb,
         .email-scroll::-webkit-scrollbar-thumb {
-          background: rgba(167,139,250,0.22);
+          background: rgba(148,163,184,0.55);
           border-radius: 999px;
         }
 
@@ -465,20 +465,20 @@ function InboxContent() {
                 style={{
                   ...timeBadge,
                   background: isExpiringSoon
-                    ? 'rgba(248,113,113,0.14)'
-                    : 'rgba(167,139,250,0.12)',
+                    ? 'rgba(248,113,113,0.10)'
+                    : 'rgba(167,139,250,0.08)',
                   borderColor: isExpiringSoon
-                    ? 'rgba(248,113,113,0.34)'
-                    : 'rgba(167,139,250,0.30)',
+                    ? 'rgba(248,113,113,0.28)'
+                    : 'rgba(167,139,250,0.25)',
                   boxShadow: isExpiringSoon
-                    ? '0 0 26px rgba(248,113,113,0.10)'
-                    : '0 0 22px rgba(167,139,250,0.08)',
+                    ? '0 4px 12px rgba(248,113,113,0.10)'
+                    : '0 4px 12px rgba(167,139,250,0.08)',
                 }}
               >
                 <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
                 <span
                   style={{
-                    color: isExpiringSoon ? '#fca5a5' : '#edf2ff',
+                    color: isExpiringSoon ? '#dc2626' : '#0f172a',
                     fontFamily: 'monospace',
                     fontWeight: 800,
                   }}
@@ -551,7 +551,7 @@ function InboxContent() {
 
           <div style={topInfoCard}>
             <div style={sectionLabel}>Inbox status</div>
-            <div style={{ ...topInfoValue, color: isExpiringSoon ? '#fca5a5' : '#22c55e' }}>
+            <div style={{ ...topInfoValue, color: isExpiringSoon ? '#dc2626' : '#22c55e' }}>
               {timeLeft === 'Expired' ? 'Expired' : 'Active'}
             </div>
           </div>
@@ -583,12 +583,10 @@ function InboxContent() {
               style={{
                 ...copyButtonStrong,
                 borderColor: copied
-                  ? 'rgba(34,197,94,0.35)'
-                  : 'rgba(167,139,250,0.24)',
-                color: copied ? '#4ade80' : '#edf2ff',
-                background: copied
-                  ? 'rgba(34,197,94,0.10)'
-                  : 'rgba(255,255,255,0.02)',
+                  ? 'rgba(34,197,94,0.28)'
+                  : 'rgba(15,23,42,0.14)',
+                color: copied ? '#16a34a' : '#0f172a',
+                background: copied ? 'rgba(34,197,94,0.08)' : '#ffffff',
               }}
             >
               {copied ? '✓ Copied' : 'Copy address'}
@@ -647,15 +645,11 @@ function InboxContent() {
                       style={{
                         ...emailRow,
                         padding: isMobile ? '14px' : '16px',
-                        background: active
-                          ? 'linear-gradient(180deg, rgba(91,33,182,0.30), rgba(91,33,182,0.14))'
-                          : 'rgba(255,255,255,0.018)',
-                        borderColor: active
-                          ? 'rgba(167,139,250,0.46)'
-                          : 'rgba(255,255,255,0.06)',
+                        background: active ? '#eef2ff' : '#ffffff',
+                        borderColor: active ? '#c7d2fe' : 'rgba(15,23,42,0.12)',
                         boxShadow: active
-                          ? '0 0 0 1px rgba(167,139,250,0.18) inset, 0 0 28px rgba(167,139,250,0.10), 0 20px 38px rgba(0,0,0,0.34)'
-                          : '0 12px 24px rgba(0,0,0,0.22)',
+                          ? '0 0 0 1px rgba(99,102,241,0.06) inset, 0 10px 22px rgba(99,102,241,0.10)'
+                          : '0 6px 16px rgba(15,23,42,0.05)',
                       }}
                     >
                       <div style={avatarCircle}>{getInitials(email)}</div>
@@ -665,8 +659,8 @@ function InboxContent() {
                           <span
                             style={{
                               ...senderText,
-                              color: email.is_read ? '#a7afc3' : '#edf2ff',
-                              fontWeight: email.is_read ? 600 : 800,
+                              color: email.is_read ? '#475569' : '#0f172a',
+                              fontWeight: email.is_read ? 700 : 800,
                             }}
                           >
                             {email.from_name || email.from_address}
@@ -678,7 +672,7 @@ function InboxContent() {
                         <div
                           style={{
                             ...emailSubject,
-                            color: '#f8fbff',
+                            color: '#0f172a',
                           }}
                         >
                           {getDisplaySubject(email)}
@@ -742,12 +736,12 @@ function InboxContent() {
                       style={{
                         ...messageStatusBadge,
                         background: selected.is_read
-                          ? 'rgba(255,255,255,0.03)'
-                          : 'rgba(34,197,94,0.12)',
+                          ? '#f8fafc'
+                          : 'rgba(34,197,94,0.10)',
                         borderColor: selected.is_read
-                          ? 'rgba(255,255,255,0.08)'
-                          : 'rgba(34,197,94,0.25)',
-                        color: selected.is_read ? '#a7afc3' : '#4ade80',
+                          ? 'rgba(15,23,42,0.12)'
+                          : 'rgba(34,197,94,0.22)',
+                        color: selected.is_read ? '#475569' : '#16a34a',
                       }}
                     >
                       {selected.is_read ? 'Read' : 'New'}
@@ -780,17 +774,17 @@ function InboxContent() {
                         ...metaCard,
                         borderColor: detectedCode
                           ? 'rgba(34,197,94,0.24)'
-                          : 'rgba(255,255,255,0.07)',
+                          : 'rgba(15,23,42,0.12)',
                         boxShadow: detectedCode
-                          ? '0 12px 28px rgba(0,0,0,0.24), 0 0 24px rgba(34,197,94,0.08)'
-                          : '0 12px 28px rgba(0,0,0,0.22)',
+                          ? '0 10px 24px rgba(15,23,42,0.06), 0 0 0 1px rgba(34,197,94,0.05)'
+                          : '0 8px 20px rgba(15,23,42,0.05)',
                       }}
                     >
                       <div style={sectionLabel}>Detected code</div>
 
                       {detectedCode ? (
                         <>
-                          <div style={{ ...metaValue, fontFamily: 'monospace', fontSize: '20px', color: '#4ade80' }}>
+                          <div style={{ ...metaValue, fontFamily: 'monospace', fontSize: '20px', color: '#16a34a' }}>
                             {detectedCode}
                           </div>
                           <button
@@ -799,13 +793,13 @@ function InboxContent() {
                             className="action-btn"
                             style={{
                               ...codeCopyBtn,
-                              color: copiedCode ? '#4ade80' : '#edf2ff',
+                              color: copiedCode ? '#16a34a' : '#0f172a',
                               borderColor: copiedCode
-                                ? 'rgba(34,197,94,0.32)'
-                                : 'rgba(255,255,255,0.08)',
+                                ? 'rgba(34,197,94,0.28)'
+                                : 'rgba(15,23,42,0.14)',
                               background: copiedCode
-                                ? 'rgba(34,197,94,0.10)'
-                                : 'rgba(255,255,255,0.02)',
+                                ? 'rgba(34,197,94,0.08)'
+                                : '#ffffff',
                             }}
                           >
                             {copiedCode ? '✓ Copied code' : 'Copy code'}
@@ -923,7 +917,7 @@ export default function InboxPage() {
     <Suspense
       fallback={
         <main style={fallbackMain}>
-          <p style={{ color: '#9aa4b2', marginBottom: '18px' }}>Loading...</p>
+          <p style={{ color: '#64748b', marginBottom: '18px' }}>Loading...</p>
           <div style={footerWrap}>
             <a href="/terms" style={footerLink}>Terms</a>
             <a href="/privacy" style={footerLink}>Privacy</a>
@@ -941,13 +935,12 @@ export default function InboxPage() {
 
 const pageWrap = {
   minHeight: '100vh',
-  background:
-    'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), linear-gradient(180deg, #06080d 0%, #090b11 100%)',
+  background: 'radial-gradient(circle at top, rgba(91,33,182,0.08), transparent 24%), var(--bg)',
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   display: 'flex',
   flexDirection: 'column',
-  color: '#edf2ff',
+  color: '#0f172a',
 };
 
 const shell = {
@@ -959,7 +952,7 @@ const shell = {
 
 const fallbackMain = {
   minHeight: '100vh',
-  background: '#090b11',
+  background: 'var(--bg)',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -970,8 +963,7 @@ const fallbackMain = {
 
 const centerWrap = {
   minHeight: '100vh',
-  background:
-    'radial-gradient(circle at top, rgba(91,33,182,0.18), transparent 24%), linear-gradient(180deg, #06080d 0%, #090b11 100%)',
+  background: 'radial-gradient(circle at top, rgba(91,33,182,0.08), transparent 24%), var(--bg)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -983,11 +975,11 @@ const centerWrap = {
 const emptyCard = {
   textAlign: 'center',
   maxWidth: '480px',
-  background: 'linear-gradient(180deg, rgba(16,18,25,0.96), rgba(11,13,19,0.96))',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '24px',
   padding: '32px 28px',
-  boxShadow: '0 24px 70px rgba(0,0,0,0.40)',
+  boxShadow: '0 18px 40px rgba(15,23,42,0.08)',
 };
 
 const emptyIcon = {
@@ -1001,45 +993,45 @@ const emptyIconSmall = {
 };
 
 const emptyTitle = {
-  color: '#f8fbff',
+  color: '#0f172a',
   margin: '0 0 10px',
   fontSize: '28px',
   fontWeight: 800,
 };
 
 const emptyText = {
-  color: '#9aa4b2',
+  color: '#64748b',
   marginBottom: '18px',
   lineHeight: 1.7,
   fontSize: '14px',
 };
 
 const errorText = {
-  color: '#fca5a5',
+  color: '#dc2626',
   marginBottom: '18px',
   fontSize: '14px',
 };
 
 const primaryLink = {
-  background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+  background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
   color: '#fff',
   padding: '11px 24px',
   borderRadius: '999px',
   textDecoration: 'none',
   fontWeight: 800,
   display: 'inline-block',
-  boxShadow: '0 12px 30px rgba(124,58,237,0.28)',
+  boxShadow: '0 10px 24px rgba(139,92,246,0.18)',
 };
 
 const secondaryLink = {
-  background: 'rgba(255,255,255,0.03)',
-  color: '#edf2ff',
+  background: '#ffffff',
+  color: '#0f172a',
   padding: '11px 24px',
   borderRadius: '999px',
   textDecoration: 'none',
   fontWeight: 800,
   display: 'inline-block',
-  border: '1px solid rgba(255,255,255,0.10)',
+  border: '1px solid rgba(15,23,42,0.14)',
 };
 
 const spinner = {
@@ -1053,19 +1045,19 @@ const spinner = {
 };
 
 const loadingText = {
-  color: '#9aa4b2',
+  color: '#64748b',
   marginTop: '14px',
   fontSize: '14px',
 };
 
 const topHeader = {
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
-  background: 'rgba(8,10,15,0.86)',
-  backdropFilter: 'blur(16px)',
+  borderBottom: '1px solid rgba(15,23,42,0.12)',
+  background: 'rgba(255,255,255,0.82)',
+  backdropFilter: 'blur(12px)',
   position: 'sticky',
   top: 0,
   zIndex: 50,
-  boxShadow: '0 8px 30px rgba(0,0,0,0.24)',
+  boxShadow: '0 4px 16px rgba(15,23,42,0.04)',
 };
 
 const topHeaderInner = {
@@ -1087,12 +1079,12 @@ const brandLink = {
 };
 
 const brandIcon = {
-  color: '#b99cff',
+  color: '#8b5cf6',
   fontSize: '18px',
 };
 
 const brandText = {
-  color: '#f8fbff',
+  color: '#0f172a',
   fontSize: '16px',
   fontWeight: 800,
   letterSpacing: '-0.02em',
@@ -1118,9 +1110,9 @@ const timeBadge = {
 const ghostButton = {
   padding: '8px 14px',
   borderRadius: '10px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.02)',
-  color: '#edf2ff',
+  border: '1px solid rgba(15,23,42,0.14)',
+  background: '#ffffff',
+  color: '#0f172a',
   fontSize: '13px',
   fontWeight: 700,
 };
@@ -1133,34 +1125,34 @@ const topInfoGrid = {
 };
 
 const topInfoCardWide = {
-  background: 'linear-gradient(180deg, rgba(17,20,27,0.96), rgba(12,14,20,0.96))',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '20px',
   padding: '18px',
-  boxShadow: '0 18px 36px rgba(0,0,0,0.26)',
+  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
 };
 
 const topInfoCard = {
-  background: 'linear-gradient(180deg, rgba(17,20,27,0.96), rgba(12,14,20,0.96))',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '20px',
   padding: '18px',
-  boxShadow: '0 18px 36px rgba(0,0,0,0.26)',
+  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
 };
 
 const topActionsCard = {
-  background: 'linear-gradient(180deg, rgba(17,20,27,0.96), rgba(12,14,20,0.96))',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '20px',
   padding: '18px',
-  boxShadow: '0 18px 36px rgba(0,0,0,0.26)',
+  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
 const topInfoValue = {
-  color: '#f8fbff',
+  color: '#0f172a',
   fontSize: '24px',
   fontWeight: 900,
   marginTop: '8px',
@@ -1171,9 +1163,9 @@ const autoRefreshSelect = {
   marginTop: '10px',
   padding: '11px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: '#0d1118',
-  color: '#edf2ff',
+  border: '1px solid rgba(15,23,42,0.14)',
+  background: '#ffffff',
+  color: '#0f172a',
   fontSize: '14px',
   fontWeight: 700,
   outline: 'none',
@@ -1184,9 +1176,9 @@ const copyButtonStrong = {
   width: '100%',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.02)',
-  color: '#edf2ff',
+  border: '1px solid rgba(15,23,42,0.14)',
+  background: '#ffffff',
+  color: '#0f172a',
   fontSize: '14px',
   fontWeight: 800,
   cursor: 'pointer',
@@ -1197,8 +1189,8 @@ const codeCopyBtn = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(255,255,255,0.10)',
-  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(15,23,42,0.14)',
+  background: '#ffffff',
   fontSize: '13px',
   fontWeight: 800,
   cursor: 'pointer',
@@ -1206,7 +1198,7 @@ const codeCopyBtn = {
 
 const sectionLabel = {
   fontSize: '11px',
-  color: '#8e98a8',
+  color: '#64748b',
   textTransform: 'uppercase',
   letterSpacing: '0.12em',
   fontWeight: 800,
@@ -1216,7 +1208,7 @@ const addressText = {
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
   fontSize: '15px',
-  color: '#f8fbff',
+  color: '#0f172a',
   fontWeight: 800,
   wordBreak: 'break-all',
   marginTop: '8px',
@@ -1230,46 +1222,46 @@ const contentWrap = {
 };
 
 const sidebarPanel = {
-  background: 'linear-gradient(180deg, rgba(16,18,25,0.98), rgba(10,12,18,0.98))',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '24px',
   overflow: 'hidden',
-  boxShadow: '0 24px 50px rgba(0,0,0,0.34)',
+  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
   display: 'flex',
   flexDirection: 'column',
 };
 
 const viewerPanel = {
   flex: 1,
-  background: 'linear-gradient(180deg, rgba(16,18,25,0.98), rgba(10,12,18,0.98))',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '24px',
   overflow: 'hidden',
-  boxShadow: '0 24px 50px rgba(0,0,0,0.34)',
+  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
   minHeight: 'calc(100vh - 290px)',
 };
 
 const sidebarHeader = {
   padding: '18px',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  borderBottom: '1px solid rgba(15,23,42,0.12)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '12px',
-  background: 'rgba(12,15,21,0.96)',
+  background: '#f8fafc',
 };
 
 const sidebarSubtext = {
   fontSize: '12px',
-  color: '#9aa4b2',
+  color: '#64748b',
   marginTop: '6px',
 };
 
 const pillNeutral = {
   fontSize: '12px',
-  color: '#edf2ff',
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#0f172a',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
   borderRadius: '999px',
   padding: '7px 10px',
   whiteSpace: 'nowrap',
@@ -1281,21 +1273,21 @@ const waitingWrap = {
 };
 
 const waitingTitle = {
-  color: '#f8fbff',
+  color: '#0f172a',
   fontWeight: 800,
   margin: '0 0 8px',
   fontSize: '15px',
 };
 
 const waitingText = {
-  color: '#9aa4b2',
+  color: '#64748b',
   fontSize: '13px',
   lineHeight: 1.7,
   margin: 0,
 };
 
 const waitingAddress = {
-  color: '#b99cff',
+  color: '#7c3aed',
   wordBreak: 'break-all',
 };
 
@@ -1313,7 +1305,7 @@ const emailRow = {
   cursor: 'pointer',
   textAlign: 'left',
   borderRadius: '18px',
-  border: '1px solid rgba(255,255,255,0.05)',
+  border: '1px solid rgba(15,23,42,0.12)',
   display: 'flex',
   gap: '12px',
 };
@@ -1322,12 +1314,12 @@ const avatarCircle = {
   width: '42px',
   height: '42px',
   borderRadius: '50%',
-  background: 'linear-gradient(135deg, rgba(167,139,250,0.26), rgba(91,33,182,0.18))',
-  border: '1px solid rgba(167,139,250,0.20)',
+  background: 'linear-gradient(135deg, rgba(167,139,250,0.22), rgba(139,92,246,0.10))',
+  border: '1px solid rgba(167,139,250,0.18)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#f5f3ff',
+  color: '#6d28d9',
   fontWeight: 800,
   fontSize: '14px',
   flexShrink: 0,
@@ -1366,7 +1358,7 @@ const emailPreviewRow = {
 
 const previewText = {
   fontSize: '12px',
-  color: '#95a0b0',
+  color: '#64748b',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -1377,14 +1369,14 @@ const unreadDot = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
-  background: '#a78bfa',
-  boxShadow: '0 0 16px rgba(167,139,250,0.9)',
+  background: '#8b5cf6',
+  boxShadow: '0 0 10px rgba(139,92,246,0.35)',
   flexShrink: 0,
 };
 
 const emailDate = {
   fontSize: '11px',
-  color: '#8e98a8',
+  color: '#64748b',
   flexShrink: 0,
 };
 
@@ -1396,9 +1388,9 @@ const messageHeaderCard = {
   marginBottom: '20px',
   padding: '20px',
   borderRadius: '22px',
-  background: 'linear-gradient(180deg, rgba(17,20,27,0.94), rgba(11,13,19,0.94))',
-  border: '1px solid rgba(255,255,255,0.06)',
-  boxShadow: '0 20px 44px rgba(0,0,0,0.28)',
+  background: '#f8fafc',
+  border: '1px solid rgba(15,23,42,0.12)',
+  boxShadow: '0 10px 25px rgba(15,23,42,0.05)',
 };
 
 const messageHeaderTop = {
@@ -1411,7 +1403,7 @@ const messageHeaderTop = {
 };
 
 const messageTitle = {
-  color: '#f8fbff',
+  color: '#0f172a',
   fontSize: 'clamp(24px, 3vw, 32px)',
   fontWeight: 900,
   margin: '0 0 18px',
@@ -1425,13 +1417,13 @@ const messageSubline = {
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: '8px',
-  color: '#9aa4b2',
+  color: '#64748b',
   fontSize: '13px',
   lineHeight: 1.6,
 };
 
 const sublineDot = {
-  color: '#7f8997',
+  color: '#94a3b8',
 };
 
 const messageStatusBadge = {
@@ -1450,16 +1442,16 @@ const messageMetaGrid = {
 };
 
 const metaCard = {
-  background: 'rgba(255,255,255,0.02)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.12)',
   borderRadius: '18px',
   padding: '16px',
-  boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
+  boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
 };
 
 const metaValue = {
   fontSize: '14px',
-  color: '#edf2ff',
+  color: '#0f172a',
   marginTop: '6px',
   wordBreak: 'break-word',
   fontWeight: 700,
@@ -1468,17 +1460,17 @@ const metaValue = {
 
 const metaSubValue = {
   fontSize: '12px',
-  color: '#9aa4b2',
+  color: '#64748b',
   marginTop: '6px',
   wordBreak: 'break-word',
 };
 
 const messageBodyWrap = {
-  background: 'rgba(255,255,255,0.018)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.12)',
   borderRadius: '22px',
   overflow: 'hidden',
-  boxShadow: '0 24px 54px rgba(0,0,0,0.28), 0 0 28px rgba(167,139,250,0.04)',
+  boxShadow: '0 12px 28px rgba(15,23,42,0.06)',
 };
 
 const bodyTopBar = {
@@ -1486,12 +1478,12 @@ const bodyTopBar = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '14px 18px',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
-  background: 'rgba(12,15,21,0.96)',
+  borderBottom: '1px solid rgba(15,23,42,0.12)',
+  background: '#f8fafc',
 };
 
 const bodyTopBarTitle = {
-  color: '#edf2ff',
+  color: '#0f172a',
   fontSize: '13px',
   fontWeight: 800,
   letterSpacing: '0.01em',
@@ -1507,7 +1499,7 @@ const messageIframe = {
 };
 
 const messagePre = {
-  color: '#edf2ff',
+  color: '#0f172a',
   fontSize: '14px',
   lineHeight: 1.9,
   whiteSpace: 'pre-wrap',
@@ -1535,7 +1527,7 @@ const noSelectionIcon = {
 };
 
 const noSelectionTitle = {
-  color: '#f8fbff',
+  color: '#0f172a',
   fontWeight: 800,
   margin: '0 0 8px',
   fontSize: '16px',
@@ -1543,7 +1535,7 @@ const noSelectionTitle = {
 
 const noSelectionText = {
   fontSize: '14px',
-  color: '#9aa4b2',
+  color: '#64748b',
   margin: 0,
 };
 
@@ -1551,12 +1543,12 @@ const footerWrap = {
   textAlign: 'center',
   padding: '16px',
   fontSize: '12px',
-  color: '#9aa4b2',
+  color: '#64748b',
 };
 
 const footerLink = {
   margin: '0 8px',
-  color: '#9aa4b2',
+  color: '#64748b',
   textDecoration: 'none',
 };
 
@@ -1565,13 +1557,13 @@ const toastStyle = {
   bottom: '24px',
   left: '50%',
   transform: 'translateX(-50%)',
-  background: 'rgba(13,17,24,0.96)',
-  border: '1px solid rgba(167,139,250,0.26)',
-  color: '#edf2ff',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.14)',
+  color: '#0f172a',
   padding: '12px 18px',
   borderRadius: '12px',
   fontSize: '14px',
   fontWeight: 700,
-  boxShadow: '0 14px 34px rgba(0,0,0,0.36)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.10)',
   zIndex: 9999,
 };
