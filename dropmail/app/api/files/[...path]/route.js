@@ -1,26 +1,46 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+function getFilenameFromPath(path) {
+  const parts = String(path || '').split('/');
+  return parts[parts.length - 1] || 'download';
+}
 
 export async function GET(request, { params }) {
   try {
-    const path = params.path.join('/');
+    const pathSegments = Array.isArray(params?.path)
+      ? params.path
+      : params?.path
+        ? [params.path]
+        : [];
 
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!pathSegments.length) {
+      return new NextResponse('Missing file path', { status: 400 });
+    }
 
-    const fileUrl = `${SUPABASE_URL}/storage/v1/object/public/attachments/${path}`;
+    const storagePath = pathSegments.join('/');
 
-    const response = await fetch(fileUrl);
+    const { data, error } = await supabase.storage
+      .from('attachments')
+      .download(storagePath);
 
-    if (!response.ok) {
+    if (error || !data) {
+      console.error('Storage download error:', error);
       return new NextResponse('File not found', { status: 404 });
     }
 
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const arrayBuffer = await data.arrayBuffer();
+    const filename = getFilenameFromPath(storagePath);
 
-    const buffer = await response.arrayBuffer();
-
-    return new NextResponse(buffer, {
+    return new NextResponse(arrayBuffer, {
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': data.type || 'application/octet-stream',
+        'Content-Disposition': `inline; filename="${filename}"`,
         'Cache-Control': 'public, max-age=31536000',
       },
     });
