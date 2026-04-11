@@ -11,19 +11,20 @@ function getFilenameFromPath(path) {
   return parts[parts.length - 1] || 'download';
 }
 
-export async function GET(request, { params }) {
+export async function GET(request) {
   try {
-    const pathSegments = Array.isArray(params?.path)
-      ? params.path
-      : params?.path
-        ? [params.path]
-        : [];
+    const pathname = request.nextUrl.pathname;
+    const prefix = '/api/files/';
 
-    if (!pathSegments.length) {
+    if (!pathname.startsWith(prefix)) {
       return new NextResponse('Missing file path', { status: 400 });
     }
 
-    const storagePath = pathSegments.join('/');
+    const storagePath = decodeURIComponent(pathname.slice(prefix.length));
+
+    if (!storagePath) {
+      return new NextResponse('Missing file path', { status: 400 });
+    }
 
     const { data, error } = await supabase.storage
       .from('attachments')
