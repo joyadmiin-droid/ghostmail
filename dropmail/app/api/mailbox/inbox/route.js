@@ -15,10 +15,7 @@ function normalizePlan(plan) {
 function formatAttachmentUrl(storagePath) {
   if (!storagePath) return null;
 
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
-
-  return `${base}/storage/v1/object/public/attachments/${storagePath}`;
+  return `/api/files/${storagePath}`;
 }
 
 export async function GET(request) {
