@@ -877,7 +877,7 @@ function InboxContent() {
                 style={{
                   width: '100%',
                   borderRadius: '10px',
-                  maxHeight: '300px',
+                  maxHeight: '420px',
                   objectFit: 'cover',
                 }}
               />
