@@ -833,14 +833,16 @@ function InboxContent() {
 
         return (
           <div
-            key={file.id}
-            style={{
-              border: '1px solid rgba(15,23,42,0.12)',
-              borderRadius: '14px',
-              padding: '12px',
-              background: '#f8fafc',
-            }}
-          >
+  key={file.id}
+  style={{
+    border: '1px solid rgba(15,23,42,0.12)',
+    borderRadius: '14px',
+    padding: '12px',
+    background: '#f8fafc',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+  }}
+>
             {/* Header */}
             <div
               style={{
@@ -878,7 +880,8 @@ function InboxContent() {
                   width: '100%',
                   borderRadius: '10px',
                   maxHeight: '420px',
-                  objectFit: 'cover',
+                  objectFit: 'contain',
+                  background: '#f1f5f9'
                 }}
               />
             )}
