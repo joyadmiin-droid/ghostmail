@@ -819,59 +819,67 @@ function InboxContent() {
 
                   {selected.body_html ? (
                     <iframe
-                      title={`Email content - ${getDisplaySubject(selected)}`}
-                      sandbox="allow-same-origin"
+  title={`Email content - ${getDisplaySubject(selected)}`}
+  sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                       style={{
                         ...messageIframe,
                         height: isMobile ? '56vh' : '68vh',
                         minHeight: isMobile ? '420px' : '560px',
                       }}
                       srcDoc={`
-                        <style>
-                          html, body {
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            background: #ffffff !important;
-                            color: #111111 !important;
-                            font-family: Arial, sans-serif !important;
-                            line-height: 1.75 !important;
-                            font-size: 15px !important;
-                            word-wrap: break-word !important;
-                            overflow-wrap: anywhere !important;
-                          }
-                          body {
-                            padding: 28px !important;
-                          }
-                          * {
-                            max-width: 100% !important;
-                            box-sizing: border-box !important;
-                          }
-                          img {
-                            max-width: 100% !important;
-                            height: auto !important;
-                            border-radius: 10px !important;
-                          }
-                          table {
-                            width: 100% !important;
-                            display: block !important;
-                            overflow-x: auto !important;
-                          }
-                          pre, code {
-                            white-space: pre-wrap !important;
-                            word-break: break-word !important;
-                          }
-                          blockquote {
-                            margin: 0 !important;
-                            padding-left: 14px !important;
-                            border-left: 3px solid rgba(167,139,250,0.45) !important;
-                            color: #4b5563 !important;
-                          }
-                          a {
-                            color: #7c3aed !important;
-                          }
-                        </style>
-                        ${selected.body_html}
-                      `}
+  <html>
+    <head>
+      <base target="_blank" />
+      <style>
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          color: #111111 !important;
+          font-family: Arial, sans-serif !important;
+          line-height: 1.75 !important;
+          font-size: 15px !important;
+          word-wrap: break-word !important;
+          overflow-wrap: anywhere !important;
+        }
+        body {
+          padding: 28px !important;
+        }
+        * {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+          border-radius: 10px !important;
+        }
+        table {
+          width: 100% !important;
+          display: block !important;
+          overflow-x: auto !important;
+        }
+        pre, code {
+          white-space: pre-wrap !important;
+          word-break: break-word !important;
+        }
+        blockquote {
+          margin: 0 !important;
+          padding-left: 14px !important;
+          border-left: 3px solid rgba(167,139,250,0.45) !important;
+          color: #4b5563 !important;
+        }
+        a {
+          color: #7c3aed !important;
+          word-break: break-all !important;
+        }
+      </style>
+    </head>
+    <body>
+      ${selected.body_html}
+    </body>
+  </html>
+`}
                     />
                   ) : (
                     <pre
