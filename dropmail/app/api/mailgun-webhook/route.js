@@ -1,14 +1,66 @@
 import { createClient } from '@supabase/supabase-js';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const MAILGUN_WEBHOOK_SIGNING_KEY = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
+const MAX_WEBHOOK_AGE_SECONDS = 15 * 60; // 15 minutes
+
+function safeEqualHex(a, b) {
+  try {
+    const aBuf = Buffer.from(String(a || ''), 'hex');
+    const bBuf = Buffer.from(String(b || ''), 'hex');
+
+    if (aBuf.length === 0 || bBuf.length === 0) return false;
+    if (aBuf.length !== bBuf.length) return false;
+
+    return timingSafeEqual(aBuf, bBuf);
+  } catch {
+    return false;
+  }
+}
+
+function verifyMailgunSignature({ timestamp, token, signature }) {
+  if (!MAILGUN_WEBHOOK_SIGNING_KEY) {
+    console.error('MAILGUN_WEBHOOK_SIGNING_KEY is missing');
+    return false;
+  }
+
+  if (!timestamp || !token || !signature) return false;
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(age) || age > MAX_WEBHOOK_AGE_SECONDS) {
+    console.error('Rejected webhook: timestamp too old or invalid');
+    return false;
+  }
+
+  const expected = createHmac('sha256', MAILGUN_WEBHOOK_SIGNING_KEY)
+    .update(`${timestamp}${token}`)
+    .digest('hex');
+
+  return safeEqualHex(expected, signature);
+}
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
+
+    const timestamp = formData.get('timestamp');
+    const token = formData.get('token');
+    const signature = formData.get('signature');
+
+    const isValid = verifyMailgunSignature({
+      timestamp,
+      token,
+      signature,
+    });
+
+    if (!isValid) {
+      return Response.json({ error: 'Invalid Mailgun signature' }, { status: 401 });
+    }
 
     const recipient = formData.get('recipient');
     const sender = formData.get('sender');
@@ -55,7 +107,7 @@ export async function POST(request) {
     const attachmentRows = [];
     const emailId = insertedEmail.id;
 
-    for (const [key, value] of formData.entries()) {
+    for (const [, value] of formData.entries()) {
       if (!(value instanceof File)) continue;
       if (!value.name || value.size === 0) continue;
 
