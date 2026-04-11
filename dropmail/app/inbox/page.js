@@ -811,7 +811,55 @@ function InboxContent() {
                     </div>
                   </div>
                 </div>
+              {/* ATTACHMENTS */}
+{selected.attachments && selected.attachments.length > 0 && (
+  <div
+    style={{
+      marginBottom: '18px',
+      padding: '16px',
+      borderRadius: '18px',
+      background: '#ffffff',
+      border: '1px solid rgba(15,23,42,0.12)',
+      boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
+    }}
+  >
+    <div style={{ ...sectionLabel, marginBottom: '10px' }}>
+      Attachments ({selected.attachments.length})
+    </div>
 
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {selected.attachments.map((file) => (
+        <a
+          key={file.id}
+          href={file.public_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            border: '1px solid rgba(15,23,42,0.12)',
+            textDecoration: 'none',
+            color: '#0f172a',
+            background: '#f8fafc',
+            fontSize: '13px',
+            fontWeight: 700,
+          }}
+        >
+          <span>
+            📎 {file.filename}
+          </span>
+
+          <span style={{ fontSize: '12px', color: '#64748b' }}>
+            {(file.size_bytes / 1024).toFixed(1)} KB
+          </span>
+        </a>
+      ))}
+    </div>
+  </div>
+)}
                 <div style={messageBodyWrap}>
                   <div style={bodyTopBar}>
                     <div style={bodyTopBarTitle}>Email content</div>

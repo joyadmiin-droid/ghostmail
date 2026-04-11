@@ -12,6 +12,15 @@ function normalizePlan(plan) {
   return 'free';
 }
 
+function formatAttachmentUrl(storagePath) {
+  if (!storagePath) return null;
+
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+
+  return `${base}/storage/v1/object/public/attachments/${storagePath}`;
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -68,8 +77,6 @@ export async function GET(request) {
     let effectiveMailbox = mailbox;
 
     if (plan === 'free') {
-      // Guest inbox trying to be claimed by a free user:
-      // allow only if they do NOT already have another active inbox.
       if (!mailbox.user_id) {
         const { data: activeOwnedMailboxes, error: activeOwnedErr } = await supabase
           .from('mailboxes')
@@ -117,7 +124,6 @@ export async function GET(request) {
         );
       }
     } else {
-      // Paid users can open their own inboxes, and can claim guest inboxes.
       if (!mailbox.user_id) {
         const { data: updatedMailbox, error: claimErr } = await supabase
           .from('mailboxes')
@@ -155,6 +161,47 @@ export async function GET(request) {
       return Response.json({ error: 'Failed to fetch emails' }, { status: 500 });
     }
 
+    const emailIds = (emails || []).map((email) => email.id);
+
+    let attachmentsByEmailId = {};
+
+    if (emailIds.length > 0) {
+      const { data: attachments, error: attachmentsErr } = await supabase
+        .from('attachments')
+        .select('id, email_id, filename, mime_type, size_bytes, storage_path')
+        .in('email_id', emailIds)
+        .order('filename', { ascending: true });
+
+      if (attachmentsErr) {
+        console.error('Attachments fetch error:', attachmentsErr);
+        return Response.json({ error: 'Failed to fetch attachments' }, { status: 500 });
+      }
+
+      attachmentsByEmailId = (attachments || []).reduce((acc, attachment) => {
+        const emailId = attachment.email_id;
+
+        if (!acc[emailId]) {
+          acc[emailId] = [];
+        }
+
+        acc[emailId].push({
+          id: attachment.id,
+          filename: attachment.filename,
+          mime_type: attachment.mime_type,
+          size_bytes: attachment.size_bytes || 0,
+          storage_path: attachment.storage_path,
+          public_url: formatAttachmentUrl(attachment.storage_path),
+        });
+
+        return acc;
+      }, {});
+    }
+
+    const emailsWithAttachments = (emails || []).map((email) => ({
+      ...email,
+      attachments: attachmentsByEmailId[email.id] || [],
+    }));
+
     return Response.json({
       mailbox: {
         id: effectiveMailbox.id,
@@ -162,7 +209,7 @@ export async function GET(request) {
         expires_at: effectiveMailbox.expires_at,
         is_active: effectiveMailbox.is_active,
       },
-      emails: emails || [],
+      emails: emailsWithAttachments,
       plan,
     });
   } catch (err) {
