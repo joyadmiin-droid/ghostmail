@@ -811,8 +811,7 @@ function InboxContent() {
                     </div>
                   </div>
                 </div>
-              {/* ATTACHMENTS */}
-{selected.attachments && selected.attachments.length > 0 && (
+              {selected.attachments && selected.attachments.length > 0 && (
   <div
     style={{
       marginBottom: '18px',
@@ -823,40 +822,92 @@ function InboxContent() {
       boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
     }}
   >
-    <div style={{ ...sectionLabel, marginBottom: '10px' }}>
+    <div style={{ ...sectionLabel, marginBottom: '12px' }}>
       Attachments ({selected.attachments.length})
     </div>
 
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {selected.attachments.map((file) => (
-        <a
-          key={file.id}
-          href={file.public_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 12px',
-            borderRadius: '12px',
-            border: '1px solid rgba(15,23,42,0.12)',
-            textDecoration: 'none',
-            color: '#0f172a',
-            background: '#f8fafc',
-            fontSize: '13px',
-            fontWeight: 700,
-          }}
-        >
-          <span>
-            📎 {file.filename}
-          </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {selected.attachments.map((file) => {
+        const isImage = file.mime_type?.startsWith('image/');
+        const isPDF = file.mime_type === 'application/pdf';
 
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
-            {(file.size_bytes / 1024).toFixed(1)} KB
-          </span>
-        </a>
-      ))}
+        return (
+          <div
+            key={file.id}
+            style={{
+              border: '1px solid rgba(15,23,42,0.12)',
+              borderRadius: '14px',
+              padding: '12px',
+              background: '#f8fafc',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px',
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: '13px' }}>
+                📎 {file.filename}
+              </span>
+
+              <a
+                href={file.public_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: '12px',
+                  textDecoration: 'none',
+                  color: '#4f46e5',
+                  fontWeight: 600,
+                }}
+              >
+                Download
+              </a>
+            </div>
+
+            {/* Preview */}
+            {isImage && (
+              <img
+                src={file.public_url}
+                alt={file.filename}
+                style={{
+                  width: '100%',
+                  borderRadius: '10px',
+                  maxHeight: '300px',
+                  objectFit: 'cover',
+                }}
+              />
+            )}
+
+            {isPDF && (
+              <iframe
+                src={file.public_url}
+                style={{
+                  width: '100%',
+                  height: '300px',
+                  border: 'none',
+                  borderRadius: '10px',
+                }}
+              />
+            )}
+
+            {!isImage && !isPDF && (
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#64748b',
+                }}
+              >
+                {(file.size_bytes / 1024).toFixed(1)} KB
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   </div>
 )}
