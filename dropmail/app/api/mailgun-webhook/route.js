@@ -9,6 +9,11 @@ const supabase = createClient(
 const MAILGUN_WEBHOOK_SIGNING_KEY = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
 const MAX_WEBHOOK_AGE_SECONDS = 15 * 60; // 15 minutes
 
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB each
+const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25 MB total
+const MAX_EMAIL_BODY_BYTES = 2_000_000; // ~2 MB combined HTML + text
+
 function safeEqualHex(a, b) {
   try {
     const aBuf = Buffer.from(String(a || ''), 'hex');
@@ -69,6 +74,14 @@ export async function POST(request) {
     const bodyHtml = formData.get('body-html') || '';
     const bodyText = formData.get('body-plain') || '';
 
+    const combinedBodySize =
+      Buffer.byteLength(String(bodyHtml), 'utf8') +
+      Buffer.byteLength(String(bodyText), 'utf8');
+
+    if (combinedBodySize > MAX_EMAIL_BODY_BYTES) {
+      return Response.json({ error: 'Email body too large' }, { status: 413 });
+    }
+
     const toAddress = recipient?.toLowerCase().trim();
 
     const { data: mailbox, error: mailboxErr } = await supabase
@@ -107,9 +120,27 @@ export async function POST(request) {
     const attachmentRows = [];
     const emailId = insertedEmail.id;
 
+    let acceptedAttachments = 0;
+    let totalAttachmentBytes = 0;
+
     for (const [, value] of formData.entries()) {
       if (!(value instanceof File)) continue;
       if (!value.name || value.size === 0) continue;
+
+      if (acceptedAttachments >= MAX_ATTACHMENTS) {
+        console.warn('Skipping attachment: max attachment count reached');
+        continue;
+      }
+
+      if (value.size > MAX_ATTACHMENT_SIZE_BYTES) {
+        console.warn(`Skipping attachment "${value.name}": file too large (${value.size} bytes)`);
+        continue;
+      }
+
+      if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES) {
+        console.warn(`Skipping attachment "${value.name}": total attachment size limit exceeded`);
+        continue;
+      }
 
       const safeName = value.name.replace(/[^\w.\-]/g, '_');
       const storagePath = `${mailbox.id}/${emailId}/${randomUUID()}-${safeName}`;
@@ -136,6 +167,9 @@ export async function POST(request) {
         size_bytes: value.size || 0,
         storage_path: storagePath,
       });
+
+      acceptedAttachments += 1;
+      totalAttachmentBytes += value.size;
     }
 
     if (attachmentRows.length > 0) {
@@ -152,6 +186,11 @@ export async function POST(request) {
       success: true,
       email_id: emailId,
       attachments_saved: attachmentRows.length,
+      attachment_limits: {
+        max_attachments: MAX_ATTACHMENTS,
+        max_attachment_size_bytes: MAX_ATTACHMENT_SIZE_BYTES,
+        max_total_attachment_bytes: MAX_TOTAL_ATTACHMENT_BYTES,
+      },
     });
   } catch (err) {
     console.error('Webhook error:', err);
