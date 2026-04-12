@@ -424,16 +424,29 @@ function InboxContent() {
   }
 
   async function markRead(emailId) {
-    try {
-      await fetch('/api/mailbox/read?id=' + emailId, { method: 'POST' });
-      setEmails((prev) =>
-        prev.map((e) => (e.id === emailId ? { ...e, is_read: true } : e))
-      );
-      setSelected((prev) => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
-    } catch (err) {
-      console.error('Mark read failed:', err);
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers = {};
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
     }
+
+    await fetch('/api/mailbox/read?id=' + emailId, {
+      method: 'POST',
+      headers,
+    });
+
+    setEmails((prev) =>
+      prev.map((e) => (e.id === emailId ? { ...e, is_read: true } : e))
+    );
+    setSelected((prev) => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
+  } catch (err) {
+    console.error('Mark read failed:', err);
   }
+}
 
   function openEmail(email) {
     setSelected(email);
