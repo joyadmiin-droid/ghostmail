@@ -49,6 +49,37 @@ function verifyMailgunSignature({ timestamp, token, signature }) {
   return safeEqualHex(expected, signature);
 }
 
+/* =========================
+   REPLAY PROTECTION (NEW)
+========================= */
+async function reserveWebhookToken({ token, timestamp }) {
+  const ts = Number(timestamp);
+
+  if (!token || !Number.isFinite(ts)) {
+    return { ok: false, reason: 'invalid_token_or_timestamp' };
+  }
+
+  const { error } = await supabase
+    .from('webhook_replay_guard')
+    .insert({
+      token,
+      timestamp_sec: ts,
+      provider: 'mailgun',
+    });
+
+  if (!error) {
+    return { ok: true };
+  }
+
+  // duplicate token = replay attack
+  if (error.code === '23505') {
+    return { ok: false, reason: 'replayed_token' };
+  }
+
+  console.error('Replay guard insert error:', error);
+  return { ok: false, reason: 'db_error' };
+}
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -65,6 +96,19 @@ export async function POST(request) {
 
     if (!isValid) {
       return Response.json({ error: 'Invalid Mailgun signature' }, { status: 401 });
+    }
+
+    /* =========================
+       REPLAY CHECK (NEW)
+    ========================= */
+    const replayCheck = await reserveWebhookToken({ token, timestamp });
+
+    if (!replayCheck.ok) {
+      if (replayCheck.reason === 'replayed_token') {
+        return Response.json({ error: 'Replay detected' }, { status: 409 });
+      }
+
+      return Response.json({ error: 'Webhook replay guard failed' }, { status: 500 });
     }
 
     const recipient = formData.get('recipient');
@@ -127,20 +171,9 @@ export async function POST(request) {
       if (!(value instanceof File)) continue;
       if (!value.name || value.size === 0) continue;
 
-      if (acceptedAttachments >= MAX_ATTACHMENTS) {
-        console.warn('Skipping attachment: max attachment count reached');
-        continue;
-      }
-
-      if (value.size > MAX_ATTACHMENT_SIZE_BYTES) {
-        console.warn(`Skipping attachment "${value.name}": file too large (${value.size} bytes)`);
-        continue;
-      }
-
-      if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES) {
-        console.warn(`Skipping attachment "${value.name}": total attachment size limit exceeded`);
-        continue;
-      }
+      if (acceptedAttachments >= MAX_ATTACHMENTS) continue;
+      if (value.size > MAX_ATTACHMENT_SIZE_BYTES) continue;
+      if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES) continue;
 
       const safeName = value.name.replace(/[^\w.\-]/g, '_');
       const storagePath = `${mailbox.id}/${emailId}/${randomUUID()}-${safeName}`;
@@ -155,10 +188,7 @@ export async function POST(request) {
           upsert: false,
         });
 
-      if (uploadErr) {
-        console.error('Attachment upload error:', uploadErr);
-        continue;
-      }
+      if (uploadErr) continue;
 
       attachmentRows.push({
         email_id: emailId,
@@ -168,30 +198,20 @@ export async function POST(request) {
         storage_path: storagePath,
       });
 
-      acceptedAttachments += 1;
+      acceptedAttachments++;
       totalAttachmentBytes += value.size;
     }
 
     if (attachmentRows.length > 0) {
-      const { error: attachmentInsertErr } = await supabase
-        .from('attachments')
-        .insert(attachmentRows);
-
-      if (attachmentInsertErr) {
-        console.error('Attachment insert error:', attachmentInsertErr);
-      }
+      await supabase.from('attachments').insert(attachmentRows);
     }
 
     return Response.json({
       success: true,
       email_id: emailId,
       attachments_saved: attachmentRows.length,
-      attachment_limits: {
-        max_attachments: MAX_ATTACHMENTS,
-        max_attachment_size_bytes: MAX_ATTACHMENT_SIZE_BYTES,
-        max_total_attachment_bytes: MAX_TOTAL_ATTACHMENT_BYTES,
-      },
     });
+
   } catch (err) {
     console.error('Webhook error:', err);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
