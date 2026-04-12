@@ -164,10 +164,10 @@ export async function GET(request) {
 
     if (emailIds.length > 0) {
       const { data: attachments, error: attachmentsErr } = await supabase
-        .from('email-attachments-private')
-        .select('id, email_id, filename, mime_type, size_bytes, storage_path')
-        .in('email_id', emailIds)
-        .order('filename', { ascending: true });
+  .from('attachments')
+  .select('id, email_id, filename, mime_type, size_bytes, storage_path')
+  .in('email_id', emailIds)
+  .order('filename', { ascending: true });
 
       if (attachmentsErr) {
         console.error('Attachments fetch error:', attachmentsErr);
