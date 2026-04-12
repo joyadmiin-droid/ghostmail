@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, createHmac, timingSafeEqual } from 'crypto';
+import sanitizeHtml from 'sanitize-html';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -13,6 +14,14 @@ const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB each
 const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25 MB total
 const MAX_EMAIL_BODY_BYTES = 2_000_000; // ~2 MB combined HTML + text
+
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'text/plain'
+]);
 
 function safeEqualHex(a, b) {
   try {
@@ -49,9 +58,6 @@ function verifyMailgunSignature({ timestamp, token, signature }) {
   return safeEqualHex(expected, signature);
 }
 
-/* =========================
-   REPLAY PROTECTION (NEW)
-========================= */
 async function reserveWebhookToken({ token, timestamp }) {
   const ts = Number(timestamp);
 
@@ -71,13 +77,76 @@ async function reserveWebhookToken({ token, timestamp }) {
     return { ok: true };
   }
 
-  // duplicate token = replay attack
   if (error.code === '23505') {
     return { ok: false, reason: 'replayed_token' };
   }
 
   console.error('Replay guard insert error:', error);
   return { ok: false, reason: 'db_error' };
+}
+
+function sanitizeEmailHtml(html) {
+  return sanitizeHtml(String(html || ''), {
+    allowedTags: [
+      'html', 'body', 'div', 'span', 'p', 'br', 'hr',
+      'b', 'strong', 'i', 'em', 'u', 's',
+      'blockquote', 'pre', 'code',
+      'ul', 'ol', 'li',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
+      'a', 'img',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+    ],
+    allowedAttributes: {
+      a: ['href', 'name', 'target', 'rel'],
+      img: ['src', 'alt', 'title', 'width', 'height'],
+      '*': ['style']
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemesByTag: {
+      img: ['http', 'https', 'data']
+    },
+    allowProtocolRelative: false,
+    disallowedTagsMode: 'discard',
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', {
+        rel: 'nofollow noopener noreferrer',
+        target: '_blank'
+      })
+    },
+    exclusiveFilter(frame) {
+      const tag = frame.tag;
+      const attrs = frame.attribs || {};
+
+      if (tag === 'img') {
+        const src = String(attrs.src || '').trim().toLowerCase();
+        if (!src) return true;
+        if (
+          src.startsWith('javascript:') ||
+          src.startsWith('file:') ||
+          src.startsWith('vbscript:')
+        ) {
+          return true;
+        }
+      }
+
+      if (tag === 'a') {
+        const href = String(attrs.href || '').trim().toLowerCase();
+        if (
+          href.startsWith('javascript:') ||
+          href.startsWith('file:') ||
+          href.startsWith('vbscript:')
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+  });
+}
+
+function normalizePlainText(text) {
+  return String(text || '').replace(/\u0000/g, '').trim();
 }
 
 export async function POST(request) {
@@ -98,9 +167,6 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid Mailgun signature' }, { status: 401 });
     }
 
-    /* =========================
-       REPLAY CHECK (NEW)
-    ========================= */
     const replayCheck = await reserveWebhookToken({ token, timestamp });
 
     if (!replayCheck.ok) {
@@ -114,17 +180,20 @@ export async function POST(request) {
     const recipient = formData.get('recipient');
     const sender = formData.get('sender');
     const from = formData.get('from');
-    const subject = formData.get('subject') || '(no subject)';
-    const bodyHtml = formData.get('body-html') || '';
-    const bodyText = formData.get('body-plain') || '';
+    const subject = String(formData.get('subject') || '(no subject)').slice(0, 500);
+    const rawBodyHtml = formData.get('body-html') || '';
+    const rawBodyText = formData.get('body-plain') || '';
 
     const combinedBodySize =
-      Buffer.byteLength(String(bodyHtml), 'utf8') +
-      Buffer.byteLength(String(bodyText), 'utf8');
+      Buffer.byteLength(String(rawBodyHtml), 'utf8') +
+      Buffer.byteLength(String(rawBodyText), 'utf8');
 
     if (combinedBodySize > MAX_EMAIL_BODY_BYTES) {
       return Response.json({ error: 'Email body too large' }, { status: 413 });
     }
+
+    const bodyHtml = sanitizeEmailHtml(rawBodyHtml);
+    const bodyText = normalizePlainText(rawBodyText);
 
     const toAddress = recipient?.toLowerCase().trim();
 
@@ -175,6 +244,13 @@ export async function POST(request) {
       if (value.size > MAX_ATTACHMENT_SIZE_BYTES) continue;
       if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES) continue;
 
+      const mimeType = value.type || 'application/octet-stream';
+
+      if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
+        console.warn(`Skipping attachment "${value.name}": disallowed MIME type ${mimeType}`);
+        continue;
+      }
+
       const safeName = value.name.replace(/[^\w.\-]/g, '_');
       const storagePath = `${mailbox.id}/${emailId}/${randomUUID()}-${safeName}`;
 
@@ -184,26 +260,35 @@ export async function POST(request) {
       const { error: uploadErr } = await supabase.storage
         .from('email-attachments-private')
         .upload(storagePath, fileBuffer, {
-          contentType: value.type || 'application/octet-stream',
+          contentType: mimeType,
           upsert: false,
         });
 
-      if (uploadErr) continue;
+      if (uploadErr) {
+        console.error('Attachment upload error:', uploadErr);
+        continue;
+      }
 
       attachmentRows.push({
         email_id: emailId,
         filename: value.name,
-        mime_type: value.type || 'application/octet-stream',
+        mime_type: mimeType,
         size_bytes: value.size || 0,
         storage_path: storagePath,
       });
 
-      acceptedAttachments++;
+      acceptedAttachments += 1;
       totalAttachmentBytes += value.size;
     }
 
     if (attachmentRows.length > 0) {
-      await supabase.from('attachments').insert(attachmentRows);
+      const { error: attachmentInsertErr } = await supabase
+        .from('attachments')
+        .insert(attachmentRows);
+
+      if (attachmentInsertErr) {
+        console.error('Attachment insert error:', attachmentInsertErr);
+      }
     }
 
     return Response.json({
@@ -211,7 +296,6 @@ export async function POST(request) {
       email_id: emailId,
       attachments_saved: attachmentRows.length,
     });
-
   } catch (err) {
     console.error('Webhook error:', err);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
