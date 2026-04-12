@@ -137,6 +137,7 @@ export async function GET(request) {
     } = await supabase.auth.getUser(accessToken);
 
     if (userError || !user) {
+      console.error('File auth error:', userError);
       return new NextResponse('Invalid authentication', { status: 401 });
     }
 
@@ -148,33 +149,34 @@ export async function GET(request) {
 
     const { data: attachment, error: attachmentError } = await supabase
       .from('attachments')
-      .select(`
-        id,
-        storage_path,
-        filename,
-        email_id,
-        emails!inner (
-          id,
-          mailbox_id,
-          mailboxes!inner (
-            id,
-            user_id,
-            is_active,
-            expires_at
-          )
-        )
-      `)
+      .select('id, storage_path, filename, email_id')
       .eq('storage_path', storagePath)
-      .single();
+      .maybeSingle();
 
     if (attachmentError || !attachment) {
       console.error('Attachment lookup error:', attachmentError);
       return new NextResponse('File not found', { status: 404 });
     }
 
-    const mailbox = attachment.emails?.mailboxes;
+    const { data: emailRecord, error: emailError } = await supabase
+      .from('emails')
+      .select('id, mailbox_id')
+      .eq('id', attachment.email_id)
+      .maybeSingle();
 
-    if (!mailbox) {
+    if (emailError || !emailRecord) {
+      console.error('Email lookup error:', emailError);
+      return new NextResponse('File not found', { status: 404 });
+    }
+
+    const { data: mailbox, error: mailboxError } = await supabase
+      .from('mailboxes')
+      .select('id, user_id, is_active, expires_at')
+      .eq('id', emailRecord.mailbox_id)
+      .maybeSingle();
+
+    if (mailboxError || !mailbox) {
+      console.error('Mailbox lookup error:', mailboxError);
       return new NextResponse('File not found', { status: 404 });
     }
 
@@ -201,7 +203,7 @@ export async function GET(request) {
     return new NextResponse(arrayBuffer, {
       headers: {
         'Content-Type': data.type || 'application/octet-stream',
-        'Content-Disposition': `inline; filename="${filename.replace(/"/g, '')}"`,
+        'Content-Disposition': `inline; filename="${String(filename).replace(/"/g, '')}"`,
         'Cache-Control': 'private, no-store, max-age=0',
         'X-Content-Type-Options': 'nosniff',
       },
