@@ -28,8 +28,10 @@ function InboxContent() {
   const [isMobile, setIsMobile] = useState(false);
   const [autoRefreshSeconds, setAutoRefreshSeconds] = useState(0);
   const [mailboxExpired, setMailboxExpired] = useState(false);
+  const [attachmentBlobUrls, setAttachmentBlobUrls] = useState({});
 
   const hasCleanedExpiredMailbox = useRef(false);
+  const attachmentBlobUrlsRef = useRef({});
 
   function showToast(message) {
     setToast(message);
@@ -42,6 +44,22 @@ function InboxContent() {
     const clean = raw.replace(/\s+/g, ' ').trim();
     return clean || '(no subject)';
   }
+
+  const revokeAttachmentUrls = useCallback((map) => {
+    Object.values(map || {}).forEach((entry) => {
+      if (entry?.objectUrl) {
+        try {
+          URL.revokeObjectURL(entry.objectUrl);
+        } catch {}
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      revokeAttachmentUrls(attachmentBlobUrlsRef.current);
+    };
+  }, [revokeAttachmentUrls]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 980);
@@ -119,6 +137,149 @@ function InboxContent() {
       console.error('Expired mailbox cleanup failed:', err);
     }
   }, []);
+
+  const fetchAttachmentBlob = useCallback(async (file) => {
+    if (!file?.id || !file?.public_url) {
+      throw new Error('Missing attachment URL');
+    }
+
+    const existing = attachmentBlobUrlsRef.current[file.id];
+    if (existing?.objectUrl) {
+      return existing.objectUrl;
+    }
+
+    setAttachmentBlobUrls((prev) => {
+      const next = {
+        ...prev,
+        [file.id]: {
+          ...prev[file.id],
+          loading: true,
+          error: null,
+        },
+      };
+      attachmentBlobUrlsRef.current = next;
+      return next;
+    });
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      throw new Error('Please log in again to open attachments.');
+    }
+
+    const response = await fetch(file.public_url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      console.error('Attachment fetch failed:', response.status, text);
+      throw new Error('Failed to fetch attachment');
+    }
+
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+
+    setAttachmentBlobUrls((prev) => {
+      const next = {
+        ...prev,
+        [file.id]: {
+          objectUrl,
+          loading: false,
+          error: null,
+        },
+      };
+      attachmentBlobUrlsRef.current = next;
+      return next;
+    });
+
+    return objectUrl;
+  }, []);
+
+  const openAttachment = useCallback(
+    async (file) => {
+      try {
+        const objectUrl = await fetchAttachmentBlob(file);
+        window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.error('Open attachment error:', err);
+        alert(err.message || 'Failed to open attachment.');
+      }
+    },
+    [fetchAttachmentBlob]
+  );
+
+  const downloadAttachment = useCallback(
+    async (file) => {
+      try {
+        const objectUrl = await fetchAttachmentBlob(file);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = file.filename || 'download';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        console.error('Download attachment error:', err);
+        alert(err.message || 'Failed to download attachment.');
+      }
+    },
+    [fetchAttachmentBlob]
+  );
+
+  useEffect(() => {
+    const previousMap = attachmentBlobUrlsRef.current;
+    revokeAttachmentUrls(previousMap);
+    attachmentBlobUrlsRef.current = {};
+    setAttachmentBlobUrls({});
+
+    const attachments = selected?.attachments || [];
+    if (!attachments.length || !isLoggedIn) return;
+
+    let cancelled = false;
+
+    async function preloadAttachments() {
+      for (const file of attachments) {
+        const isPreviewable =
+          file?.mime_type?.startsWith('image/') || file?.mime_type === 'application/pdf';
+
+        if (!isPreviewable) continue;
+
+        try {
+          if (cancelled) return;
+          await fetchAttachmentBlob(file);
+        } catch (err) {
+          if (cancelled) return;
+          console.error('Preview preload failed:', err);
+
+          setAttachmentBlobUrls((prev) => {
+            const next = {
+              ...prev,
+              [file.id]: {
+                ...(prev[file.id] || {}),
+                loading: false,
+                error: 'Preview unavailable',
+              },
+            };
+            attachmentBlobUrlsRef.current = next;
+            return next;
+          });
+        }
+      }
+    }
+
+    preloadAttachments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id, isLoggedIn, fetchAttachmentBlob, revokeAttachmentUrls]);
 
   const fetchEmails = useCallback(
     async (showRefreshState = false) => {
@@ -811,109 +972,130 @@ function InboxContent() {
                     </div>
                   </div>
                 </div>
-              {selected.attachments && selected.attachments.length > 0 && (
-  <div
-    style={{
-      marginBottom: '18px',
-      padding: '16px',
-      borderRadius: '18px',
-      background: '#ffffff',
-      border: '1px solid rgba(15,23,42,0.12)',
-      boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
-    }}
-  >
-    <div style={{ ...sectionLabel, marginBottom: '12px' }}>
-      Attachments ({selected.attachments.length})
-    </div>
 
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      {selected.attachments.map((file) => {
-        const isImage = file.mime_type?.startsWith('image/');
-        const isPDF = file.mime_type === 'application/pdf';
+                {selected.attachments && selected.attachments.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: '18px',
+                      padding: '16px',
+                      borderRadius: '18px',
+                      background: '#ffffff',
+                      border: '1px solid rgba(15,23,42,0.12)',
+                      boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
+                    }}
+                  >
+                    <div style={{ ...sectionLabel, marginBottom: '12px' }}>
+                      Attachments ({selected.attachments.length})
+                    </div>
 
-        return (
-          <div
-  key={file.id}
-  style={{
-    border: '1px solid rgba(15,23,42,0.12)',
-    borderRadius: '14px',
-    padding: '12px',
-    background: '#f8fafc',
-    transition: 'all 0.2s ease',
-    cursor: 'pointer',
-  }}
->
-            {/* Header */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '8px',
-              }}
-            >
-              <span style={{ fontWeight: 700, fontSize: '13px' }}>
-                📎 {file.filename}
-              </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {selected.attachments.map((file) => {
+                        const isImage = file.mime_type?.startsWith('image/');
+                        const isPDF = file.mime_type === 'application/pdf';
+                        const fileState = attachmentBlobUrls[file.id] || {};
+                        const previewUrl = fileState.objectUrl;
+                        const previewLoading = !!fileState.loading;
+                        const previewError = fileState.error;
 
-              <a
-                href={file.public_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: '12px',
-                  textDecoration: 'none',
-                  color: '#4f46e5',
-                  fontWeight: 600,
-                }}
-              >
-                Download
-              </a>
-            </div>
+                        return (
+                          <div
+                            key={file.id}
+                            style={{
+                              border: '1px solid rgba(15,23,42,0.12)',
+                              borderRadius: '14px',
+                              padding: '12px',
+                              background: '#f8fafc',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: '10px',
+                                marginBottom: '8px',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <span style={{ fontWeight: 700, fontSize: '13px', wordBreak: 'break-word' }}>
+                                📎 {file.filename}
+                              </span>
 
-            {/* Preview */}
-            {isImage && (
-              <img
-                src={file.public_url}
-                alt={file.filename}
-                style={{
-                  width: '100%',
-                  borderRadius: '10px',
-                  maxHeight: '420px',
-                  objectFit: 'contain',
-                  background: '#f1f5f9'
-                }}
-              />
-            )}
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openAttachment(file)}
+                                  className="action-btn"
+                                  style={attachmentActionBtn}
+                                >
+                                  Open
+                                </button>
 
-            {isPDF && (
-              <iframe
-                src={file.public_url}
-                style={{
-                  width: '100%',
-                  height: '300px',
-                  border: 'none',
-                  borderRadius: '10px',
-                }}
-              />
-            )}
+                                <button
+                                  type="button"
+                                  onClick={() => downloadAttachment(file)}
+                                  className="action-btn"
+                                  style={attachmentActionBtn}
+                                >
+                                  Download
+                                </button>
+                              </div>
+                            </div>
 
-            {!isImage && !isPDF && (
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#64748b',
-                }}
-              >
-                {(file.size_bytes / 1024).toFixed(1)} KB
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+                            {previewLoading && (isImage || isPDF) && (
+                              <div style={attachmentInfoText}>Loading preview...</div>
+                            )}
+
+                            {previewError && (isImage || isPDF) && (
+                              <div style={{ ...attachmentInfoText, color: '#dc2626' }}>
+                                {previewError}
+                              </div>
+                            )}
+
+                            {isImage && previewUrl && (
+                              <img
+                                src={previewUrl}
+                                alt={file.filename}
+                                style={{
+                                  width: '100%',
+                                  borderRadius: '10px',
+                                  maxHeight: '420px',
+                                  objectFit: 'contain',
+                                  background: '#f1f5f9',
+                                }}
+                              />
+                            )}
+
+                            {isPDF && previewUrl && (
+                              <iframe
+                                src={previewUrl}
+                                style={{
+                                  width: '100%',
+                                  height: '300px',
+                                  border: 'none',
+                                  borderRadius: '10px',
+                                }}
+                              />
+                            )}
+
+                            {!isImage && !isPDF && (
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: '#64748b',
+                                }}
+                              >
+                                {(file.size_bytes / 1024).toFixed(1)} KB
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div style={messageBodyWrap}>
                   <div style={bodyTopBar}>
                     <div style={bodyTopBarTitle}>Email content</div>
@@ -921,8 +1103,8 @@ function InboxContent() {
 
                   {selected.body_html ? (
                     <iframe
-  title={`Email content - ${getDisplaySubject(selected)}`}
-  sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                      title={`Email content - ${getDisplaySubject(selected)}`}
+                      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                       style={{
                         ...messageIframe,
                         height: isMobile ? '56vh' : '68vh',
@@ -1304,6 +1486,23 @@ const codeCopyBtn = {
   fontSize: '13px',
   fontWeight: 800,
   cursor: 'pointer',
+};
+
+const attachmentActionBtn = {
+  padding: '8px 12px',
+  borderRadius: '10px',
+  border: '1px solid rgba(15,23,42,0.14)',
+  background: '#ffffff',
+  color: '#4f46e5',
+  fontSize: '12px',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const attachmentInfoText = {
+  fontSize: '12px',
+  color: '#64748b',
+  marginTop: '6px',
 };
 
 const sectionLabel = {
