@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -19,10 +19,10 @@ export default function InboxPage() {
     });
   }, []);
 
-  const fetchAttachmentBlob = useCallback(
-  async (file) => {
+  // ✅ FIX: removed useCallback (build-safe)
+  const fetchAttachmentBlob = async (file) => {
     try {
-      if (!file?.id || !file?.storage_path) {
+      if (!file?.storage_path) {
         throw new Error('Missing attachment path');
       }
 
@@ -55,9 +55,7 @@ export default function InboxPage() {
       console.error('Attachment fetch error:', err);
       throw err;
     }
-  },
-  []
-);
+  };
 
   const openAttachment = async (file) => {
     try {
