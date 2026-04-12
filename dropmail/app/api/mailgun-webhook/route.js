@@ -149,7 +149,7 @@ export async function POST(request) {
       const fileBuffer = Buffer.from(arrayBuffer);
 
       const { error: uploadErr } = await supabase.storage
-        .from('attachments')
+        .from('email-attachments-private')
         .upload(storagePath, fileBuffer, {
           contentType: value.type || 'application/octet-stream',
           upsert: false,

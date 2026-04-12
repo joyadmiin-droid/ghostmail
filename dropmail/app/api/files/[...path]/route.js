@@ -27,7 +27,7 @@ export async function GET(request) {
     }
 
     const { data, error } = await supabase.storage
-      .from('attachments')
+      .from('email-attachments-private')
       .download(storagePath);
 
     if (error || !data) {
