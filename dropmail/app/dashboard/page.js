@@ -1,5 +1,3 @@
-// app/dashboard/page.js
-
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
@@ -12,6 +10,21 @@ const supabase = createClient(
 
 const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 
+const PLAN_CONFIG = {
+  free: {
+    label: 'GHOST',
+    emailLimit: 5,
+  },
+  phantom: {
+    label: 'PHANTOM',
+    emailLimit: 200,
+  },
+  spectre: {
+    label: 'SPECTRE',
+    emailLimit: 600,
+  },
+};
+
 export default function DashboardPage() {
   const [status, setStatus] = useState('loading');
   const [user, setUser] = useState(null);
@@ -23,7 +36,7 @@ export default function DashboardPage() {
   const [addresses, setAddresses] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [error, setError] = useState('');
-  const [emailCount, setEmailCount] = useState(null);
+  const [emailCount, setEmailCount] = useState(0);
   const [copiedId, setCopiedId] = useState(null);
   const [mailboxUsage, setMailboxUsage] = useState({});
   const [favorites, setFavorites] = useState({});
@@ -137,6 +150,15 @@ export default function DashboardPage() {
 
       await cleanupExpiredMailboxes(session.user.id);
 
+      const { data: allMailboxes, error: allMailboxesError } = await supabase
+        .from('mailboxes')
+        .select('id')
+        .eq('user_id', session.user.id);
+
+      if (allMailboxesError) throw allMailboxesError;
+
+      const allMailboxIds = (allMailboxes || []).map((m) => m.id);
+
       const { data: mailboxes, error: mailboxError } = await supabase
         .from('mailboxes')
         .select('id, address, token, expires_at, created_at')
@@ -150,11 +172,21 @@ export default function DashboardPage() {
       const mailboxList = mailboxes || [];
       setAddresses(mailboxList);
 
-      const { count } = await supabase
-        .from('emails')
-        .select('id', { count: 'exact', head: true });
+      if (allMailboxIds.length > 0) {
+        const { count: userEmailCount, error: countError } = await supabase
+          .from('emails')
+          .select('id', { count: 'exact', head: true })
+          .in('mailbox_id', allMailboxIds);
 
-      setEmailCount(count || 0);
+        if (countError) {
+          console.error('Failed to count user emails:', countError);
+          setEmailCount(0);
+        } else {
+          setEmailCount(userEmailCount || 0);
+        }
+      } else {
+        setEmailCount(0);
+      }
 
       if (mailboxList.length > 0) {
         const mailboxIds = mailboxList.map((m) => m.id);
@@ -257,6 +289,7 @@ export default function DashboardPage() {
       setAddresses((prev) => [data, ...prev]);
       setMailboxUsage((prev) => ({ ...prev, [data.id]: 0 }));
       showToast('New inbox created');
+      loadDashboard();
     } catch (err) {
       setError(err.message || 'Failed to generate mailbox');
     } finally {
@@ -289,10 +322,10 @@ export default function DashboardPage() {
       if (deleteError) throw deleteError;
 
       removeInactiveFromLocalState([selectedInbox.id]);
-
       setDeleteModalOpen(false);
       setSelectedInbox(null);
       showToast('Inbox deleted');
+      loadDashboard();
     } catch (err) {
       alert(err.message || 'Failed to delete inbox');
     } finally {
@@ -372,7 +405,7 @@ export default function DashboardPage() {
   }
 
   function getPlanDisplayName(value) {
-    return normalizePlan(value).toUpperCase();
+    return PLAN_CONFIG[normalizePlan(value)]?.label || 'GHOST';
   }
 
   function formatCreatedDate(ts) {
@@ -436,6 +469,18 @@ export default function DashboardPage() {
       favoriteCount,
     };
   }, [addresses, mailboxUsage, favorites]);
+
+  const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.free;
+  const planEmailLimit = currentPlanConfig.emailLimit;
+  const emailsLeft = Math.max(planEmailLimit - emailCount, 0);
+  const usagePercent = planEmailLimit > 0 ? Math.min((emailCount / planEmailLimit) * 100, 100) : 0;
+
+  const emailsLeftColor =
+    emailsLeft <= planEmailLimit * 0.2
+      ? '#ef4444'
+      : emailsLeft <= planEmailLimit * 0.5
+      ? '#f59e0b'
+      : '#22c55e';
 
   if (status === 'loading') {
     return (
@@ -583,7 +628,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <p style={planMeta}>Emails received: {emailCount ?? '...'}</p>
+                <p style={planMeta}>Emails received: {emailCount}</p>
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -617,6 +662,27 @@ export default function DashboardPage() {
           <div style={summaryCard}>
             <div style={summaryLabel}>Used inboxes</div>
             <div style={summaryValue}>{stats.usedCount}</div>
+          </div>
+
+          <div style={{ ...summaryCard, ...usageCard }}>
+            <div style={summaryLabel}>Emails left</div>
+
+            <div style={{ ...summaryValue, color: emailsLeftColor }}>
+              {emailsLeft} / {planEmailLimit}
+            </div>
+
+            <div style={usageCardSubtext}>
+              {emailCount} used from your {getPlanDisplayName(plan)} plan
+            </div>
+
+            <div style={usageTrack}>
+              <div
+                style={{
+                  ...usageFill,
+                  width: `${usagePercent}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -943,6 +1009,11 @@ const summaryCardWide = {
   boxShadow: '0 14px 36px rgba(124,58,237,0.06)',
 };
 
+const usageCard = {
+  position: 'relative',
+  overflow: 'hidden',
+};
+
 const planCardHeader = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -965,6 +1036,27 @@ const summaryValue = {
   fontWeight: 900,
   color: 'var(--text)',
   letterSpacing: '-0.04em',
+};
+
+const usageCardSubtext = {
+  marginTop: 8,
+  fontSize: 12,
+  color: 'var(--muted)',
+  lineHeight: 1.5,
+};
+
+const usageTrack = {
+  marginTop: 14,
+  height: 8,
+  borderRadius: 999,
+  background: 'rgba(15,23,42,0.08)',
+  overflow: 'hidden',
+};
+
+const usageFill = {
+  height: '100%',
+  background: 'linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)',
+  transition: 'width 0.4s ease',
 };
 
 const planEyebrow = {
