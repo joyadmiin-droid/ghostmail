@@ -459,9 +459,14 @@ export default function Home() {
                 <p>• Ideal for repeated testing</p>
               </div>
 
-              <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
-                Get Phantom
-              </a>
+              <a
+  href="https://ghostmailhq.lemonsqueezy.com/buy/1525167"
+  target="_blank"
+  rel="noopener noreferrer"
+  className={styles.planButton}
+>
+  Get Phantom
+</a>
             </div>
 
             <div className={styles.pricingCard}>
