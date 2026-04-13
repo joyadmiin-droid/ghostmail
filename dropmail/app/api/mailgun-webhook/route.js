@@ -20,8 +20,21 @@ const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   'image/png',
   'image/jpeg',
   'image/webp',
-  'text/plain'
+  'text/plain',
 ]);
+
+const PLAN_MONTHLY_EMAIL_LIMITS = {
+  free: 5,
+  phantom: 200,
+  spectre: 600,
+};
+
+function normalizePlan(plan) {
+  const value = String(plan || 'free').toLowerCase();
+  if (value === 'spectre') return 'spectre';
+  if (value === 'phantom') return 'phantom';
+  return 'free';
+}
 
 function safeEqualHex(a, b) {
   try {
@@ -94,24 +107,24 @@ function sanitizeEmailHtml(html) {
       'ul', 'ol', 'li',
       'table', 'thead', 'tbody', 'tr', 'th', 'td',
       'a', 'img',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     ],
     allowedAttributes: {
       a: ['href', 'name', 'target', 'rel'],
       img: ['src', 'alt', 'title', 'width', 'height'],
-      '*': ['style']
+      '*': ['style'],
     },
     allowedSchemes: ['http', 'https', 'mailto'],
     allowedSchemesByTag: {
-      img: ['http', 'https', 'data']
+      img: ['http', 'https', 'data'],
     },
     allowProtocolRelative: false,
     disallowedTagsMode: 'discard',
     transformTags: {
       a: sanitizeHtml.simpleTransform('a', {
         rel: 'nofollow noopener noreferrer',
-        target: '_blank'
-      })
+        target: '_blank',
+      }),
     },
     exclusiveFilter(frame) {
       const tag = frame.tag;
@@ -141,12 +154,84 @@ function sanitizeEmailHtml(html) {
       }
 
       return false;
-    }
+    },
   });
 }
 
 function normalizePlainText(text) {
   return String(text || '').replace(/\u0000/g, '').trim();
+}
+
+function getMonthStartIso() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)).toISOString();
+}
+
+async function getMailboxPlan(mailbox) {
+  if (!mailbox?.user_id) {
+    return 'free';
+  }
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', mailbox.user_id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Profile fetch error during webhook:', error);
+    return 'free';
+  }
+
+  return normalizePlan(profile?.plan);
+}
+
+async function getMonthlyUsageCount({ mailbox }) {
+  const monthStartIso = getMonthStartIso();
+
+  if (!mailbox?.user_id) {
+    const { count, error } = await supabase
+      .from('emails')
+      .select('*', { count: 'exact', head: true })
+      .eq('mailbox_id', mailbox.id)
+      .gte('received_at', monthStartIso);
+
+    if (error) {
+      console.error('Monthly mailbox usage count error:', error);
+      throw new Error('Failed to count mailbox monthly usage');
+    }
+
+    return count || 0;
+  }
+
+  const { data: userMailboxes, error: mailboxListError } = await supabase
+    .from('mailboxes')
+    .select('id')
+    .eq('user_id', mailbox.user_id);
+
+  if (mailboxListError) {
+    console.error('User mailbox list error:', mailboxListError);
+    throw new Error('Failed to load user mailboxes');
+  }
+
+  const mailboxIds = (userMailboxes || []).map((item) => item.id);
+
+  if (!mailboxIds.length) {
+    return 0;
+  }
+
+  const { count, error } = await supabase
+    .from('emails')
+    .select('*', { count: 'exact', head: true })
+    .in('mailbox_id', mailboxIds)
+    .gte('received_at', monthStartIso);
+
+  if (error) {
+    console.error('Monthly user usage count error:', error);
+    throw new Error('Failed to count user monthly usage');
+  }
+
+  return count || 0;
 }
 
 export async function POST(request) {
@@ -199,13 +284,40 @@ export async function POST(request) {
 
     const { data: mailbox, error: mailboxErr } = await supabase
       .from('mailboxes')
-      .select('id')
+      .select('id, user_id, expires_at, is_active')
       .eq('address', toAddress)
       .single();
 
     if (mailboxErr || !mailbox) {
       console.log('Mailbox not found for:', toAddress);
       return Response.json({ error: 'Mailbox not found' }, { status: 404 });
+    }
+
+    if (!mailbox.is_active || new Date(mailbox.expires_at) <= new Date()) {
+      return Response.json({
+        success: true,
+        ignored: true,
+        reason: 'mailbox_inactive_or_expired',
+      });
+    }
+
+    const plan = await getMailboxPlan(mailbox);
+    const monthlyLimit = PLAN_MONTHLY_EMAIL_LIMITS[plan] ?? PLAN_MONTHLY_EMAIL_LIMITS.free;
+    const monthlyUsage = await getMonthlyUsageCount({ mailbox });
+
+    if (monthlyUsage >= monthlyLimit) {
+      console.warn(
+        `Mailbox/user monthly email limit reached. mailbox_id=${mailbox.id}, user_id=${mailbox.user_id || 'guest'}, plan=${plan}, usage=${monthlyUsage}, limit=${monthlyLimit}`
+      );
+
+      return Response.json({
+        success: true,
+        ignored: true,
+        reason: 'monthly_limit_reached',
+        plan,
+        monthly_usage: monthlyUsage,
+        monthly_limit: monthlyLimit,
+      });
     }
 
     const fromName = from?.match(/^([^<]+)</)?.[1]?.trim() || sender;
@@ -295,6 +407,9 @@ export async function POST(request) {
       success: true,
       email_id: emailId,
       attachments_saved: attachmentRows.length,
+      plan,
+      monthly_usage_after_save: monthlyUsage + 1,
+      monthly_limit: monthlyLimit,
     });
   } catch (err) {
     console.error('Webhook error:', err);
