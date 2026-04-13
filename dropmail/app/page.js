@@ -460,7 +460,7 @@ export default function Home() {
               </div>
 
               <a
-  href="https://ghostmailhq.lemonsqueezy.com/buy/1525167"
+  href="https://ghostmailhq.lemonsqueezy.com/checkout/buy/f2504844-3852-4cc5-8e82-88fbb4d"
   target="_blank"
   rel="noopener noreferrer"
   className={styles.planButton}
