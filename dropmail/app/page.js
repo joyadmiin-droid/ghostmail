@@ -490,9 +490,14 @@ export default function Home() {
                 <p>Built for advanced workflows and teams</p>
               </div>
 
-              <a href="/login" className={`${styles.planButton} ${styles.planButtonLink}`}>
-                Get Spectre
-              </a>
+              <a
+  href="https://ghostmailhq.lemonsqueezy.com/checkout/buy/ed150037-4dd6-4665-8a59-ddb49eb0212c"
+  target="_blank"
+  rel="noopener noreferrer"
+  className={`${styles.planButton} ${styles.planButtonLink}`}
+>
+  Get Spectre
+</a>
             </div>
           </div>
         </div>
