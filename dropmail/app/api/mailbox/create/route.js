@@ -2,6 +2,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { rateLimit } from '@/app/lib/rate-limit';
+
+const limiter = rateLimit({ limit: 20, windowMs: 60 * 1000 });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -184,6 +187,12 @@ async function generateUniqueAddress(domain, attempts = 10) {
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+const { success } = limiter(ip);
+
+if (!success) {
+  return Response.json({ error: 'Too many requests' }, { status: 429 });
+}
     let userId = null;
     let plan = 'ghost';
 

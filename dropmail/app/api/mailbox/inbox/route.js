@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { rateLimit } from '@/app/lib/rate-limit';
+
+const limiter = rateLimit({ limit: 60, windowMs: 60 * 1000 });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -88,6 +91,12 @@ async function enforceRateLimit(request, userId) {
 
 export async function GET(request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+const { success } = limiter(ip);
+
+if (!success) {
+  return Response.json({ error: 'Too many requests' }, { status: 429 });
+}
     const token = new URL(request.url).searchParams.get('token');
 
     if (!token) {
