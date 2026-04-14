@@ -25,17 +25,40 @@ const LIMITS = {
   },
 };
 
+const PLAN_RULES = {
+  ghost: {
+    maxInboxes: 1,
+    lifetimeMs: 10 * 60 * 1000,
+    limitCode: 'GHOST_PLAN_LIMIT',
+    limitMessage: 'Ghost plan allows 1 active inbox at a time.',
+  },
+  phantom: {
+    maxInboxes: 5,
+    lifetimeMs: 24 * 60 * 60 * 1000,
+    limitCode: 'PHANTOM_PLAN_LIMIT',
+    limitMessage: 'Phantom plan allows up to 5 active inboxes.',
+  },
+  spectre: {
+    maxInboxes: 50,
+    lifetimeMs: 365 * 24 * 60 * 60 * 1000,
+    limitCode: 'SPECTRE_PLAN_LIMIT',
+    limitMessage: 'Spectre plan allows up to 50 active inboxes.',
+  },
+};
+
 function normalizePlan(plan) {
-  const value = String(plan || 'free').toLowerCase();
+  const value = String(plan || 'ghost').toLowerCase();
+
   if (value === 'spectre') return 'spectre';
   if (value === 'phantom') return 'phantom';
-  return 'free';
+  if (value === 'free') return 'ghost';
+  if (value === 'ghost') return 'ghost';
+
+  return 'ghost';
 }
 
-function getPlanLifetimeMs(plan) {
-  if (plan === 'spectre') return 365 * 24 * 60 * 60 * 1000;
-  if (plan === 'phantom') return 24 * 60 * 60 * 1000;
-  return 10 * 60 * 1000; // free/guest
+function getPlanRules(plan) {
+  return PLAN_RULES[normalizePlan(plan)] || PLAN_RULES.ghost;
 }
 
 function generateUsername() {
@@ -172,12 +195,51 @@ async function generateUniqueAddress(domainName, attempts = 8) {
   throw new Error('Failed to generate unique address');
 }
 
+async function enforcePlanInboxLimit({ userId, plan, nowIso }) {
+  if (!userId) {
+    return { ok: true };
+  }
+
+  const rules = getPlanRules(plan);
+
+  const { count, error } = await supabase
+    .from('mailboxes')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .gt('expires_at', nowIso);
+
+  if (error) {
+    console.error('Active mailbox count error:', error);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to validate plan limits' },
+    };
+  }
+
+  if ((count || 0) >= rules.maxInboxes) {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        error: rules.limitMessage,
+        code: rules.limitCode,
+        current_plan: normalizePlan(plan),
+        max_inboxes: rules.maxInboxes,
+      },
+    };
+  }
+
+  return { ok: true };
+}
+
 export async function POST(request) {
   try {
     const authHeader = request.headers.get('Authorization');
 
     let userId = null;
-    let plan = 'free';
+    let plan = 'ghost';
 
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '').trim();
@@ -216,31 +278,14 @@ export async function POST(request) {
 
     const nowIso = new Date().toISOString();
 
-    if (userId && plan === 'free') {
-      const { data: activeMailboxes, error: activeMailboxesError } = await supabase
-        .from('mailboxes')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .gt('expires_at', nowIso);
+    const inboxLimit = await enforcePlanInboxLimit({
+      userId,
+      plan,
+      nowIso,
+    });
 
-      if (activeMailboxesError) {
-        console.error('Active mailbox check error:', activeMailboxesError);
-        return Response.json(
-          { error: 'Failed to validate plan limits' },
-          { status: 500 }
-        );
-      }
-
-      if (activeMailboxes && activeMailboxes.length >= 1) {
-        return Response.json(
-          {
-            error: 'Free plan allows 1 active inbox at a time.',
-            code: 'FREE_PLAN_LIMIT',
-          },
-          { status: 403 }
-        );
-      }
+    if (!inboxLimit.ok) {
+      return Response.json(inboxLimit.body, { status: inboxLimit.status });
     }
 
     const { data: domains, error: domainsError } = await supabase
@@ -267,7 +312,8 @@ export async function POST(request) {
     const domainRow = domains[0];
     const { username, address } = await generateUniqueAddress(domainRow.name);
     const token = crypto.randomBytes(24).toString('hex');
-    const expiresAt = new Date(Date.now() + getPlanLifetimeMs(plan));
+    const rules = getPlanRules(plan);
+    const expiresAt = new Date(Date.now() + rules.lifetimeMs);
 
     const { data: mailbox, error: insertError } = await supabase
       .from('mailboxes')
