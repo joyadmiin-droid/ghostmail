@@ -1,0 +1,21 @@
+[35mapp/api/cleanup-expired/route.js[m[36m:[m[32m6[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/cleanup-expired/route.js[m[36m:[m[32m9[m[36m:[mconst CRON_[1;31mSECRET[m = process.env.CRON_[1;31mSECRET[m;
+[35mapp/api/cleanup-expired/route.js[m[36m:[m[32m15[m[36m:[m  const expected = `Bearer ${CRON_[1;31mSECRET[m}`;
+[35mapp/api/cleanup-expired/route.js[m[36m:[m[32m16[m[36m:[m  return !!CRON_[1;31mSECRET[m && authHeader === expected;
+[35mapp/api/files/[...path]/route.js[m[36m:[m[32m7[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/mailbox/create/route.js[m[36m:[m[32m8[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/mailbox/inbox/route.js[m[36m:[m[32m6[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/mailbox/read/route.js[m[36m:[m[32m6[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/mailgun-webhook/route.js[m[36m:[m[32m7[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/mailgun-webhook/route.js[m[36m:[m[32m10[m[36m:[mconst [1;31mMAILGUN[m_WEBHOOK_SIGNING_KEY = process.env.[1;31mMAILGUN[m_WEBHOOK_SIGNING_KEY;
+[35mapp/api/mailgun-webhook/route.js[m[36m:[m[32m54[m[36m:[m  if (![1;31mMAILGUN[m_WEBHOOK_SIGNING_KEY) {
+[35mapp/api/mailgun-webhook/route.js[m[36m:[m[32m55[m[36m:[m    console.error('[1;31mMAILGUN[m_WEBHOOK_SIGNING_KEY is missing');
+[35mapp/api/mailgun-webhook/route.js[m[36m:[m[32m67[m[36m:[m  const expected = createHmac('sha256', [1;31mMAILGUN[m_WEBHOOK_SIGNING_KEY)
+[35mapp/api/paddle/webhook/route.js[m[36m:[m[32m5[m[36m:[m  process.env.[1;31mSUPABASE_SERVICE_ROLE_KEY[m
+[35mapp/api/stripe/checkout/route.js[m[36m:[m[32m13[m[36m:[m    const apiKey = process.env.PADDLE_[1;31mAPI_KEY[m;
+[35mapp/auth/callback/page.js[m[36m:[m[32m8[m[36m:[m  process.env.[1;31mNEXT_PUBLIC_SUPABASE_ANON_KEY[m
+[35mapp/dashboard/page.js[m[36m:[m[32m8[m[36m:[m  process.env.[1;31mNEXT_PUBLIC_SUPABASE_ANON_KEY[m
+[35mapp/inbox/page.js[m[36m:[m[32m10[m[36m:[m  process.env.[1;31mNEXT_PUBLIC_SUPABASE_ANON_KEY[m
+[35mapp/login/page.js[m[36m:[m[32m8[m[36m:[m  process.env.[1;31mNEXT_PUBLIC_SUPABASE_ANON_KEY[m
+[35mapp/page.js[m[36m:[m[32m9[m[36m:[m  process.env.[1;31mNEXT_PUBLIC_SUPABASE_ANON_KEY[m
+[35mapp/reset-password/page.js[m[36m:[m[32m8[m[36m:[m  process.env.[1;31mNEXT_PUBLIC_SUPABASE_ANON_KEY[m
