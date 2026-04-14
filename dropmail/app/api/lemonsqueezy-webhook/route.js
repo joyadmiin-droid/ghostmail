@@ -37,80 +37,53 @@ function detectPlan(customData, attributes) {
 
 export async function POST(request) {
   try {
-    if (!WEBHOOK_SECRET) {
-      return NextResponse.json({ error: 'Missing secret' }, { status: 500 });
-    }
-
     const rawBody = await request.text();
+
+    console.log('📩 RAW BODY:', rawBody);
+
     const signature = request.headers.get('x-signature') || '';
 
     if (!verifySignature(rawBody, signature, WEBHOOK_SECRET)) {
+      console.log('❌ Invalid signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
     const payload = JSON.parse(rawBody);
+
+    console.log('📦 PAYLOAD:', payload);
+
     const eventName = payload?.meta?.event_name;
     const customData = payload?.meta?.custom_data || {};
     const attributes = payload?.data?.attributes || {};
 
-    const userId = customData?.user_id;
+    console.log('📌 Event:', eventName);
+    console.log('📌 Custom data:', customData);
+
+    const userId = customData?.user_id ? String(customData.user_id) : null;
     const plan = detectPlan(customData, attributes);
 
+    console.log('👤 userId:', userId);
+    console.log('📊 plan:', plan);
+
     if (!userId) {
-      return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
+      console.log('⚠️ Missing user_id');
+      return NextResponse.json({ ok: true });
     }
 
-    const subscriptionId = attributes?.subscription_id || attributes?.id;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ plan })
+      .eq('id', userId);
 
-    // 🔒 CHECK IF ALREADY PROCESSED
-    const { data: existing } = await supabase
-      .from('payments')
-      .select('id')
-      .eq('subscription_id', subscriptionId)
-      .single();
-
-    if (existing) {
-      console.log('⚠️ Already processed:', subscriptionId);
-      return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
-    }
-
-    // ✅ SAVE PAYMENT FIRST
-    await supabase.from('payments').insert({
-      user_id: userId,
-      subscription_id: subscriptionId,
-      plan,
-      event: eventName,
-    });
-
-    const activateEvents = new Set([
-      'subscription_created',
-      'subscription_payment_success',
-      'subscription_resumed',
-      'subscription_unpaused',
-    ]);
-
-    const downgradeEvents = new Set([
-      'subscription_expired',
-      'subscription_payment_refunded',
-    ]);
-
-    if (activateEvents.has(eventName)) {
-      await supabase
-        .from('profiles')
-        .update({ plan })
-        .eq('id', userId);
-    }
-
-    if (downgradeEvents.has(eventName)) {
-      await supabase
-        .from('profiles')
-        .update({ plan: 'ghost' })
-        .eq('id', userId);
+    if (error) {
+      console.error('❌ Supabase error:', error);
+    } else {
+      console.log('✅ Plan updated successfully');
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('Webhook error:', err);
-    return NextResponse.json({ error: 'fail' }, { status: 500 });
+    console.error('🔥 Webhook crash:', err);
+    return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }
