@@ -9,40 +9,25 @@ const supabase = createClient(
 
 const WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
 
-// 🔐 Verify signature
 function verifySignature(rawBody, signatureHeader, secret) {
   if (!signatureHeader || !secret || !rawBody) return false;
 
-  const digest = crypto
-    .createHmac('sha256', secret)
-    .update(rawBody)
-    .digest('hex');
+  const signature = Buffer.from(signatureHeader, 'hex');
+  const digest = Buffer.from(
+    crypto.createHmac('sha256', secret).update(rawBody).digest('hex'),
+    'hex'
+  );
 
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(digest, 'hex'),
-      Buffer.from(signatureHeader, 'hex')
-    );
-  } catch {
-    return false;
-  }
+  if (signature.length !== digest.length) return false;
+
+  return crypto.timingSafeEqual(digest, signature);
 }
 
-// 🧠 Detect plan
 function detectPlan(customData, attributes) {
   const customPlan = String(customData?.plan || '').toLowerCase();
+  if (['ghost', 'phantom', 'spectre'].includes(customPlan)) return customPlan;
 
-  if (['ghost', 'phantom', 'spectre'].includes(customPlan)) {
-    return customPlan;
-  }
-
-  const text = [
-    attributes?.product_name,
-    attributes?.variant_name,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+  const text = `${attributes?.product_name || ''} ${attributes?.variant_name || ''}`.toLowerCase();
 
   if (text.includes('spectre')) return 'spectre';
   if (text.includes('phantom')) return 'phantom';
@@ -53,103 +38,79 @@ function detectPlan(customData, attributes) {
 export async function POST(request) {
   try {
     if (!WEBHOOK_SECRET) {
-      return NextResponse.json(
-        { error: 'Missing LEMONSQUEEZY_WEBHOOK_SECRET' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Missing secret' }, { status: 500 });
     }
 
     const rawBody = await request.text();
     const signature = request.headers.get('x-signature') || '';
 
-    // 🔐 verify
     if (!verifySignature(rawBody, signature, WEBHOOK_SECRET)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
     const payload = JSON.parse(rawBody);
-
     const eventName = payload?.meta?.event_name;
     const customData = payload?.meta?.custom_data || {};
     const attributes = payload?.data?.attributes || {};
 
-    const userId = customData?.user_id || null;
-    const email = attributes?.user_email || null;
-
+    const userId = customData?.user_id;
     const plan = detectPlan(customData, attributes);
 
-    console.log('📩 Lemon event:', eventName, '| Plan:', plan);
+    if (!userId) {
+      return NextResponse.json({ ok: true, skipped: true }, { status: 200 });
+    }
 
-    // 🔥 EVENTS THAT ACTIVATE PLAN
+    const subscriptionId = attributes?.subscription_id || attributes?.id;
+
+    // 🔒 CHECK IF ALREADY PROCESSED
+    const { data: existing } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('subscription_id', subscriptionId)
+      .single();
+
+    if (existing) {
+      console.log('⚠️ Already processed:', subscriptionId);
+      return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
+    }
+
+    // ✅ SAVE PAYMENT FIRST
+    await supabase.from('payments').insert({
+      user_id: userId,
+      subscription_id: subscriptionId,
+      plan,
+      event: eventName,
+    });
+
     const activateEvents = new Set([
-      'order_created',
       'subscription_created',
-      'subscription_updated',
+      'subscription_payment_success',
       'subscription_resumed',
       'subscription_unpaused',
-      'subscription_payment_success',
-      'subscription_payment_recovered',
     ]);
 
-    // 🔥 EVENTS THAT DOWNGRADE
     const downgradeEvents = new Set([
       'subscription_expired',
       'subscription_payment_refunded',
     ]);
 
-    // =========================
-    // 🔥 UPDATE USER PLAN
-    // =========================
     if (activateEvents.has(eventName)) {
-      let query = supabase.from('profiles').update({ plan });
-
-      if (userId) {
-        query = query.eq('id', userId);
-      } else if (email) {
-        query = query.eq('email', email);
-      } else {
-        console.warn('⚠️ No user_id or email in webhook');
-        return NextResponse.json({ ok: true, skipped: true });
-      }
-
-      const { error } = await query;
-
-      if (error) {
-        console.error('❌ Plan update error:', error);
-        return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
-      }
-
-      console.log(`✅ User upgraded to ${plan}`);
+      await supabase
+        .from('profiles')
+        .update({ plan })
+        .eq('id', userId);
     }
 
-    // =========================
-    // 🔻 DOWNGRADE
-    // =========================
     if (downgradeEvents.has(eventName)) {
-      let query = supabase.from('profiles').update({ plan: 'ghost' });
-
-      if (userId) {
-        query = query.eq('id', userId);
-      } else if (email) {
-        query = query.eq('email', email);
-      } else {
-        return NextResponse.json({ ok: true, skipped: true });
-      }
-
-      const { error } = await query;
-
-      if (error) {
-        console.error('❌ Downgrade error:', error);
-        return NextResponse.json({ error: 'Failed to downgrade profile' }, { status: 500 });
-      }
-
-      console.log(`🔻 User downgraded to ghost`);
+      await supabase
+        .from('profiles')
+        .update({ plan: 'ghost' })
+        .eq('id', userId);
     }
 
-    return NextResponse.json({ ok: true, event: eventName }, { status: 200 });
-
-  } catch (error) {
-    console.error('🔥 Lemon webhook error:', error);
-    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Webhook error:', err);
+    return NextResponse.json({ error: 'fail' }, { status: 500 });
   }
 }
