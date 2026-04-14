@@ -14,14 +14,17 @@ const PLAN_CONFIG = {
   free: {
     label: 'GHOST',
     emailLimit: 5,
+    inboxLimit: 1,
   },
   phantom: {
     label: 'PHANTOM',
     emailLimit: 200,
+    inboxLimit: 5,
   },
   spectre: {
     label: 'SPECTRE',
     emailLimit: 600,
+    inboxLimit: 50,
   },
 };
 
@@ -32,6 +35,11 @@ export default function DashboardPage() {
   const [selectedInbox, setSelectedInbox] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeContext, setUpgradeContext] = useState({
+    title: '',
+    text: '',
+    targetPlan: 'phantom',
+  });
   const [plan, setPlan] = useState('free');
   const [addresses, setAddresses] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
@@ -53,6 +61,15 @@ export default function DashboardPage() {
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 2000);
+  }
+
+  function openUpgradeModal(targetPlan, title, text) {
+    setUpgradeContext({
+      targetPlan,
+      title,
+      text,
+    });
+    setShowUpgrade(true);
   }
 
   useEffect(() => {
@@ -222,15 +239,14 @@ export default function DashboardPage() {
   }, [cleanupExpiredMailboxes]);
 
   useEffect(() => {
-  loadDashboard();
-
-  // 🔥 AUTO SYNC AFTER PAYMENT (VERY IMPORTANT)
-  const interval = setInterval(() => {
     loadDashboard();
-  }, 5000); // every 5 seconds
 
-  return () => clearInterval(interval);
-}, [loadDashboard]);
+    const interval = setInterval(() => {
+      loadDashboard();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loadDashboard]);
 
   useEffect(() => {
     if (status !== 'ready' || !addresses.length) return;
@@ -287,9 +303,29 @@ export default function DashboardPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data?.code === 'FREE_PLAN_LIMIT') {
-          setShowUpgrade(true);
+        if (
+          data?.code === 'GHOST_PLAN_LIMIT' ||
+          data?.code === 'FREE_PLAN_LIMIT'
+        ) {
+          openUpgradeModal(
+            'phantom',
+            'Ghost plan limit reached',
+            'Your Ghost plan allows 1 active inbox and 5 total emails. Upgrade to Phantom to unlock up to 5 inboxes and 200 shared emails.'
+          );
+        } else if (data?.code === 'PHANTOM_PLAN_LIMIT') {
+          openUpgradeModal(
+            'spectre',
+            'Phantom plan limit reached',
+            'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 inboxes and 600 shared emails.'
+          );
+        } else if (data?.code === 'SPECTRE_PLAN_LIMIT') {
+          openUpgradeModal(
+            'spectre',
+            'Spectre plan limit reached',
+            'Your Spectre plan currently allows up to 50 active inboxes. Delete expired inboxes or manage your usage.'
+          );
         }
+
         throw new Error(data.error || 'Failed to generate mailbox');
       }
 
@@ -479,8 +515,14 @@ export default function DashboardPage() {
 
   const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.free;
   const planEmailLimit = currentPlanConfig.emailLimit;
+  const planInboxLimit = currentPlanConfig.inboxLimit;
   const emailsLeft = Math.max(planEmailLimit - emailCount, 0);
+  const inboxesLeft = Math.max(planInboxLimit - stats.total, 0);
   const usagePercent = planEmailLimit > 0 ? Math.min((emailCount / planEmailLimit) * 100, 100) : 0;
+  const inboxUsagePercent = planInboxLimit > 0 ? Math.min((stats.total / planInboxLimit) * 100, 100) : 0;
+  const isNearEmailLimit = usagePercent >= 80;
+  const hasHitEmailLimit = emailCount >= planEmailLimit;
+  const hasHitInboxLimit = stats.total >= planInboxLimit;
 
   const emailsLeftColor =
     emailsLeft <= planEmailLimit * 0.2
@@ -488,6 +530,30 @@ export default function DashboardPage() {
       : emailsLeft <= planEmailLimit * 0.5
       ? '#f59e0b'
       : '#22c55e';
+
+  const inboxLeftColor =
+    inboxesLeft <= planInboxLimit * 0.2
+      ? '#ef4444'
+      : inboxesLeft <= planInboxLimit * 0.5
+      ? '#f59e0b'
+      : '#22c55e';
+
+  function handleUpgradeFromWarning() {
+    if (plan === 'free') {
+      openUpgradeModal(
+        'phantom',
+        'Ghost plan almost full',
+        'You are close to your Ghost plan limits. Upgrade to Phantom to unlock 5 inboxes and 200 shared emails.'
+      );
+      return;
+    }
+
+    openUpgradeModal(
+      'spectre',
+      'Phantom plan almost full',
+      'You are close to your Phantom plan limits. Upgrade to Spectre to unlock 50 inboxes and 600 shared emails.'
+    );
+  }
 
   if (status === 'loading') {
     return (
@@ -598,11 +664,36 @@ export default function DashboardPage() {
 
           <div style={headerActions}>
             <button
-              style={primaryBtn}
-              onClick={generateMailbox}
+              style={{
+                ...primaryBtn,
+                opacity: hasHitInboxLimit ? 0.65 : 1,
+                cursor: hasHitInboxLimit ? 'not-allowed' : 'pointer',
+              }}
+              onClick={() => {
+                if (hasHitInboxLimit) {
+                  if (plan === 'free') {
+                    openUpgradeModal(
+                      'phantom',
+                      'Inbox limit reached',
+                      'Your Ghost plan allows 1 active inbox. Upgrade to Phantom to unlock up to 5 active inboxes.'
+                    );
+                  } else if (plan === 'phantom') {
+                    openUpgradeModal(
+                      'spectre',
+                      'Inbox limit reached',
+                      'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 active inboxes.'
+                    );
+                  } else {
+                    showToast('You have reached your current inbox limit.');
+                  }
+                  return;
+                }
+
+                generateMailbox();
+              }}
               disabled={loadingCreate}
             >
-              {loadingCreate ? 'Generating...' : 'New Address'}
+              {loadingCreate ? 'Generating...' : hasHitInboxLimit ? 'Inbox limit reached' : 'New Address'}
             </button>
 
             <button style={dangerBtn} onClick={handleSignOut}>
@@ -610,6 +701,64 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {(isNearEmailLimit || hasHitInboxLimit) && (
+          <div
+            style={{
+              marginBottom: 18,
+              padding: '16px 18px',
+              borderRadius: 18,
+              border: hasHitEmailLimit || hasHitInboxLimit
+                ? '1px solid rgba(239,68,68,0.22)'
+                : '1px solid rgba(245,158,11,0.24)',
+              background: hasHitEmailLimit || hasHitInboxLimit
+                ? 'rgba(239,68,68,0.06)'
+                : 'rgba(245,158,11,0.08)',
+              boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: hasHitEmailLimit || hasHitInboxLimit ? '#dc2626' : '#b45309',
+                    marginBottom: 8,
+                  }}
+                >
+                  {hasHitEmailLimit || hasHitInboxLimit ? 'Limit reached' : 'Usage warning'}
+                </div>
+
+                <div style={{ color: 'var(--text)', fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+                  {hasHitEmailLimit
+                    ? `You have used all ${planEmailLimit} emails in your ${getPlanDisplayName(plan)} plan.`
+                    : hasHitInboxLimit
+                    ? `You have used all ${planInboxLimit} inbox slots in your ${getPlanDisplayName(plan)} plan.`
+                    : `You have used ${emailCount} of ${planEmailLimit} shared emails in your ${getPlanDisplayName(plan)} plan.`}
+                </div>
+
+                <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>
+                  {plan === 'free'
+                    ? 'Upgrade to Phantom to unlock 5 inboxes and 200 shared emails.'
+                    : plan === 'phantom'
+                    ? 'Upgrade to Spectre to unlock 50 inboxes and 600 shared emails.'
+                    : 'Delete old inboxes or manage current usage to stay within your plan limits.'}
+                </div>
+              </div>
+
+              {plan !== 'spectre' && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <button style={upgradeBtn} onClick={handleUpgradeFromWarning}>
+                    Upgrade now
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div style={summaryGrid} className="dashboard-summary-grid">
           <div style={{ ...summaryCard, ...summaryCardWide }} className="dashboard-summary-wide">
@@ -635,7 +784,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <p style={planMeta}>Emails received: {emailCount}</p>
+                <p style={planMeta}>{emailCount} / {planEmailLimit} emails used</p>
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -687,6 +836,27 @@ export default function DashboardPage() {
                 style={{
                   ...usageFill,
                   width: `${usagePercent}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ ...summaryCard, ...usageCard }}>
+            <div style={summaryLabel}>Inboxes left</div>
+
+            <div style={{ ...summaryValue, color: inboxLeftColor }}>
+              {inboxesLeft} / {planInboxLimit}
+            </div>
+
+            <div style={usageCardSubtext}>
+              {stats.total} active inboxes in your {getPlanDisplayName(plan)} plan
+            </div>
+
+            <div style={usageTrack}>
+              <div
+                style={{
+                  ...usageFill,
+                  width: `${inboxUsagePercent}%`,
                 }}
               />
             </div>
@@ -876,28 +1046,29 @@ export default function DashboardPage() {
       {showUpgrade && (
         <div style={modalOverlay}>
           <div style={modalBox}>
-            <div style={modalBadge}>Free plan limit reached</div>
+            <div style={modalBadge}>Upgrade recommended</div>
 
-            <h2 style={modalTitle}>Upgrade to create more inboxes</h2>
+            <h2 style={modalTitle}>{upgradeContext.title}</h2>
 
             <p style={modalText}>
-              Your free plan includes <strong>1 active inbox</strong>. Upgrade to unlock
-              more inboxes, longer lifetimes, and smoother testing workflows.
+              {upgradeContext.text}
             </p>
 
             <div style={modalPlans}>
-              <button style={modalPrimaryBtn} onClick={() => alert('Paddle later')}>
-                Get Phantom — $4.99/mo
-              </button>
+              {upgradeContext.targetPlan === 'phantom' ? (
+                <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
+                  Upgrade to Phantom
+                </a>
+              ) : (
+                <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
+                  Upgrade to Spectre
+                </a>
+              )}
 
-              <button style={modalSecondaryBtn} onClick={() => alert('Paddle later')}>
-                Get Spectre — $8.99/mo
+              <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
+                Maybe later
               </button>
             </div>
-
-            <button style={modalCloseBtn} onClick={() => setShowUpgrade(false)}>
-              Maybe later
-            </button>
           </div>
         </div>
       )}
@@ -995,7 +1166,7 @@ const headerActions = {
 
 const summaryGrid = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
   gap: 16,
   marginBottom: 22,
 };
@@ -1447,7 +1618,7 @@ const modalPlans = {
   gap: 12,
 };
 
-const modalPrimaryBtn = {
+const modalPrimaryLink = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: 14,
@@ -1457,6 +1628,10 @@ const modalPrimaryBtn = {
   fontWeight: 800,
   fontSize: 15,
   cursor: 'pointer',
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 const modalSecondaryBtn = {
@@ -1469,17 +1644,6 @@ const modalSecondaryBtn = {
   fontWeight: 800,
   fontSize: 15,
   cursor: 'pointer',
-};
-
-const modalCloseBtn = {
-  marginTop: 18,
-  padding: '10px 14px',
-  borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'transparent',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  fontWeight: 700,
 };
 
 const deleteOverlay = {
