@@ -168,6 +168,14 @@ export default function Home() {
     window.location.href = `/inbox?token=${mailbox.token}`;
   }
 
+  function getPaidPlanHref(targetPlan) {
+    const checkoutPath = `/checkout?plan=${encodeURIComponent(targetPlan)}`;
+
+    if (user) return checkoutPath;
+
+    return `/login?next=${encodeURIComponent(checkoutPath)}`;
+  }
+
   function getExpiryLabel(expiresAt) {
     const diff = new Date(expiresAt) - new Date();
     if (diff <= 0) return 'Expired';
@@ -185,7 +193,7 @@ export default function Home() {
 
   return (
     <main className={styles.main}>
-  <div className={styles.bg} />
+      <div className={styles.bg} />
 
       <header className={styles.header}>
         <div className={styles.logo}>
@@ -460,14 +468,12 @@ export default function Home() {
               </div>
 
               <a
-  href="https://ghostmailhq.lemonsqueezy.com/checkout/buy/f2504844-3852-4cc5-8e82-88fbb4d4ecc1"
-  target="_blank"
-  rel="noopener noreferrer"
-  className={`${styles.planButton} ${styles.planButtonLink}`}
->
-  Get Phantom
-</a>
-            </div>  
+                href={getPaidPlanHref('phantom')}
+                className={`${styles.planButton} ${styles.planButtonLink}`}
+              >
+                Get Phantom
+              </a>
+            </div>
 
             <div className={styles.pricingCard}>
               <div className={styles.planHeader}>
@@ -491,13 +497,11 @@ export default function Home() {
               </div>
 
               <a
-  href="https://ghostmailhq.lemonsqueezy.com/checkout/buy/ed150037-4dd6-4665-8a59-ddb49eb0212c"
-  target="_blank"
-  rel="noopener noreferrer"
-  className={`${styles.planButton} ${styles.planButtonLink}`}
->
-  Get Spectre
-</a>
+                href={getPaidPlanHref('spectre')}
+                className={`${styles.planButton} ${styles.planButtonLink}`}
+              >
+                Get Spectre
+              </a>
             </div>
           </div>
         </div>

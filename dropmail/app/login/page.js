@@ -35,20 +35,25 @@ export default function LoginPage() {
     let mounted = true;
 
     const init = async () => {
-      const nextPath = getSafeNextPath();
+      try {
+        const nextPath = getSafeNextPath();
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (session?.user) {
-        window.location.replace(nextPath);
-        return;
+        if (session?.user) {
+          window.location.replace(nextPath);
+          return;
+        }
+
+        setCheckingSession(false);
+      } catch (err) {
+        console.error('Login init error:', err);
+        if (mounted) setCheckingSession(false);
       }
-
-      setCheckingSession(false);
     };
 
     init();
@@ -249,7 +254,7 @@ export default function LoginPage() {
             ? 'Enter your email to get a reset link'
             : isSignup
             ? 'Join GhostMail today'
-            : 'Sign in to your account'}
+            : 'Sign in to continue'}
         </p>
 
         <div style={{ marginBottom: '16px' }}>
