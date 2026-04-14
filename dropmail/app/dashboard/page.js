@@ -1044,34 +1044,42 @@ export default function DashboardPage() {
       </div>
 
       {showUpgrade && (
-        <div style={modalOverlay}>
-          <div style={modalBox}>
-            <div style={modalBadge}>Upgrade recommended</div>
+  <div style={modalOverlay}>
+    <div style={modalBox}>
+      <div style={modalBadge}>Upgrade recommended</div>
 
-            <h2 style={modalTitle}>{upgradeContext.title}</h2>
+      <h2 style={modalTitle}>{upgradeContext.title}</h2>
 
-            <p style={modalText}>
-              {upgradeContext.text}
-            </p>
+      <p style={modalText}>
+        {upgradeContext.text}
+      </p>
 
-            <div style={modalPlans}>
-              {upgradeContext.targetPlan === 'phantom' ? (
-                <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
-                  Upgrade to Phantom
-                </a>
-              ) : (
-                <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
-                  Upgrade to Spectre
-                </a>
-              )}
+      <div style={modalPlans}>
+        {plan === 'free' && (
+          <>
+            <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
+              Upgrade to Phantom
+            </a>
 
-              <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
-                Maybe later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <a href="/checkout?plan=spectre" style={modalGhostSecondaryLink}>
+              Upgrade to Spectre
+            </a>
+          </>
+        )}
+
+        {plan === 'phantom' && (
+          <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
+            Upgrade to Spectre
+          </a>
+        )}
+
+        <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
+          Maybe later
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {deleteModalOpen && (
         <div style={deleteOverlay} onClick={closeDeleteModal}>
@@ -1633,7 +1641,21 @@ const modalPrimaryLink = {
   alignItems: 'center',
   justifyContent: 'center',
 };
-
+const modalGhostSecondaryLink = {
+  width: '100%',
+  padding: '14px 16px',
+  borderRadius: 14,
+  border: '1px solid rgba(167,139,250,0.24)',
+  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
+  color: 'var(--text)',
+  fontWeight: 800,
+  fontSize: 15,
+  cursor: 'pointer',
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
 const modalSecondaryBtn = {
   width: '100%',
   padding: '14px 16px',
