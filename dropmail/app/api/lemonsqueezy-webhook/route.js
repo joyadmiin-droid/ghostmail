@@ -18,16 +18,35 @@ function verifySignature(rawBody, signatureHeader, secret) {
     'hex'
   );
 
+  if (signature.length === 0 || digest.length === 0) return false;
   if (signature.length !== digest.length) return false;
 
   return crypto.timingSafeEqual(digest, signature);
 }
 
-function detectPlan(customData, attributes) {
-  const customPlan = String(customData?.plan || '').toLowerCase();
-  if (['ghost', 'phantom', 'spectre'].includes(customPlan)) return customPlan;
+function normalizePlan(plan) {
+  const value = String(plan || '').toLowerCase();
+  if (value === 'spectre') return 'spectre';
+  if (value === 'phantom') return 'phantom';
+  if (value === 'ghost' || value === 'free') return 'ghost';
+  return 'ghost';
+}
 
-  const text = `${attributes?.product_name || ''} ${attributes?.variant_name || ''}`.toLowerCase();
+function detectPlan(customData, attributes) {
+  const customPlan = normalizePlan(customData?.plan);
+  if (customPlan !== 'ghost' || String(customData?.plan || '').toLowerCase() === 'ghost') {
+    return customPlan;
+  }
+
+  const text = [
+    attributes?.product_name,
+    attributes?.variant_name,
+    attributes?.first_order_item?.product_name,
+    attributes?.first_order_item?.variant_name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 
   if (text.includes('spectre')) return 'spectre';
   if (text.includes('phantom')) return 'phantom';
@@ -35,55 +54,130 @@ function detectPlan(customData, attributes) {
   return 'ghost';
 }
 
+function extractUserId(payload) {
+  const metaCustom = payload?.meta?.custom_data || {};
+  const attrCheckoutData = payload?.data?.attributes?.checkout_data || {};
+  const attrCustomData = payload?.data?.attributes?.custom_data || {};
+  const orderItemCustom =
+    payload?.data?.attributes?.first_order_item?.custom_data || {};
+
+  return (
+    metaCustom?.user_id ||
+    attrCheckoutData?.custom?.user_id ||
+    attrCheckoutData?.user_id ||
+    attrCustomData?.user_id ||
+    orderItemCustom?.user_id ||
+    null
+  );
+}
+
+function extractPlan(payload) {
+  const metaCustom = payload?.meta?.custom_data || {};
+  const attrCheckoutData = payload?.data?.attributes?.checkout_data || {};
+  const attrCustomData = payload?.data?.attributes?.custom_data || {};
+  const orderItemCustom =
+    payload?.data?.attributes?.first_order_item?.custom_data || {};
+  const attributes = payload?.data?.attributes || {};
+
+  const mergedCustomData = {
+    ...metaCustom,
+    ...attrCustomData,
+    ...orderItemCustom,
+    ...(attrCheckoutData?.custom || {}),
+  };
+
+  return detectPlan(mergedCustomData, attributes);
+}
+
 export async function POST(request) {
   try {
+    if (!WEBHOOK_SECRET) {
+      console.error('❌ Missing LEMONSQUEEZY_WEBHOOK_SECRET');
+      return NextResponse.json({ error: 'Missing webhook secret' }, { status: 500 });
+    }
+
     const rawBody = await request.text();
+    const signature =
+      request.headers.get('x-signature') ||
+      request.headers.get('X-Signature') ||
+      '';
 
-    console.log('📩 RAW BODY:', rawBody);
-
-    const signature = request.headers.get('x-signature') || '';
+    console.log('📩 Lemon webhook raw body:', rawBody);
 
     if (!verifySignature(rawBody, signature, WEBHOOK_SECRET)) {
-      console.log('❌ Invalid signature');
+      console.log('❌ Invalid Lemon signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
     const payload = JSON.parse(rawBody);
 
-    console.log('📦 PAYLOAD:', payload);
-
-    const eventName = payload?.meta?.event_name;
-    const customData = payload?.meta?.custom_data || {};
+    const eventName = payload?.meta?.event_name || '';
     const attributes = payload?.data?.attributes || {};
+    const userId = extractUserId(payload);
+    const plan = extractPlan(payload);
 
-    console.log('📌 Event:', eventName);
-    console.log('📌 Custom data:', customData);
-
-    const userId = customData?.user_id ? String(customData.user_id) : null;
-    const plan = detectPlan(customData, attributes);
-
-    console.log('👤 userId:', userId);
-    console.log('📊 plan:', plan);
+    console.log('📌 Lemon event:', eventName);
+    console.log('📌 userId:', userId);
+    console.log('📌 plan:', plan);
+    console.log('📌 attributes id:', attributes?.id);
+    console.log('📌 checkout_data:', attributes?.checkout_data || null);
+    console.log('📌 custom_data:', attributes?.custom_data || null);
+    console.log('📌 meta custom_data:', payload?.meta?.custom_data || null);
 
     if (!userId) {
-      console.log('⚠️ Missing user_id');
-      return NextResponse.json({ ok: true });
+      console.log('⚠️ Missing user_id in webhook payload');
+      return NextResponse.json({ ok: true, skipped: 'missing_user_id' });
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ plan })
-      .eq('id', userId);
+    const activateEvents = new Set([
+      'subscription_created',
+      'subscription_updated',
+      'subscription_resumed',
+      'subscription_unpaused',
+      'subscription_payment_success',
+      'subscription_payment_recovered',
+      'order_created',
+    ]);
 
-    if (error) {
-      console.error('❌ Supabase error:', error);
-    } else {
-      console.log('✅ Plan updated successfully');
+    const downgradeEvents = new Set([
+      'subscription_expired',
+      'subscription_payment_refunded',
+    ]);
+
+    if (activateEvents.has(eventName)) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ plan })
+        .eq('id', userId);
+
+      if (error) {
+        console.error('❌ Supabase activate error:', error);
+        return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+      }
+
+      console.log(`✅ Updated user ${userId} to ${plan}`);
+      return NextResponse.json({ ok: true, action: 'activated', plan });
     }
 
-    return NextResponse.json({ ok: true });
+    if (downgradeEvents.has(eventName)) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ plan: 'ghost' })
+        .eq('id', userId);
+
+      if (error) {
+        console.error('❌ Supabase downgrade error:', error);
+        return NextResponse.json({ error: 'Failed to downgrade profile' }, { status: 500 });
+      }
+
+      console.log(`✅ Downgraded user ${userId} to ghost`);
+      return NextResponse.json({ ok: true, action: 'downgraded' });
+    }
+
+    console.log(`ℹ️ Ignored event: ${eventName}`);
+    return NextResponse.json({ ok: true, ignored: eventName });
   } catch (err) {
-    console.error('🔥 Webhook crash:', err);
+    console.error('🔥 Lemon webhook crash:', err);
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }
