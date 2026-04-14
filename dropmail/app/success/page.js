@@ -15,25 +15,43 @@ const PLAN_LABELS = {
   spectre: 'Spectre',
 };
 
+function getExpectedPlan() {
+  if (typeof window === 'undefined') return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const plan = String(params.get('plan') || '').toLowerCase();
+
+  if (plan === 'phantom' || plan === 'spectre') return plan;
+  return null;
+}
+
 export default function SuccessPage() {
   const [status, setStatus] = useState('checking');
   const [user, setUser] = useState(null);
-  const [plan, setPlan] = useState('ghost');
+  const [currentPlan, setCurrentPlan] = useState('ghost');
+  const [expectedPlan, setExpectedPlan] = useState(null);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState('');
 
-  const planLabel = useMemo(() => {
-    return PLAN_LABELS[String(plan || 'ghost').toLowerCase()] || 'Ghost';
-  }, [plan]);
+  const currentPlanLabel = useMemo(() => {
+    return PLAN_LABELS[String(currentPlan || 'ghost').toLowerCase()] || 'Ghost';
+  }, [currentPlan]);
+
+  const expectedPlanLabel = useMemo(() => {
+    return PLAN_LABELS[String(expectedPlan || '').toLowerCase()] || '';
+  }, [expectedPlan]);
 
   useEffect(() => {
     let mounted = true;
     let pollInterval = null;
     let secondsInterval = null;
 
-    async function checkPlan() {
+    async function syncPlanStatus() {
       try {
         setError('');
+
+        const expected = getExpectedPlan();
+        if (mounted) setExpectedPlan(expected);
 
         const {
           data: { session },
@@ -54,14 +72,19 @@ export default function SuccessPage() {
           .eq('id', session.user.id)
           .maybeSingle();
 
-        if (profileError) {
-          throw profileError;
+        if (profileError) throw profileError;
+
+        const nextPlan = String(profile?.plan || 'ghost').toLowerCase();
+        setCurrentPlan(nextPlan);
+
+        if (expected && nextPlan === expected) {
+          setStatus('upgraded');
+          if (pollInterval) clearInterval(pollInterval);
+          if (secondsInterval) clearInterval(secondsInterval);
+          return;
         }
 
-        const currentPlan = String(profile?.plan || 'ghost').toLowerCase();
-        setPlan(currentPlan);
-
-        if (currentPlan === 'phantom' || currentPlan === 'spectre') {
+        if (!expected && (nextPlan === 'phantom' || nextPlan === 'spectre')) {
           setStatus('upgraded');
           if (pollInterval) clearInterval(pollInterval);
           if (secondsInterval) clearInterval(secondsInterval);
@@ -70,16 +93,16 @@ export default function SuccessPage() {
 
         setStatus('waiting');
       } catch (err) {
-        console.error('Success page check error:', err);
+        console.error('Success sync error:', err);
         if (!mounted) return;
-        setError(err.message || 'Failed to check your plan');
+        setError(err.message || 'Failed to sync your plan');
         setStatus('error');
       }
     }
 
-    checkPlan();
+    syncPlanStatus();
 
-    pollInterval = setInterval(checkPlan, 4000);
+    pollInterval = setInterval(syncPlanStatus, 4000);
     secondsInterval = setInterval(() => {
       setSeconds((prev) => prev + 1);
     }, 1000);
@@ -115,46 +138,68 @@ export default function SuccessPage() {
 
       if (profileError) throw profileError;
 
-      const currentPlan = String(profile?.plan || 'ghost').toLowerCase();
-      setPlan(currentPlan);
+      const nextPlan = String(profile?.plan || 'ghost').toLowerCase();
+      setCurrentPlan(nextPlan);
 
-      if (currentPlan === 'phantom' || currentPlan === 'spectre') {
+      const expected = getExpectedPlan();
+      setExpectedPlan(expected);
+
+      if (expected && nextPlan === expected) {
         setStatus('upgraded');
-      } else {
-        setStatus('waiting');
+        return;
       }
+
+      if (!expected && (nextPlan === 'phantom' || nextPlan === 'spectre')) {
+        setStatus('upgraded');
+        return;
+      }
+
+      setStatus('waiting');
     } catch (err) {
-      console.error('Manual refresh error:', err);
-      setError(err.message || 'Failed to refresh plan');
+      console.error('Manual success refresh error:', err);
+      setError(err.message || 'Failed to refresh your plan');
       setStatus('error');
     }
   }
 
-  function getStatusTitle() {
-    if (status === 'upgraded') return `${planLabel} activated`;
-    if (status === 'guest') return 'Payment received';
-    if (status === 'error') return 'We are syncing your plan';
-    return 'Payment received';
-  }
-
-  function getStatusText() {
+  function getTitle() {
     if (status === 'upgraded') {
-      return `Your account has been upgraded successfully. You can now use your ${planLabel} features from the dashboard.`;
+      return `${currentPlanLabel} activated`;
     }
 
     if (status === 'guest') {
-      return 'We could not detect a logged-in session in this browser. Sign in to your GhostMail account and your upgraded plan should appear shortly.';
+      return 'Payment received';
     }
 
     if (status === 'error') {
-      return 'Your payment may still be processing. Try refreshing your plan status, or sign in again and check your dashboard.';
+      return 'We are syncing your payment';
     }
 
-    return 'We received your payment and are syncing your subscription with your GhostMail account. This usually takes a few seconds.';
+    return 'Payment received';
   }
 
-  function getPillText() {
-    if (status === 'upgraded') return `${planLabel} live`;
+  function getText() {
+    if (status === 'upgraded') {
+      return `Your payment was successful and your GhostMail account is now upgraded to ${currentPlanLabel}. You can go to your dashboard and start using the new plan right away.`;
+    }
+
+    if (status === 'guest') {
+      return 'Your payment looks successful, but we could not detect a signed-in GhostMail session in this browser. Sign in to your account and your upgraded plan should appear shortly.';
+    }
+
+    if (status === 'error') {
+      return 'Your payment may still be processing in the background. Try refreshing your plan status, or sign in again and check your dashboard in a few seconds.';
+    }
+
+    if (expectedPlanLabel) {
+      return `We received your payment and are syncing your ${expectedPlanLabel} plan with your GhostMail account. This usually takes only a few seconds.`;
+    }
+
+    return 'We received your payment and are syncing your subscription with your GhostMail account. This usually takes only a few seconds.';
+  }
+
+  function getBadgeText() {
+    if (status === 'upgraded') return `${currentPlanLabel} live`;
     if (status === 'guest') return 'Sign in required';
     if (status === 'error') return 'Sync issue';
     return 'Syncing plan...';
@@ -189,7 +234,7 @@ export default function SuccessPage() {
 
           <div
             style={{
-              ...pill,
+              ...badge,
               color:
                 status === 'upgraded'
                   ? '#16a34a'
@@ -210,11 +255,11 @@ export default function SuccessPage() {
                   : 'rgba(124,58,237,0.10)',
             }}
           >
-            {getPillText()}
+            {getBadgeText()}
           </div>
 
-          <h1 style={title}>{getStatusTitle()}</h1>
-          <p style={text}>{getStatusText()}</p>
+          <h1 style={title}>{getTitle()}</h1>
+          <p style={text}>{getText()}</p>
 
           <div style={infoBox}>
             <div style={infoRow}>
@@ -223,11 +268,16 @@ export default function SuccessPage() {
             </div>
 
             <div style={infoRow}>
-              <span style={infoLabel}>Current plan</span>
-              <span style={infoValue}>{planLabel}</span>
+              <span style={infoLabel}>Expected plan</span>
+              <span style={infoValue}>{expectedPlanLabel || 'Checking...'}</span>
             </div>
 
             <div style={infoRow}>
+              <span style={infoLabel}>Current plan</span>
+              <span style={infoValue}>{currentPlanLabel}</span>
+            </div>
+
+            <div style={infoRowNoBorder}>
               <span style={infoLabel}>Sync timer</span>
               <span style={infoValue}>{seconds}s</span>
             </div>
@@ -284,6 +334,7 @@ const pageStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   padding: '24px',
+  fontFamily: 'DM Sans, sans-serif',
 };
 
 const bgGlowOne = {
@@ -337,7 +388,7 @@ const iconWrap = {
   fontWeight: 800,
 };
 
-const pill = {
+const badge = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -381,6 +432,13 @@ const infoRow = {
   gap: '12px',
   padding: '10px 4px',
   borderBottom: '1px solid rgba(127,127,127,0.10)',
+};
+
+const infoRowNoBorder = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  padding: '10px 4px',
 };
 
 const infoLabel = {
