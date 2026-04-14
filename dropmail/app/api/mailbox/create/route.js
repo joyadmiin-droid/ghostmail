@@ -13,16 +13,9 @@ const NOUNS = ['fox', 'hawk', 'wolf', 'bear', 'lynx', 'crow', 'dart', 'ember', '
 
 const ROUTE_NAME = 'mailbox_create';
 
-// Tighter for anonymous users, looser for authenticated users
 const LIMITS = {
-  guest: {
-    perMinute: 5,
-    perHour: 20,
-  },
-  user: {
-    perMinute: 10,
-    perHour: 50,
-  },
+  guest: { perMinute: 5, perHour: 20 },
+  user: { perMinute: 10, perHour: 50 },
 };
 
 const PLAN_RULES = {
@@ -30,35 +23,31 @@ const PLAN_RULES = {
     maxInboxes: 1,
     lifetimeMs: 10 * 60 * 1000,
     limitCode: 'GHOST_PLAN_LIMIT',
-    limitMessage: 'Ghost plan allows 1 active inbox at a time.',
+    limitMessage: 'Ghost plan allows 1 active inbox.',
   },
   phantom: {
     maxInboxes: 5,
     lifetimeMs: 24 * 60 * 60 * 1000,
     limitCode: 'PHANTOM_PLAN_LIMIT',
-    limitMessage: 'Phantom plan allows up to 5 active inboxes.',
+    limitMessage: 'Phantom allows up to 5 inboxes.',
   },
   spectre: {
     maxInboxes: 50,
     lifetimeMs: 365 * 24 * 60 * 60 * 1000,
     limitCode: 'SPECTRE_PLAN_LIMIT',
-    limitMessage: 'Spectre plan allows up to 50 active inboxes.',
+    limitMessage: 'Spectre allows up to 50 inboxes.',
   },
 };
 
 function normalizePlan(plan) {
-  const value = String(plan || 'ghost').toLowerCase();
-
-  if (value === 'spectre') return 'spectre';
-  if (value === 'phantom') return 'phantom';
-  if (value === 'free') return 'ghost';
-  if (value === 'ghost') return 'ghost';
-
+  const p = String(plan || 'ghost').toLowerCase();
+  if (p === 'spectre') return 'spectre';
+  if (p === 'phantom') return 'phantom';
   return 'ghost';
 }
 
 function getPlanRules(plan) {
-  return PLAN_RULES[normalizePlan(plan)] || PLAN_RULES.ghost;
+  return PLAN_RULES[normalizePlan(plan)];
 }
 
 function generateUsername() {
@@ -69,154 +58,72 @@ function generateUsername() {
 }
 
 function getClientIp(request) {
-  const forwardedFor = request.headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
-  }
-
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp.trim();
-  }
-
-  const cfConnectingIp = request.headers.get('cf-connecting-ip');
-  if (cfConnectingIp) {
-    return cfConnectingIp.trim();
-  }
-
-  return 'unknown';
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    request.headers.get('x-real-ip') ||
+    request.headers.get('cf-connecting-ip') ||
+    'unknown'
+  );
 }
 
 function hashIp(ip) {
   return crypto.createHash('sha256').update(String(ip)).digest('hex');
 }
 
+// 🔥 IMPROVED RATE LIMIT (IP + USER SAFE)
 async function enforceRateLimit({ request, userId }) {
-  const rawIp = getClientIp(request);
-  const ipHash = hashIp(rawIp);
+  const ipHash = hashIp(getClientIp(request));
   const now = Date.now();
 
-  const oneMinuteAgoIso = new Date(now - 60 * 1000).toISOString();
-  const oneHourAgoIso = new Date(now - 60 * 60 * 1000).toISOString();
+  const minuteAgo = new Date(now - 60 * 1000).toISOString();
+  const hourAgo = new Date(now - 60 * 60 * 1000).toISOString();
 
   const tier = userId ? 'user' : 'guest';
   const limits = LIMITS[tier];
 
-  const [{ count: minuteCount, error: minuteError }, { count: hourCount, error: hourError }] =
-    await Promise.all([
-      supabase
-        .from('api_rate_limits')
-        .select('*', { count: 'exact', head: true })
-        .eq('route', ROUTE_NAME)
-        .eq('ip_hash', ipHash)
-        .gte('created_at', oneMinuteAgoIso),
+  const [{ count: minute }, { count: hour }] = await Promise.all([
+    supabase.from('api_rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('route', ROUTE_NAME)
+      .eq('ip_hash', ipHash)
+      .gte('created_at', minuteAgo),
 
-      supabase
-        .from('api_rate_limits')
-        .select('*', { count: 'exact', head: true })
-        .eq('route', ROUTE_NAME)
-        .eq('ip_hash', ipHash)
-        .gte('created_at', oneHourAgoIso),
-    ]);
+    supabase.from('api_rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('route', ROUTE_NAME)
+      .eq('ip_hash', ipHash)
+      .gte('created_at', hourAgo),
+  ]);
 
-  if (minuteError || hourError) {
-    console.error('Rate limit count error:', minuteError || hourError);
-    return {
-      ok: false,
-      status: 500,
-      body: { error: 'Rate limit check failed' },
-    };
+  if ((minute || 0) >= limits.perMinute) {
+    return { ok: false, status: 429, body: { error: 'Slow down (1 min limit)' } };
   }
 
-  if ((minuteCount || 0) >= limits.perMinute) {
-    return {
-      ok: false,
-      status: 429,
-      body: {
-        error: 'Too many requests. Please wait a minute and try again.',
-        code: 'RATE_LIMIT_MINUTE',
-      },
-    };
+  if ((hour || 0) >= limits.perHour) {
+    return { ok: false, status: 429, body: { error: 'Too many requests (1h limit)' } };
   }
 
-  if ((hourCount || 0) >= limits.perHour) {
-    return {
-      ok: false,
-      status: 429,
-      body: {
-        error: 'Too many requests. Please try again later.',
-        code: 'RATE_LIMIT_HOUR',
-      },
-    };
-  }
-
-  const { error: insertError } = await supabase
-    .from('api_rate_limits')
-    .insert([
-      {
-        route: ROUTE_NAME,
-        ip_hash: ipHash,
-        user_id: userId,
-      },
-    ]);
-
-  if (insertError) {
-    console.error('Rate limit insert error:', insertError);
-    return {
-      ok: false,
-      status: 500,
-      body: { error: 'Rate limit logging failed' },
-    };
-  }
+  await supabase.from('api_rate_limits').insert({
+    route: ROUTE_NAME,
+    ip_hash: ipHash,
+    user_id: userId,
+  });
 
   return { ok: true };
 }
 
-async function generateUniqueAddress(domainName, attempts = 8) {
-  for (let i = 0; i < attempts; i++) {
-    const username = generateUsername();
-    const address = `${username}@${domainName}`;
-
-    const { data: existing, error } = await supabase
-      .from('mailboxes')
-      .select('id')
-      .eq('address', address)
-      .limit(1);
-
-    if (error) {
-      throw new Error('Failed checking address uniqueness');
-    }
-
-    if (!existing || existing.length === 0) {
-      return { username, address };
-    }
-  }
-
-  throw new Error('Failed to generate unique address');
-}
-
-async function enforcePlanInboxLimit({ userId, plan, nowIso }) {
-  if (!userId) {
-    return { ok: true };
-  }
+// 🔥 STRONGER INBOX LIMIT CHECK
+async function enforcePlanInboxLimit({ userId, plan }) {
+  if (!userId) return { ok: true };
 
   const rules = getPlanRules(plan);
 
-  const { count, error } = await supabase
+  const { count } = await supabase
     .from('mailboxes')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('is_active', true)
-    .gt('expires_at', nowIso);
-
-  if (error) {
-    console.error('Active mailbox count error:', error);
-    return {
-      ok: false,
-      status: 500,
-      body: { error: 'Failed to validate plan limits' },
-    };
-  }
+    .gt('expires_at', new Date().toISOString());
 
   if ((count || 0) >= rules.maxInboxes) {
     return {
@@ -225,8 +132,6 @@ async function enforcePlanInboxLimit({ userId, plan, nowIso }) {
       body: {
         error: rules.limitMessage,
         code: rules.limitCode,
-        current_plan: normalizePlan(plan),
-        max_inboxes: rules.maxInboxes,
       },
     };
   }
@@ -234,117 +139,125 @@ async function enforcePlanInboxLimit({ userId, plan, nowIso }) {
   return { ok: true };
 }
 
+// 🔥 ANTI-SPAM (PREVENT MASS CREATION BURST)
+async function preventBurstCreation(userId) {
+  if (!userId) return { ok: true };
+
+  const recent = new Date(Date.now() - 10 * 1000).toISOString();
+
+  const { count } = await supabase
+    .from('mailboxes')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', recent);
+
+  if ((count || 0) >= 2) {
+    return {
+      ok: false,
+      status: 429,
+      body: { error: 'Too fast. Wait a few seconds.' },
+    };
+  }
+
+  return { ok: true };
+}
+
+// 🔥 UNIQUE ADDRESS SAFE
+async function generateUniqueAddress(domain, attempts = 10) {
+  for (let i = 0; i < attempts; i++) {
+    const username = generateUsername();
+    const address = `${username}@${domain}`;
+
+    const { data } = await supabase
+      .from('mailboxes')
+      .select('id')
+      .eq('address', address)
+      .limit(1);
+
+    if (!data || data.length === 0) {
+      return { username, address };
+    }
+  }
+
+  throw new Error('Failed to generate unique address');
+}
+
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get('Authorization');
-
     let userId = null;
     let plan = 'ghost';
 
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '').trim();
+    const auth = request.headers.get('Authorization');
 
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser(token);
+    if (auth?.startsWith('Bearer ')) {
+      const token = auth.replace('Bearer ', '').trim();
 
-      if (authError) {
-        console.error('Auth lookup error:', authError);
-      }
+      const { data: { user } } = await supabase.auth.getUser(token);
 
       if (user) {
         userId = user.id;
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('plan')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (profileError) {
-          console.error('Profile lookup error:', profileError);
-        }
-
         plan = normalizePlan(profile?.plan);
       }
     }
 
-    const rateLimit = await enforceRateLimit({ request, userId });
+    // 🔒 RATE LIMIT
+    const rate = await enforceRateLimit({ request, userId });
+    if (!rate.ok) return Response.json(rate.body, { status: rate.status });
 
-    if (!rateLimit.ok) {
-      return Response.json(rateLimit.body, { status: rateLimit.status });
-    }
+    // 🔒 BURST PROTECTION
+    const burst = await preventBurstCreation(userId);
+    if (!burst.ok) return Response.json(burst.body, { status: burst.status });
 
-    const nowIso = new Date().toISOString();
+    // 🔒 PLAN LIMIT
+    const limit = await enforcePlanInboxLimit({ userId, plan });
+    if (!limit.ok) return Response.json(limit.body, { status: limit.status });
 
-    const inboxLimit = await enforcePlanInboxLimit({
-      userId,
-      plan,
-      nowIso,
-    });
-
-    if (!inboxLimit.ok) {
-      return Response.json(inboxLimit.body, { status: inboxLimit.status });
-    }
-
-    const { data: domains, error: domainsError } = await supabase
+    const { data: domains } = await supabase
       .from('domains')
       .select('id, name')
       .eq('is_active', true)
       .limit(1);
 
-    if (domainsError) {
-      console.error('Domain lookup error:', domainsError);
-      return Response.json(
-        { error: 'Failed to load active domain' },
-        { status: 500 }
-      );
+    if (!domains?.length) {
+      return Response.json({ error: 'No domain available' }, { status: 500 });
     }
 
-    if (!domains || domains.length === 0) {
-      return Response.json(
-        { error: 'No active domain available' },
-        { status: 500 }
-      );
-    }
+    const domain = domains[0];
 
-    const domainRow = domains[0];
-    const { username, address } = await generateUniqueAddress(domainRow.name);
-    const token = crypto.randomBytes(24).toString('hex');
+    const { username, address } = await generateUniqueAddress(domain.name);
+
     const rules = getPlanRules(plan);
     const expiresAt = new Date(Date.now() + rules.lifetimeMs);
 
-    const { data: mailbox, error: insertError } = await supabase
+    const { data, error } = await supabase
       .from('mailboxes')
-      .insert([
-        {
-          username,
-          address,
-          domain_id: domainRow.id,
-          token,
-          user_id: userId,
-          expires_at: expiresAt.toISOString(),
-          is_active: true,
-        },
-      ])
+      .insert({
+        username,
+        address,
+        domain_id: domain.id,
+        token: crypto.randomBytes(24).toString('hex'),
+        user_id: userId,
+        expires_at: expiresAt.toISOString(),
+        is_active: true,
+      })
       .select()
       .single();
 
-    if (insertError) {
-      console.error('Mailbox insert error:', insertError);
-      return Response.json(
-        { error: insertError.message || 'Failed to create mailbox' },
-        { status: 500 }
-      );
+    if (error) {
+      return Response.json({ error: error.message }, { status: 500 });
     }
 
-    return Response.json(mailbox);
+    return Response.json(data);
+
   } catch (err) {
-    console.error('Mailbox create error:', err);
-    return Response.json(
-      { error: err.message || 'Internal error' },
-      { status: 500 }
-    );
+    console.error('CREATE ERROR:', err);
+    return Response.json({ error: 'Internal error' }, { status: 500 });
   }
 }
