@@ -23,7 +23,7 @@ const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   'text/plain',
 ]);
 
-const PLAN_MONTHLY_EMAIL_LIMITS = {
+const PLAN_EMAIL_LIMITS = {
   free: 5,
   phantom: 200,
   spectre: 600,
@@ -302,7 +302,7 @@ export async function POST(request) {
     }
 
     const plan = await getMailboxPlan(mailbox);
-    const monthlyLimit = PLAN_MONTHLY_EMAIL_LIMITS[plan] ?? PLAN_MONTHLY_EMAIL_LIMITS.free;
+    const monthlyLimit = PLAN_EMAIL_LIMITS[plan] ?? PLAN_EMAIL_LIMITS.free;
     const monthlyUsage = await getMonthlyUsageCount({ mailbox });
 
     if (monthlyUsage >= monthlyLimit) {
