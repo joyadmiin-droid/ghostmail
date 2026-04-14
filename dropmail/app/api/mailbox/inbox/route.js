@@ -13,11 +13,34 @@ const LIMITS = {
   perHour: 200,
 };
 
+const PLAN_RULES = {
+  ghost: {
+    maxInboxes: 1,
+    maxEmails: 5,
+  },
+  phantom: {
+    maxInboxes: 5,
+    maxEmails: 200,
+  },
+  spectre: {
+    maxInboxes: 50,
+    maxEmails: 600,
+  },
+};
+
 function normalizePlan(plan) {
-  const value = String(plan || 'free').toLowerCase();
+  const value = String(plan || 'ghost').toLowerCase();
+
   if (value === 'spectre') return 'spectre';
   if (value === 'phantom') return 'phantom';
-  return 'free';
+  if (value === 'free') return 'ghost';
+  if (value === 'ghost') return 'ghost';
+
+  return 'ghost';
+}
+
+function getPlanRules(plan) {
+  return PLAN_RULES[normalizePlan(plan)] || PLAN_RULES.ghost;
 }
 
 function formatAttachmentUrl(storagePath) {
@@ -50,21 +73,31 @@ async function enforceRateLimit(request, userId) {
   const oneMinuteAgo = new Date(now - 60 * 1000).toISOString();
   const oneHourAgo = new Date(now - 60 * 60 * 1000).toISOString();
 
-  const [{ count: minuteCount }, { count: hourCount }] = await Promise.all([
-    supabase
-      .from('api_rate_limits')
-      .select('*', { count: 'exact', head: true })
-      .eq('route', ROUTE_NAME)
-      .eq('ip_hash', ipHash)
-      .gte('created_at', oneMinuteAgo),
+  const [{ count: minuteCount, error: minuteError }, { count: hourCount, error: hourError }] =
+    await Promise.all([
+      supabase
+        .from('api_rate_limits')
+        .select('*', { count: 'exact', head: true })
+        .eq('route', ROUTE_NAME)
+        .eq('ip_hash', ipHash)
+        .gte('created_at', oneMinuteAgo),
 
-    supabase
-      .from('api_rate_limits')
-      .select('*', { count: 'exact', head: true })
-      .eq('route', ROUTE_NAME)
-      .eq('ip_hash', ipHash)
-      .gte('created_at', oneHourAgo),
-  ]);
+      supabase
+        .from('api_rate_limits')
+        .select('*', { count: 'exact', head: true })
+        .eq('route', ROUTE_NAME)
+        .eq('ip_hash', ipHash)
+        .gte('created_at', oneHourAgo),
+    ]);
+
+  if (minuteError || hourError) {
+    console.error('Inbox rate limit lookup error:', minuteError || hourError);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Rate limit check failed' },
+    };
+  }
 
   if ((minuteCount || 0) >= LIMITS.perMinute) {
     return {
@@ -82,13 +115,22 @@ async function enforceRateLimit(request, userId) {
     };
   }
 
-  await supabase.from('api_rate_limits').insert([
+  const { error: insertError } = await supabase.from('api_rate_limits').insert([
     {
       route: ROUTE_NAME,
       ip_hash: ipHash,
       user_id: userId,
     },
   ]);
+
+  if (insertError) {
+    console.error('Inbox rate limit insert error:', insertError);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Rate limit logging failed' },
+    };
+  }
 
   return { ok: true };
 }
@@ -119,26 +161,35 @@ export async function GET(request) {
       return Response.json({ error: 'Invalid authentication' }, { status: 401 });
     }
 
-    // 🔒 RATE LIMIT CHECK HERE
     const rateLimit = await enforceRateLimit(request, user.id);
 
     if (!rateLimit.ok) {
       return Response.json(rateLimit.body, { status: rateLimit.status });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('plan')
       .eq('id', user.id)
       .maybeSingle();
 
-    const plan = normalizePlan(profile?.plan);
+    if (profileError) {
+      console.error('Profile lookup error:', profileError);
+      return Response.json({ error: 'Failed to load profile' }, { status: 500 });
+    }
 
-    const { data: mailbox } = await supabase
+    const plan = normalizePlan(profile?.plan);
+    const planRules = getPlanRules(plan);
+
+    const { data: mailbox, error: mailboxError } = await supabase
       .from('mailboxes')
       .select('id, address, expires_at, is_active, user_id')
       .eq('token', token)
       .single();
+
+    if (mailboxError) {
+      console.error('Mailbox lookup error:', mailboxError);
+    }
 
     if (!mailbox) {
       return Response.json({ error: 'Inbox not found' }, { status: 404 });
@@ -152,21 +203,31 @@ export async function GET(request) {
       return Response.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const { data: emails } = await supabase
+    const { data: emails, error: emailsError } = await supabase
       .from('emails')
       .select('id, from_address, from_name, subject, body_html, body_text, received_at, is_read')
       .eq('mailbox_id', mailbox.id)
       .order('received_at', { ascending: false });
 
-    const emailIds = (emails || []).map(e => e.id);
+    if (emailsError) {
+      console.error('Emails lookup error:', emailsError);
+      return Response.json({ error: 'Failed to load emails' }, { status: 500 });
+    }
+
+    const emailIds = (emails || []).map((e) => e.id);
 
     let attachmentsByEmailId = {};
 
     if (emailIds.length > 0) {
-      const { data: attachments } = await supabase
+      const { data: attachments, error: attachmentsError } = await supabase
         .from('attachments')
         .select('id, email_id, filename, mime_type, size_bytes, storage_path')
         .in('email_id', emailIds);
+
+      if (attachmentsError) {
+        console.error('Attachments lookup error:', attachmentsError);
+        return Response.json({ error: 'Failed to load attachments' }, { status: 500 });
+      }
 
       attachmentsByEmailId = (attachments || []).reduce((acc, att) => {
         if (!acc[att.email_id]) acc[att.email_id] = [];
@@ -180,15 +241,23 @@ export async function GET(request) {
       }, {});
     }
 
+    const enrichedEmails = (emails || []).map((email) => ({
+      ...email,
+      attachments: attachmentsByEmailId[email.id] || [],
+    }));
+
     return Response.json({
       mailbox,
-      emails: (emails || []).map(email => ({
-        ...email,
-        attachments: attachmentsByEmailId[email.id] || [],
-      })),
+      emails: enrichedEmails,
       plan,
+      limits: {
+        max_inboxes: planRules.maxInboxes,
+        max_emails: planRules.maxEmails,
+      },
+      usage: {
+        mailbox_email_count: enrichedEmails.length,
+      },
     });
-
   } catch (err) {
     console.error('Inbox route error:', err);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
