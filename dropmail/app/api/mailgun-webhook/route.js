@@ -192,7 +192,7 @@ async function getMonthlyUsageCount({ mailbox }) {
   if (!mailbox?.user_id) {
     const { count, error } = await supabase
       .from('emails')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('mailbox_id', mailbox.id)
       .gte('received_at', monthStartIso);
 
@@ -222,7 +222,7 @@ async function getMonthlyUsageCount({ mailbox }) {
 
   const { count, error } = await supabase
     .from('emails')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .in('mailbox_id', mailboxIds)
     .gte('received_at', monthStartIso);
 
@@ -301,13 +301,18 @@ export async function POST(request) {
       });
     }
 
-    const plan = await getMailboxPlan(mailbox);
+    const freshPlan = await getMailboxPlan(mailbox);
+    const plan = normalizePlan(freshPlan);
     const monthlyLimit = PLAN_EMAIL_LIMITS[plan] ?? PLAN_EMAIL_LIMITS.free;
     const monthlyUsage = await getMonthlyUsageCount({ mailbox });
 
+    console.log(
+      `📊 Usage check: user=${mailbox.user_id || 'guest'} plan=${plan} usage=${monthlyUsage}/${monthlyLimit}`
+    );
+
     if (monthlyUsage >= monthlyLimit) {
       console.warn(
-        `Mailbox/user monthly email limit reached. mailbox_id=${mailbox.id}, user_id=${mailbox.user_id || 'guest'}, plan=${plan}, usage=${monthlyUsage}, limit=${monthlyLimit}`
+        `🚫 LIMIT HIT: user=${mailbox.user_id || 'guest'} plan=${plan} usage=${monthlyUsage}/${monthlyLimit}`
       );
 
       return Response.json({
