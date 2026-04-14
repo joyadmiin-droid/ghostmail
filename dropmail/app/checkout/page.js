@@ -26,6 +26,9 @@ function getSafePlan() {
 function buildCheckoutUrl(baseUrl, user, plan) {
   const url = new URL(baseUrl);
 
+  // force fresh checkout (VERY IMPORTANT)
+  url.searchParams.set('_t', Date.now());
+
   if (user?.email) {
     url.searchParams.set('checkout[email]', user.email);
   }
