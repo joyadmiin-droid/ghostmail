@@ -1,10 +1,10 @@
 'use client';
 
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-export default function CheckoutPage() {
+function CheckoutInner() {
   const searchParams = useSearchParams();
   const plan = searchParams.get('plan');
 
@@ -47,5 +47,13 @@ export default function CheckoutPage() {
       <h1>Preparing your checkout...</h1>
       <p>Secure redirect in progress</p>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div style={{ textAlign: 'center', marginTop: '100px' }}>Loading...</div>}>
+      <CheckoutInner />
+    </Suspense>
   );
 }
