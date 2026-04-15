@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [plan, setPlan] = useState('ghost');
   const [addresses, setAddresses] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingBilling, setLoadingBilling] = useState(false);
   const [error, setError] = useState('');
   const [emailCount, setEmailCount] = useState(0);
   const [copiedId, setCopiedId] = useState(null);
@@ -108,6 +109,42 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('Plan sync request failed:', err);
       return null;
+    }
+  }
+
+  async function handleManageBilling() {
+    try {
+      setLoadingBilling(true);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const res = await fetch('/api/billing', {
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer ' + session.access_token,
+        },
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.url) {
+        alert(data?.error || 'Failed to open billing portal');
+        return;
+      }
+
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Manage billing failed:', err);
+      alert('Failed to open billing portal');
+    } finally {
+      setLoadingBilling(false);
     }
   }
 
@@ -859,36 +896,32 @@ export default function DashboardPage() {
                       Upgrade to Spectre
                     </a>
 
-                    <a
-                      href="https://ghostmailhq.lemonsqueezy.com/billing"
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={handleManageBilling}
                       style={{
                         ...manageBtn,
-                        textDecoration: 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        opacity: loadingBilling ? 0.7 : 1,
+                        cursor: loadingBilling ? 'wait' : 'pointer',
                       }}
+                      disabled={loadingBilling}
                     >
-                      Manage billing
-                    </a>
+                      {loadingBilling ? 'Opening...' : 'Manage billing'}
+                    </button>
                   </div>
                 ) : (
-                  <a
-                    href="https://ghostmailhq.lemonsqueezy.com/billing"
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={handleManageBilling}
                     style={{
                       ...manageBtn,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      opacity: loadingBilling ? 0.7 : 1,
+                      cursor: loadingBilling ? 'wait' : 'pointer',
                     }}
+                    disabled={loadingBilling}
                   >
-                    Manage billing
-                  </a>
+                    {loadingBilling ? 'Opening...' : 'Manage billing'}
+                  </button>
                 )}
               </div>
             </div>
@@ -1139,9 +1172,7 @@ export default function DashboardPage() {
 
             <h2 style={modalTitle}>{upgradeContext.title}</h2>
 
-            <p style={modalText}>
-              {upgradeContext.text}
-            </p>
+            <p style={modalText}>{upgradeContext.text}</p>
 
             <div style={modalPlans}>
               {plan === 'ghost' && (
