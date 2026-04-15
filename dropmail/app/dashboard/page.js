@@ -853,8 +853,42 @@ export default function DashboardPage() {
                       Compare Phantom and Spectre on the pricing page
                     </p>
                   </>
+                ) : plan === 'phantom' ? (
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <a href="/checkout?plan=spectre" style={upgradeBtn}>
+                      Upgrade to Spectre
+                    </a>
+
+                    <a
+                      href="https://ghostmailhq.lemonsqueezy.com/billing"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        ...manageBtn,
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      Manage billing
+                    </a>
+                  </div>
                 ) : (
-                  <button style={manageBtn}>Manage billing</button>
+                  <a
+                    href="https://ghostmailhq.lemonsqueezy.com/billing"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      ...manageBtn,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    Manage billing
+                  </a>
                 )}
               </div>
             </div>
