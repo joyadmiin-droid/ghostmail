@@ -34,7 +34,10 @@ function normalizePlan(plan) {
 
 function detectPlan(customData, attributes) {
   const customPlan = normalizePlan(customData?.plan);
-  if (customPlan !== 'ghost' || String(customData?.plan || '').toLowerCase() === 'ghost') {
+  if (
+    customPlan !== 'ghost' ||
+    String(customData?.plan || '').toLowerCase() === 'ghost'
+  ) {
     return customPlan;
   }
 
@@ -89,11 +92,101 @@ function extractPlan(payload) {
   return detectPlan(mergedCustomData, attributes);
 }
 
+function extractTopUpCredits(payload) {
+  const metaCustom = payload?.meta?.custom_data || {};
+  const attrCheckoutData = payload?.data?.attributes?.checkout_data || {};
+  const attrCustomData = payload?.data?.attributes?.custom_data || {};
+  const orderItemCustom =
+    payload?.data?.attributes?.first_order_item?.custom_data || {};
+  const attributes = payload?.data?.attributes || {};
+
+  const mergedCustomData = {
+    ...metaCustom,
+    ...attrCustomData,
+    ...orderItemCustom,
+    ...(attrCheckoutData?.custom || {}),
+  };
+
+  const explicitCredits = Number(
+    mergedCustomData?.topup_emails ||
+      mergedCustomData?.extra_email_credits ||
+      mergedCustomData?.credits ||
+      0
+  );
+
+  if (Number.isFinite(explicitCredits) && explicitCredits > 0) {
+    return explicitCredits;
+  }
+
+  const typeValue = String(
+    mergedCustomData?.purchase_type ||
+      mergedCustomData?.topup_type ||
+      mergedCustomData?.type ||
+      ''
+  ).toLowerCase();
+
+  if (typeValue === 'topup_100' || typeValue === 'topup-100') return 100;
+
+  const text = [
+    attributes?.product_name,
+    attributes?.variant_name,
+    attributes?.first_order_item?.product_name,
+    attributes?.first_order_item?.variant_name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (
+    text.includes('+100') ||
+    text.includes('100 extra') ||
+    text.includes('100 emails') ||
+    text.includes('top up 100') ||
+    text.includes('topup 100')
+  ) {
+    return 100;
+  }
+
+  return 0;
+}
+
+function extractCustomerId(payload) {
+  return (
+    payload?.data?.attributes?.customer_id ||
+    payload?.data?.attributes?.first_order_item?.customer_id ||
+    null
+  );
+}
+
+function extractSubscriptionId(payload) {
+  return (
+    payload?.data?.id ||
+    payload?.data?.attributes?.subscription_id ||
+    null
+  );
+}
+
+async function ensureProfileFields(userId) {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select(
+      'id, plan, extra_email_credits, lemon_customer_id, lemon_subscription_id'
+    )
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return profile;
+}
+
 export async function POST(request) {
   try {
     if (!WEBHOOK_SECRET) {
       console.error('❌ Missing LEMONSQUEEZY_WEBHOOK_SECRET');
-      return NextResponse.json({ error: 'Missing webhook secret' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Missing webhook secret' },
+        { status: 500 }
+      );
     }
 
     const rawBody = await request.text();
@@ -101,8 +194,6 @@ export async function POST(request) {
       request.headers.get('x-signature') ||
       request.headers.get('X-Signature') ||
       '';
-
-    console.log('📩 Lemon webhook raw body:', rawBody);
 
     if (!verifySignature(rawBody, signature, WEBHOOK_SECRET)) {
       console.log('❌ Invalid Lemon signature');
@@ -115,14 +206,16 @@ export async function POST(request) {
     const attributes = payload?.data?.attributes || {};
     const userId = extractUserId(payload);
     const plan = extractPlan(payload);
+    const topUpCredits = extractTopUpCredits(payload);
+    const lemonCustomerId = extractCustomerId(payload);
+    const lemonSubscriptionId = extractSubscriptionId(payload);
 
     console.log('📌 Lemon event:', eventName);
     console.log('📌 userId:', userId);
     console.log('📌 plan:', plan);
-    console.log('📌 attributes id:', attributes?.id);
-    console.log('📌 checkout_data:', attributes?.checkout_data || null);
-    console.log('📌 custom_data:', attributes?.custom_data || null);
-    console.log('📌 meta custom_data:', payload?.meta?.custom_data || null);
+    console.log('📌 topUpCredits:', topUpCredits);
+    console.log('📌 lemonCustomerId:', lemonCustomerId);
+    console.log('📌 lemonSubscriptionId:', lemonSubscriptionId);
 
     if (!userId) {
       console.log('⚠️ Missing user_id in webhook payload');
@@ -130,39 +223,99 @@ export async function POST(request) {
     }
 
     const activateEvents = new Set([
-  'subscription_created',
-  'subscription_updated',
-]);
+      'subscription_created',
+      'subscription_updated',
+    ]);
 
     const downgradeEvents = new Set([
       'subscription_expired',
       'subscription_payment_refunded',
     ]);
 
+    const topUpEvents = new Set([
+      'order_created',
+    ]);
+
     if (activateEvents.has(eventName)) {
+      const updateData = {
+        plan,
+      };
+
+      if (lemonCustomerId) updateData.lemon_customer_id = String(lemonCustomerId);
+      if (lemonSubscriptionId)
+        updateData.lemon_subscription_id = String(lemonSubscriptionId);
+
       const { error } = await supabase
         .from('profiles')
-        .update({ plan })
+        .update(updateData)
         .eq('id', userId);
 
       if (error) {
         console.error('❌ Supabase activate error:', error);
-        return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Failed to update profile' },
+          { status: 500 }
+        );
       }
 
       console.log(`✅ Updated user ${userId} to ${plan}`);
       return NextResponse.json({ ok: true, action: 'activated', plan });
     }
 
-    if (downgradeEvents.has(eventName)) {
+    if (topUpEvents.has(eventName) && topUpCredits > 0) {
+      const profile = await ensureProfileFields(userId);
+      const currentCredits = Number(profile?.extra_email_credits || 0);
+      const nextCredits = currentCredits + topUpCredits;
+
+      const updateData = {
+        extra_email_credits: nextCredits,
+      };
+
+      if (lemonCustomerId) updateData.lemon_customer_id = String(lemonCustomerId);
+
       const { error } = await supabase
         .from('profiles')
-        .update({ plan: 'ghost' })
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) {
+        console.error('❌ Supabase top-up error:', error);
+        return NextResponse.json(
+          { error: 'Failed to apply top-up credits' },
+          { status: 500 }
+        );
+      }
+
+      console.log(
+        `✅ Added ${topUpCredits} extra email credits to user ${userId}. Total extra credits: ${nextCredits}`
+      );
+
+      return NextResponse.json({
+        ok: true,
+        action: 'topup_applied',
+        added: topUpCredits,
+        total_extra_credits: nextCredits,
+      });
+    }
+
+    if (downgradeEvents.has(eventName)) {
+      const updateData = {
+        plan: 'ghost',
+      };
+
+      if (lemonCustomerId) updateData.lemon_customer_id = String(lemonCustomerId);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
         .eq('id', userId);
 
       if (error) {
         console.error('❌ Supabase downgrade error:', error);
-        return NextResponse.json({ error: 'Failed to downgrade profile' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Failed to downgrade profile' },
+          { status: 500 }
+        );
       }
 
       console.log(`✅ Downgraded user ${userId} to ghost`);
