@@ -11,7 +11,7 @@ const supabase = createClient(
 const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 
 const PLAN_CONFIG = {
-  free: {
+  ghost: {
     label: 'GHOST',
     emailLimit: 5,
     inboxLimit: 1,
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     text: '',
     targetPlan: 'phantom',
   });
-  const [plan, setPlan] = useState('free');
+  const [plan, setPlan] = useState('ghost');
   const [addresses, setAddresses] = useState([]);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [error, setError] = useState('');
@@ -52,11 +52,12 @@ export default function DashboardPage() {
   const [toast, setToast] = useState(null);
 
   function normalizePlan(value) {
-    const v = String(value || 'free').toLowerCase();
-    if (v === 'spectre') return 'spectre';
-    if (v === 'phantom') return 'phantom';
-    return 'free';
-  }
+  const v = String(value || 'ghost').toLowerCase();
+  if (v === 'spectre') return 'spectre';
+  if (v === 'phantom') return 'phantom';
+  if (v === 'ghost' || v === 'free') return 'ghost';
+  return 'ghost';
+}
 
   function showToast(message) {
     setToast(message);
@@ -65,12 +66,40 @@ export default function DashboardPage() {
 
   function openUpgradeModal(targetPlan, title, text) {
     setUpgradeContext({
-      targetPlan,
+      targetPlan, 
       title,
       text,
     });
     setShowUpgrade(true);
   }
+  async function syncPlanFromServer() {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) return null;
+
+    const res = await fetch('/api/sync-plan', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + session.access_token,
+      },
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      console.error('Plan sync failed:', data?.error || 'Unknown error');
+      return null;
+    }
+
+    return data?.plan || null;
+  } catch (err) {
+    console.error('Plan sync request failed:', err);
+    return null;
+  }
+}
 
   useEffect(() => {
     try {
@@ -156,14 +185,29 @@ export default function DashboardPage() {
 
       setUser(session.user);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', session.user.id)
-        .maybeSingle();
+      const params = new URLSearchParams(window.location.search);
+const upgraded = params.get('upgraded');
 
-      const nextPlan = normalizePlan(profile?.plan);
-      setPlan(nextPlan);
+if (upgraded === '1') {
+  const syncedPlan = await syncPlanFromServer();
+
+  if (syncedPlan) {
+    showToast(`Plan updated to ${getPlanDisplayName(syncedPlan)}`);
+  }
+
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete('upgraded');
+  window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+}
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('plan')
+  .eq('id', session.user.id)
+  .maybeSingle(); 
+
+const nextPlan = normalizePlan(profile?.plan);
+setPlan(nextPlan);
 
       await cleanupExpiredMailboxes(session.user.id);
 
@@ -513,7 +557,7 @@ export default function DashboardPage() {
     };
   }, [addresses, mailboxUsage, favorites]);
 
-  const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.free;
+  const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.ghost;
   const planEmailLimit = currentPlanConfig.emailLimit;
   const planInboxLimit = currentPlanConfig.inboxLimit;
   const emailsLeft = Math.max(planEmailLimit - emailCount, 0);
@@ -539,7 +583,7 @@ export default function DashboardPage() {
       : '#22c55e';
 
   function handleUpgradeFromWarning() {
-    if (plan === 'free') {
+    if (plan === 'ghost') {
       openUpgradeModal(
         'phantom',
         'Ghost plan almost full',
@@ -671,7 +715,7 @@ export default function DashboardPage() {
               }}
               onClick={() => {
                 if (hasHitInboxLimit) {
-                  if (plan === 'free') {
+                  if (plan === 'ghost') {
                     openUpgradeModal(
                       'phantom',
                       'Inbox limit reached',
@@ -741,7 +785,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>
-                  {plan === 'free'
+                  {plan === 'ghost'
                     ? 'Upgrade to Phantom to unlock 5 inboxes and 200 shared emails.'
                     : plan === 'phantom'
                     ? 'Upgrade to Spectre to unlock 50 inboxes and 600 shared emails.'
@@ -780,7 +824,7 @@ export default function DashboardPage() {
                       color: 'var(--text)',
                     }}
                   >
-                    {plan === 'free' ? 'Free Tier' : 'Premium'}
+                    {plan === 'ghost' ? 'Free Tier' : 'Premium'}
                   </span>
                 </div>
 
@@ -788,7 +832,7 @@ export default function DashboardPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {plan === 'free' ? (
+                {plan === 'ghost' ? (
                   <>
                     <a href="/#pricing" style={upgradeBtn}>
                       Upgrade plan
@@ -1055,7 +1099,7 @@ export default function DashboardPage() {
       </p>
 
       <div style={modalPlans}>
-        {plan === 'free' && (
+        {plan === 'ghost' && (
           <>
             <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
               Upgrade to Phantom
