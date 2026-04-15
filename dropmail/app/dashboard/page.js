@@ -28,6 +28,23 @@ const PLAN_CONFIG = {
   },
 };
 
+function normalizePlan(value) {
+  const v = String(value || 'ghost').toLowerCase();
+  if (v === 'spectre') return 'spectre';
+  if (v === 'phantom') return 'phantom';
+  if (v === 'ghost' || v === 'free') return 'ghost';
+  return 'ghost';
+}
+
+function getPlanDisplayName(value) {
+  return PLAN_CONFIG[normalizePlan(value)]?.label || 'GHOST';
+}
+
+function getCurrentMonthStartIso() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+}
+
 export default function DashboardPage() {
   const [status, setStatus] = useState('loading');
   const [user, setUser] = useState(null);
@@ -51,14 +68,6 @@ export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [toast, setToast] = useState(null);
 
-  function normalizePlan(value) {
-  const v = String(value || 'ghost').toLowerCase();
-  if (v === 'spectre') return 'spectre';
-  if (v === 'phantom') return 'phantom';
-  if (v === 'ghost' || v === 'free') return 'ghost';
-  return 'ghost';
-}
-
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 2000);
@@ -66,40 +75,41 @@ export default function DashboardPage() {
 
   function openUpgradeModal(targetPlan, title, text) {
     setUpgradeContext({
-      targetPlan, 
+      targetPlan,
       title,
       text,
     });
     setShowUpgrade(true);
   }
+
   async function syncPlanFromServer() {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!session?.access_token) return null;
+      if (!session?.access_token) return null;
 
-    const res = await fetch('/api/sync-plan', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + session.access_token,
-      },
-    });
+      const res = await fetch('/api/sync-plan', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + session.access_token,
+        },
+      });
 
-    const data = await res.json().catch(() => null);
+      const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      console.error('Plan sync failed:', data?.error || 'Unknown error');
+      if (!res.ok) {
+        console.error('Plan sync failed:', data?.error || 'Unknown error');
+        return null;
+      }
+
+      return data?.plan || null;
+    } catch (err) {
+      console.error('Plan sync request failed:', err);
       return null;
     }
-
-    return data?.plan || null;
-  } catch (err) {
-    console.error('Plan sync request failed:', err);
-    return null;
   }
-}
 
   useEffect(() => {
     try {
@@ -186,28 +196,28 @@ export default function DashboardPage() {
       setUser(session.user);
 
       const params = new URLSearchParams(window.location.search);
-const upgraded = params.get('upgraded');
+      const upgraded = params.get('upgraded');
 
-if (upgraded === '1') {
-  const syncedPlan = await syncPlanFromServer();
+      if (upgraded === '1') {
+        const syncedPlan = await syncPlanFromServer();
 
-  if (syncedPlan) {
-    showToast(`Plan updated to ${getPlanDisplayName(syncedPlan)}`);
-  }
+        if (syncedPlan) {
+          showToast(`Plan updated to ${getPlanDisplayName(syncedPlan)}`);
+        }
 
-  const cleanUrl = new URL(window.location.href);
-  cleanUrl.searchParams.delete('upgraded');
-  window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
-}
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('upgraded');
+        window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+      }
 
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('plan')
-  .eq('id', session.user.id)
-  .maybeSingle(); 
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-const nextPlan = normalizePlan(profile?.plan);
-setPlan(nextPlan);
+      const nextPlan = normalizePlan(profile?.plan);
+      setPlan(nextPlan);
 
       await cleanupExpiredMailboxes(session.user.id);
 
@@ -234,13 +244,16 @@ setPlan(nextPlan);
       setAddresses(mailboxList);
 
       if (allMailboxIds.length > 0) {
+        const monthStartIso = getCurrentMonthStartIso();
+
         const { count: userEmailCount, error: countError } = await supabase
           .from('emails')
           .select('id', { count: 'exact', head: true })
-          .in('mailbox_id', allMailboxIds);
+          .in('mailbox_id', allMailboxIds)
+          .gte('received_at', monthStartIso);
 
         if (countError) {
-          console.error('Failed to count user emails:', countError);
+          console.error('Failed to count monthly user emails:', countError);
           setEmailCount(0);
         } else {
           setEmailCount(userEmailCount || 0);
@@ -354,13 +367,13 @@ setPlan(nextPlan);
           openUpgradeModal(
             'phantom',
             'Ghost plan limit reached',
-            'Your Ghost plan allows 1 active inbox and 5 total emails. Upgrade to Phantom to unlock up to 5 inboxes and 200 shared emails.'
+            'Your Ghost plan allows 1 active inbox and 5 monthly emails. Upgrade to Phantom to unlock up to 5 inboxes and 200 monthly emails.'
           );
         } else if (data?.code === 'PHANTOM_PLAN_LIMIT') {
           openUpgradeModal(
             'spectre',
             'Phantom plan limit reached',
-            'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 inboxes and 600 shared emails.'
+            'Your Phantom plan allows up to 5 active inboxes and 200 monthly emails. Upgrade to Spectre to unlock up to 50 inboxes and 600 monthly emails.'
           );
         } else if (data?.code === 'SPECTRE_PLAN_LIMIT') {
           openUpgradeModal(
@@ -491,10 +504,6 @@ setPlan(nextPlan);
     return !!favorites[id];
   }
 
-  function getPlanDisplayName(value) {
-    return PLAN_CONFIG[normalizePlan(value)]?.label || 'GHOST';
-  }
-
   function formatCreatedDate(ts) {
     return new Date(ts).toLocaleDateString(undefined, {
       month: 'short',
@@ -562,8 +571,10 @@ setPlan(nextPlan);
   const planInboxLimit = currentPlanConfig.inboxLimit;
   const emailsLeft = Math.max(planEmailLimit - emailCount, 0);
   const inboxesLeft = Math.max(planInboxLimit - stats.total, 0);
-  const usagePercent = planEmailLimit > 0 ? Math.min((emailCount / planEmailLimit) * 100, 100) : 0;
-  const inboxUsagePercent = planInboxLimit > 0 ? Math.min((stats.total / planInboxLimit) * 100, 100) : 0;
+  const usagePercent =
+    planEmailLimit > 0 ? Math.min((emailCount / planEmailLimit) * 100, 100) : 0;
+  const inboxUsagePercent =
+    planInboxLimit > 0 ? Math.min((stats.total / planInboxLimit) * 100, 100) : 0;
   const isNearEmailLimit = usagePercent >= 80;
   const hasHitEmailLimit = emailCount >= planEmailLimit;
   const hasHitInboxLimit = stats.total >= planInboxLimit;
@@ -587,7 +598,7 @@ setPlan(nextPlan);
       openUpgradeModal(
         'phantom',
         'Ghost plan almost full',
-        'You are close to your Ghost plan limits. Upgrade to Phantom to unlock 5 inboxes and 200 shared emails.'
+        'You are close to your Ghost plan limits. Upgrade to Phantom to unlock 5 inboxes and 200 monthly emails.'
       );
       return;
     }
@@ -595,7 +606,7 @@ setPlan(nextPlan);
     openUpgradeModal(
       'spectre',
       'Phantom plan almost full',
-      'You are close to your Phantom plan limits. Upgrade to Spectre to unlock 50 inboxes and 600 shared emails.'
+      'You are close to your Phantom plan limits. Upgrade to Spectre to unlock 50 inboxes and 600 monthly emails.'
     );
   }
 
@@ -778,17 +789,17 @@ setPlan(nextPlan);
 
                 <div style={{ color: 'var(--text)', fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
                   {hasHitEmailLimit
-                    ? `You have used all ${planEmailLimit} emails in your ${getPlanDisplayName(plan)} plan.`
+                    ? `You have used all ${planEmailLimit} monthly emails in your ${getPlanDisplayName(plan)} plan.`
                     : hasHitInboxLimit
                     ? `You have used all ${planInboxLimit} inbox slots in your ${getPlanDisplayName(plan)} plan.`
-                    : `You have used ${emailCount} of ${planEmailLimit} shared emails in your ${getPlanDisplayName(plan)} plan.`}
+                    : `You have used ${emailCount} of ${planEmailLimit} monthly emails in your ${getPlanDisplayName(plan)} plan.`}
                 </div>
 
                 <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>
                   {plan === 'ghost'
-                    ? 'Upgrade to Phantom to unlock 5 inboxes and 200 shared emails.'
+                    ? 'Upgrade to Phantom to unlock 5 inboxes and 200 monthly emails.'
                     : plan === 'phantom'
-                    ? 'Upgrade to Spectre to unlock 50 inboxes and 600 shared emails.'
+                    ? 'Upgrade to Spectre to unlock 50 inboxes and 600 monthly emails.'
                     : 'Delete old inboxes or manage current usage to stay within your plan limits.'}
                 </div>
               </div>
@@ -828,7 +839,7 @@ setPlan(nextPlan);
                   </span>
                 </div>
 
-                <p style={planMeta}>{emailCount} / {planEmailLimit} emails used</p>
+                <p style={planMeta}>{emailCount} / {planEmailLimit} emails used this month</p>
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -872,7 +883,7 @@ setPlan(nextPlan);
             </div>
 
             <div style={usageCardSubtext}>
-              {emailCount} used from your {getPlanDisplayName(plan)} plan
+              {emailCount} used this month from your {getPlanDisplayName(plan)} plan
             </div>
 
             <div style={usageTrack}>
@@ -1088,42 +1099,42 @@ setPlan(nextPlan);
       </div>
 
       {showUpgrade && (
-  <div style={modalOverlay}>
-    <div style={modalBox}>
-      <div style={modalBadge}>Upgrade recommended</div>
+        <div style={modalOverlay}>
+          <div style={modalBox}>
+            <div style={modalBadge}>Upgrade recommended</div>
 
-      <h2 style={modalTitle}>{upgradeContext.title}</h2>
+            <h2 style={modalTitle}>{upgradeContext.title}</h2>
 
-      <p style={modalText}>
-        {upgradeContext.text}
-      </p>
+            <p style={modalText}>
+              {upgradeContext.text}
+            </p>
 
-      <div style={modalPlans}>
-        {plan === 'ghost' && (
-          <>
-            <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
-              Upgrade to Phantom
-            </a>
+            <div style={modalPlans}>
+              {plan === 'ghost' && (
+                <>
+                  <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
+                    Upgrade to Phantom
+                  </a>
 
-            <a href="/checkout?plan=spectre" style={modalGhostSecondaryLink}>
-              Upgrade to Spectre
-            </a>
-          </>
-        )}
+                  <a href="/checkout?plan=spectre" style={modalGhostSecondaryLink}>
+                    Upgrade to Spectre
+                  </a>
+                </>
+              )}
 
-        {plan === 'phantom' && (
-          <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
-            Upgrade to Spectre
-          </a>
-        )}
+              {plan === 'phantom' && (
+                <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
+                  Upgrade to Spectre
+                </a>
+              )}
 
-        <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
-          Maybe later
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteModalOpen && (
         <div style={deleteOverlay} onClick={closeDeleteModal}>
@@ -1685,6 +1696,7 @@ const modalPrimaryLink = {
   alignItems: 'center',
   justifyContent: 'center',
 };
+
 const modalGhostSecondaryLink = {
   width: '100%',
   padding: '14px 16px',
@@ -1700,6 +1712,7 @@ const modalGhostSecondaryLink = {
   alignItems: 'center',
   justifyContent: 'center',
 };
+
 const modalSecondaryBtn = {
   width: '100%',
   padding: '14px 16px',
