@@ -11,23 +11,34 @@ export async function POST(req) {
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    const phantomVariantId = process.env.LEMONSQUEEZY_PHANTOM_VARIANT_ID;
+    const spectreVariantId = process.env.LEMONSQUEEZY_SPECTRE_VARIANT_ID;
+
+    if (!storeId || !apiKey || !siteUrl) {
+      return NextResponse.json(
+        { error: 'Missing Lemon Squeezy env vars' },
+        { status: 500 }
+      );
+    }
 
     let variantId = '';
 
-    // 🔥 IMPORTANT: replace with YOUR variant IDs if needed
-    if (plan === 'phantom') {
-      variantId = '9c456de5-48bb-49b6-a29c-963455db3ef6';
-    }
+    if (plan === 'phantom') variantId = phantomVariantId || '';
+    if (plan === 'spectre') variantId = spectreVariantId || '';
 
-    if (plan === 'spectre') {
-      variantId = '20c6c4ec-3906-4ced-8489-6f45551d9d85';
+    if (!variantId) {
+      return NextResponse.json(
+        { error: `Missing variant ID for plan: ${plan}` },
+        { status: 500 }
+      );
     }
 
     const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+        Accept: 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
       },
       body: JSON.stringify({
         data: {
@@ -48,13 +59,13 @@ export async function POST(req) {
             store: {
               data: {
                 type: 'stores',
-                id: storeId,
+                id: String(storeId),
               },
             },
             variant: {
               data: {
                 type: 'variants',
-                id: variantId,
+                id: String(variantId),
               },
             },
           },
@@ -62,17 +73,26 @@ export async function POST(req) {
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      console.error('Lemon checkout create failed:', data);
+      return NextResponse.json(
+        { error: data?.errors?.[0]?.detail || 'Checkout failed' },
+        { status: response.status || 500 }
+      );
+    }
 
     const checkoutUrl = data?.data?.attributes?.url;
 
     if (!checkoutUrl) {
-      return NextResponse.json({ error: 'Checkout failed' }, { status: 500 });
+      console.error('Lemon checkout URL missing:', data);
+      return NextResponse.json({ error: 'Checkout URL missing' }, { status: 500 });
     }
 
     return NextResponse.json({ url: checkoutUrl });
   } catch (err) {
-    console.error(err);
+    console.error('Checkout route error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
