@@ -130,14 +130,9 @@ export async function POST(request) {
     }
 
     const activateEvents = new Set([
-      'subscription_created',
-      'subscription_updated',
-      'subscription_resumed',
-      'subscription_unpaused',
-      'subscription_payment_success',
-      'subscription_payment_recovered',
-      'order_created',
-    ]);
+  'subscription_created',
+  'subscription_updated',
+]);
 
     const downgradeEvents = new Set([
       'subscription_expired',
