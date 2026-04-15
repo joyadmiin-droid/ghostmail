@@ -44,6 +44,7 @@ export default function SuccessPage() {
     let mounted = true;
     let pollInterval = null;
     let secondsInterval = null;
+    let redirectTimeout = null;
 
     async function checkPlan() {
       try {
@@ -76,10 +77,11 @@ export default function SuccessPage() {
 
         if (wantedPlan && plan === wantedPlan) {
           setStatus('upgraded');
-          clearInterval(pollInterval);
-          clearInterval(secondsInterval);
 
-          setTimeout(() => {
+          if (pollInterval) clearInterval(pollInterval);
+          if (secondsInterval) clearInterval(secondsInterval);
+
+          redirectTimeout = setTimeout(() => {
             window.location.replace('/dashboard?upgraded=1');
           }, 1200);
 
@@ -106,6 +108,7 @@ export default function SuccessPage() {
       mounted = false;
       if (pollInterval) clearInterval(pollInterval);
       if (secondsInterval) clearInterval(secondsInterval);
+      if (redirectTimeout) clearTimeout(redirectTimeout);
     };
   }, []);
 
@@ -186,7 +189,11 @@ export default function SuccessPage() {
             color: 'var(--text)',
           }}
         >
-          {status === 'upgraded' ? `You are now ${expectedPlanLabel}` : 'Syncing your plan...'}
+          {status === 'upgraded'
+            ? `You are now ${expectedPlanLabel}`
+            : status === 'guest'
+            ? 'Login required'
+            : 'Syncing your plan...'}
         </h1>
 
         <p
@@ -200,6 +207,8 @@ export default function SuccessPage() {
         >
           {status === 'upgraded'
             ? 'Your account has been upgraded successfully. Redirecting you to dashboard...'
+            : status === 'guest'
+            ? 'Please log in first so we can verify and apply your upgraded plan.'
             : 'We are confirming your subscription and updating your account.'}
         </p>
 
@@ -209,7 +218,7 @@ export default function SuccessPage() {
           {status !== 'upgraded' && <div><strong>Time:</strong> {seconds}s</div>}
         </div>
 
-        {status !== 'upgraded' && (
+        {status !== 'upgraded' && status !== 'guest' && (
           <div style={{ marginTop: '24px', marginBottom: '20px' }}>
             <div
               style={{
