@@ -29,37 +29,30 @@ function CheckoutInner() {
           return;
         }
 
-        const siteUrl =
-          process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        const res = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            plan,
+            userId,
+            email: userEmail,
+          }),
+        });
 
-        let baseUrl = '';
-        let successUrl = '';
+        const data = await res.json();
 
-        if (plan === 'phantom') {
-          baseUrl =
-            'https://ghostmailhq.lemonsqueezy.com/checkout/buy/9c456de5-48bb-49b6-a29c-963455db3ef6';
-          successUrl = `${siteUrl}/success?plan=phantom`;
-        } else if (plan === 'spectre') {
-          baseUrl =
-            'https://ghostmailhq.lemonsqueezy.com/checkout/buy/20c6c4ec-3906-4ced-8489-6f45551d9d85';
-          successUrl = `${siteUrl}/success?plan=spectre`;
-        } else {
-          alert('Invalid plan selected');
+        if (!data.url) {
+          alert('Checkout failed');
           window.location.href = '/dashboard';
           return;
         }
 
-        const url = new URL(baseUrl);
-
-        url.searchParams.set('checkout[email]', userEmail);
-        url.searchParams.set('checkout[custom][user_id]', userId);
-        url.searchParams.set('checkout[custom][plan]', plan);
-        url.searchParams.set('checkout[success_url]', successUrl);
-
-        window.location.href = url.toString();
-      } catch (error) {
-        console.error('Checkout redirect failed:', error);
-        alert('Failed to prepare checkout');
+        window.location.href = data.url;
+      } catch (err) {
+        console.error(err);
+        alert('Something went wrong');
         window.location.href = '/dashboard';
       }
     };
@@ -77,13 +70,7 @@ function CheckoutInner() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense
-      fallback={
-        <div style={{ textAlign: 'center', marginTop: '100px' }}>
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={<div>Loading...</div>}>
       <CheckoutInner />
     </Suspense>
   );
