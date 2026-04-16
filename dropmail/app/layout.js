@@ -16,18 +16,25 @@ export default function RootLayout({ children }) {
         {children}
 
         <Script
-          id="ga-script-src"
           src="https://www.googletagmanager.com/gtag/js?id=G-GEHF8M2703"
           strategy="afterInteractive"
         />
-        <Script id="ga-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){window.dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-GEHF8M2703');
-          `}
-        </Script>
+
+        <Script
+          id="ga-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              window.gtag = gtag;
+              gtag('js', new Date());
+              gtag('config', 'G-GEHF8M2703', {
+                page_path: window.location.pathname,
+              });
+            `,
+          }}
+        />
       </body>
     </html>
   );
