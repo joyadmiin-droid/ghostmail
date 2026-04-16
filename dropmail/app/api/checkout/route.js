@@ -11,8 +11,12 @@ export async function POST(req) {
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
     const phantomVariantId = process.env.LEMONSQUEEZY_PHANTOM_VARIANT_ID;
     const spectreVariantId = process.env.LEMONSQUEEZY_SPECTRE_VARIANT_ID;
+
+    // 🔥 NEW
+    const topupVariantId = process.env.LEMONSQUEEZY_TOPUP_100_VARIANT_ID;
 
     if (!storeId || !apiKey || !siteUrl) {
       return NextResponse.json(
@@ -25,6 +29,9 @@ export async function POST(req) {
 
     if (plan === 'phantom') variantId = phantomVariantId || '';
     if (plan === 'spectre') variantId = spectreVariantId || '';
+
+    // 🔥 NEW PLAN
+    if (plan === 'topup_100') variantId = topupVariantId || '';
 
     if (!variantId) {
       return NextResponse.json(

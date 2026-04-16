@@ -63,6 +63,7 @@ export default function DashboardPage() {
   const [loadingBilling, setLoadingBilling] = useState(false);
   const [error, setError] = useState('');
   const [emailCount, setEmailCount] = useState(0);
+  const [extraCredits, setExtraCredits] = useState(0);
   const [copiedId, setCopiedId] = useState(null);
   const [mailboxUsage, setMailboxUsage] = useState({});
   const [favorites, setFavorites] = useState({});
@@ -185,37 +186,40 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const cleanupExpiredMailboxes = useCallback(async (userId) => {
-    const nowIso = new Date().toISOString();
+  const cleanupExpiredMailboxes = useCallback(
+    async (userId) => {
+      const nowIso = new Date().toISOString();
 
-    const { data: expiredRows, error: findError } = await supabase
-      .from('mailboxes')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .lte('expires_at', nowIso);
+      const { data: expiredRows, error: findError } = await supabase
+        .from('mailboxes')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .lte('expires_at', nowIso);
 
-    if (findError) {
-      console.error('Failed to find expired mailboxes:', findError);
-      return;
-    }
+      if (findError) {
+        console.error('Failed to find expired mailboxes:', findError);
+        return;
+      }
 
-    if (!expiredRows || expiredRows.length === 0) return;
+      if (!expiredRows || expiredRows.length === 0) return;
 
-    const expiredIds = expiredRows.map((row) => row.id);
+      const expiredIds = expiredRows.map((row) => row.id);
 
-    const { error: deactivateError } = await supabase
-      .from('mailboxes')
-      .update({ is_active: false })
-      .in('id', expiredIds);
+      const { error: deactivateError } = await supabase
+        .from('mailboxes')
+        .update({ is_active: false })
+        .in('id', expiredIds);
 
-    if (deactivateError) {
-      console.error('Failed to deactivate expired mailboxes:', deactivateError);
-      return;
-    }
+      if (deactivateError) {
+        console.error('Failed to deactivate expired mailboxes:', deactivateError);
+        return;
+      }
 
-    removeInactiveFromLocalState(expiredIds);
-  }, [removeInactiveFromLocalState]);
+      removeInactiveFromLocalState(expiredIds);
+    },
+    [removeInactiveFromLocalState]
+  );
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -249,12 +253,13 @@ export default function DashboardPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan')
+        .select('plan, extra_email_credits')
         .eq('id', session.user.id)
         .maybeSingle();
 
       const nextPlan = normalizePlan(profile?.plan);
       setPlan(nextPlan);
+      setExtraCredits(profile?.extra_email_credits || 0);
 
       await cleanupExpiredMailboxes(session.user.id);
 
@@ -606,20 +611,26 @@ export default function DashboardPage() {
   const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.ghost;
   const planEmailLimit = currentPlanConfig.emailLimit;
   const planInboxLimit = currentPlanConfig.inboxLimit;
-  const emailsLeft = Math.max(planEmailLimit - emailCount, 0);
+  const totalAvailableEmails = planEmailLimit + extraCredits;
+  const emailsLeft = Math.max(totalAvailableEmails - emailCount, 0);
   const inboxesLeft = Math.max(planInboxLimit - stats.total, 0);
+
   const usagePercent =
-    planEmailLimit > 0 ? Math.min((emailCount / planEmailLimit) * 100, 100) : 0;
+    totalAvailableEmails > 0
+      ? Math.min((emailCount / totalAvailableEmails) * 100, 100)
+      : 0;
+
   const inboxUsagePercent =
     planInboxLimit > 0 ? Math.min((stats.total / planInboxLimit) * 100, 100) : 0;
+
   const isNearEmailLimit = usagePercent >= 80;
-  const hasHitEmailLimit = emailCount >= planEmailLimit;
+  const hasHitEmailLimit = emailCount >= totalAvailableEmails;
   const hasHitInboxLimit = stats.total >= planInboxLimit;
 
   const emailsLeftColor =
-    emailsLeft <= planEmailLimit * 0.2
+    emailsLeft <= Math.max(totalAvailableEmails * 0.2, 1)
       ? '#ef4444'
-      : emailsLeft <= planEmailLimit * 0.5
+      : emailsLeft <= Math.max(totalAvailableEmails * 0.5, 1)
       ? '#f59e0b'
       : '#22c55e';
 
@@ -785,7 +796,11 @@ export default function DashboardPage() {
               }}
               disabled={loadingCreate}
             >
-              {loadingCreate ? 'Generating...' : hasHitInboxLimit ? 'Inbox limit reached' : 'New Address'}
+              {loadingCreate
+                ? 'Generating...'
+                : hasHitInboxLimit
+                ? 'Inbox limit reached'
+                : 'New Address'}
             </button>
 
             <button style={dangerBtn} onClick={handleSignOut}>
@@ -800,16 +815,25 @@ export default function DashboardPage() {
               marginBottom: 18,
               padding: '16px 18px',
               borderRadius: 18,
-              border: hasHitEmailLimit || hasHitInboxLimit
-                ? '1px solid rgba(239,68,68,0.22)'
-                : '1px solid rgba(245,158,11,0.24)',
-              background: hasHitEmailLimit || hasHitInboxLimit
-                ? 'rgba(239,68,68,0.06)'
-                : 'rgba(245,158,11,0.08)',
+              border:
+                hasHitEmailLimit || hasHitInboxLimit
+                  ? '1px solid rgba(239,68,68,0.22)'
+                  : '1px solid rgba(245,158,11,0.24)',
+              background:
+                hasHitEmailLimit || hasHitInboxLimit
+                  ? 'rgba(239,68,68,0.06)'
+                  : 'rgba(245,158,11,0.08)',
               boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
               <div>
                 <div
                   style={{
@@ -817,48 +841,101 @@ export default function DashboardPage() {
                     fontWeight: 800,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
-                    color: hasHitEmailLimit || hasHitInboxLimit ? '#dc2626' : '#b45309',
+                    color:
+                      hasHitEmailLimit || hasHitInboxLimit
+                        ? '#dc2626'
+                        : '#b45309',
                     marginBottom: 8,
                   }}
                 >
-                  {hasHitEmailLimit || hasHitInboxLimit ? 'Limit reached' : 'Usage warning'}
+                  {hasHitEmailLimit || hasHitInboxLimit
+                    ? 'Limit reached'
+                    : 'Usage warning'}
                 </div>
 
-                <div style={{ color: 'var(--text)', fontSize: 16, fontWeight: 800, marginBottom: 6 }}>
+                <div
+                  style={{
+                    color: 'var(--text)',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    marginBottom: 6,
+                  }}
+                >
                   {hasHitEmailLimit
-                    ? `You have used all ${planEmailLimit} monthly emails in your ${getPlanDisplayName(plan)} plan.`
+                    ? `You have used all ${totalAvailableEmails} available emails in your ${getPlanDisplayName(plan)} account.`
                     : hasHitInboxLimit
                     ? `You have used all ${planInboxLimit} inbox slots in your ${getPlanDisplayName(plan)} plan.`
-                    : `You have used ${emailCount} of ${planEmailLimit} monthly emails in your ${getPlanDisplayName(plan)} plan.`}
+                    : `You have used ${emailCount} of ${totalAvailableEmails} available emails in your ${getPlanDisplayName(plan)} account.`}
                 </div>
 
-                <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>
+                <div
+                  style={{
+                    color: 'var(--muted)',
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                  }}
+                >
                   {plan === 'ghost'
                     ? 'Upgrade to Phantom to unlock 5 inboxes and 200 monthly emails.'
                     : plan === 'phantom'
-                    ? 'Upgrade to Spectre to unlock 50 inboxes and 600 monthly emails.'
-                    : 'Delete old inboxes or manage current usage to stay within your plan limits.'}
+                    ? 'Upgrade to Spectre or buy extra emails to keep using GhostMail without waiting for next month.'
+                    : 'Buy extra emails or manage current usage to stay within your account limits.'}
                 </div>
               </div>
 
-              {plan !== 'spectre' && (
-                <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                {plan !== 'spectre' && (
                   <button style={upgradeBtn} onClick={handleUpgradeFromWarning}>
                     Upgrade now
                   </button>
-                </div>
-              )}
+                )}
+
+                {hasHitEmailLimit && (
+                  <a
+                    href="/checkout?plan=topup_100"
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 12,
+                      background: '#22c55e',
+                      color: '#fff',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'inline-block',
+                      boxShadow: '0 10px 24px rgba(34,197,94,0.16)',
+                    }}
+                  >
+                    Buy +100 emails
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         <div style={summaryGrid} className="dashboard-summary-grid">
-          <div style={{ ...summaryCard, ...summaryCardWide }} className="dashboard-summary-wide">
+          <div
+            style={{ ...summaryCard, ...summaryCardWide }}
+            className="dashboard-summary-wide"
+          >
             <div style={planCardHeader}>
               <div>
                 <p style={planEyebrow}>Current plan</p>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                  }}
+                >
                   <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
 
                   <span
@@ -876,7 +953,10 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <p style={planMeta}>{emailCount} / {planEmailLimit} emails used this month</p>
+                <p style={planMeta}>
+                  {emailCount} / {planEmailLimit} emails used this month
+                  {extraCredits > 0 ? ` + ${extraCredits} extra credits` : ''}
+                </p>
               </div>
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -886,7 +966,13 @@ export default function DashboardPage() {
                       Upgrade plan
                     </a>
 
-                    <p style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+                    <p
+                      style={{
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: 'var(--muted)',
+                      }}
+                    >
                       Compare Phantom and Spectre on the pricing page
                     </p>
                   </>
@@ -946,11 +1032,14 @@ export default function DashboardPage() {
             <div style={summaryLabel}>Emails left</div>
 
             <div style={{ ...summaryValue, color: emailsLeftColor }}>
-              {emailsLeft} / {planEmailLimit}
+              {emailsLeft} / {totalAvailableEmails}
             </div>
 
             <div style={usageCardSubtext}>
               {emailCount} used this month from your {getPlanDisplayName(plan)} plan
+              {extraCredits > 0
+                ? ` with ${extraCredits} extra credits available`
+                : ''}
             </div>
 
             <div style={usageTrack}>
@@ -1026,18 +1115,32 @@ export default function DashboardPage() {
         {addresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>📭</div>
-            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>No addresses yet</h3>
-            <p style={{ margin: '0 0 18px', color: 'var(--muted)', lineHeight: 1.6 }}>
+            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>
+              No addresses yet
+            </h3>
+            <p
+              style={{
+                margin: '0 0 18px',
+                color: 'var(--muted)',
+                lineHeight: 1.6,
+              }}
+            >
               Generate your first address to start receiving emails.
             </p>
-            <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
+            <button
+              style={primaryBtn}
+              onClick={generateMailbox}
+              disabled={loadingCreate}
+            >
               {loadingCreate ? 'Generating...' : 'Create First Address'}
             </button>
           </div>
         ) : filteredAddresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>🗂️</div>
-            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>No inboxes in this filter</h3>
+            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>
+              No inboxes in this filter
+            </h3>
             <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.6 }}>
               Try another filter or create a new address.
             </p>
@@ -1067,12 +1170,18 @@ export default function DashboardPage() {
                     <div style={cardTopRow}>
                       <div style={cardAddressWrap}>
                         <div style={addrText}>{addr.address}</div>
-                        <div style={createdText}>Created {formatCreatedDate(addr.created_at)}</div>
+                        <div style={createdText}>
+                          Created {formatCreatedDate(addr.created_at)}
+                        </div>
                       </div>
 
                       <button
                         type="button"
-                        aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+                        aria-label={
+                          favorite
+                            ? 'Remove from favorites'
+                            : 'Add to favorites'
+                        }
                         className="dashboard-fav-btn"
                         onClick={() => toggleFavorite(addr.id)}
                         style={{
@@ -1102,7 +1211,9 @@ export default function DashboardPage() {
                         ● {badge.label}
                       </span>
 
-                      {favorite && <span style={favoriteMiniBadge}>Favorite</span>}
+                      {favorite && (
+                        <span style={favoriteMiniBadge}>Favorite</span>
+                      )}
                     </div>
                   </div>
 
@@ -1115,14 +1226,19 @@ export default function DashboardPage() {
                     <div style={statBoxColumn}>
                       <div style={statTopRow}>
                         <span style={statLabel}>Expires</span>
-                        <span style={statValueMuted}>{getExpiryLabel(addr.expires_at)}</span>
+                        <span style={statValueMuted}>
+                          {getExpiryLabel(addr.expires_at)}
+                        </span>
                       </div>
 
                       <div style={progressTrack}>
                         <div
                           style={{
                             ...progressFill,
-                            width: `${getProgress(addr.expires_at, addr.created_at)}%`,
+                            width: `${getProgress(
+                              addr.expires_at,
+                              addr.created_at
+                            )}%`,
                           }}
                         />
                       </div>
@@ -1181,19 +1297,40 @@ export default function DashboardPage() {
                     Upgrade to Phantom
                   </a>
 
-                  <a href="/checkout?plan=spectre" style={modalGhostSecondaryLink}>
+                  <a
+                    href="/checkout?plan=spectre"
+                    style={modalGhostSecondaryLink}
+                  >
                     Upgrade to Spectre
                   </a>
                 </>
               )}
 
               {plan === 'phantom' && (
-                <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
-                  Upgrade to Spectre
+                <>
+                  <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
+                    Upgrade to Spectre
+                  </a>
+
+                  <a
+                    href="/checkout?plan=topup_100"
+                    style={modalGhostSecondaryLink}
+                  >
+                    Buy +100 emails
+                  </a>
+                </>
+              )}
+
+              {plan === 'spectre' && hasHitEmailLimit && (
+                <a href="/checkout?plan=topup_100" style={modalPrimaryLink}>
+                  Buy +100 emails
                 </a>
               )}
 
-              <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
+              <button
+                style={modalSecondaryBtn}
+                onClick={() => setShowUpgrade(false)}
+              >
                 Maybe later
               </button>
             </div>
@@ -1210,7 +1347,8 @@ export default function DashboardPage() {
             <h2 style={deleteTitle}>Are you sure?</h2>
 
             <p style={deleteText}>
-              This inbox will be removed from your dashboard. This action cannot be undone.
+              This inbox will be removed from your dashboard. This action cannot
+              be undone.
             </p>
 
             <div style={deleteEmailBox}>{selectedInbox?.address}</div>
@@ -1310,7 +1448,8 @@ const summaryCard = {
 
 const summaryCardWide = {
   gridColumn: 'span 4',
-  background: 'linear-gradient(180deg, rgba(167,139,250,0.10), rgba(167,139,250,0.06))',
+  background:
+    'linear-gradient(180deg, rgba(167,139,250,0.10), rgba(167,139,250,0.06))',
   border: '1px solid rgba(167,139,250,0.22)',
   boxShadow: '0 14px 36px rgba(124,58,237,0.06)',
 };
