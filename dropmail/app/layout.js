@@ -15,15 +15,15 @@ export default function RootLayout({ children }) {
       <body>
         {children}
 
-        {/* Google Analytics */}
         <Script
+          id="ga-script-src"
           src="https://www.googletagmanager.com/gtag/js?id=G-GEHF8M2703"
           strategy="afterInteractive"
         />
-        <Script id="ga-script" strategy="afterInteractive">
+        <Script id="ga-init" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag(){window.dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'G-GEHF8M2703');
           `}
