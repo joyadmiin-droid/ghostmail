@@ -11,8 +11,31 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const ADJECTIVES = ['swift', 'quiet', 'lucky', 'brave', 'sharp', 'calm', 'wild', 'cool', 'slim', 'bold'];
-const NOUNS = ['fox', 'hawk', 'wolf', 'bear', 'lynx', 'crow', 'dart', 'ember', 'flux', 'storm'];
+const ADJECTIVES = [
+  'swift',
+  'quiet',
+  'lucky',
+  'brave',
+  'sharp',
+  'calm',
+  'wild',
+  'cool',
+  'slim',
+  'bold',
+];
+
+const NOUNS = [
+  'fox',
+  'hawk',
+  'wolf',
+  'bear',
+  'lynx',
+  'crow',
+  'dart',
+  'ember',
+  'flux',
+  'storm',
+];
 
 const ROUTE_NAME = 'mailbox_create';
 
@@ -73,7 +96,6 @@ function hashIp(ip) {
   return crypto.createHash('sha256').update(String(ip)).digest('hex');
 }
 
-// 🔥 IMPROVED RATE LIMIT (IP + USER SAFE)
 async function enforceRateLimit({ request, userId }) {
   const ipHash = hashIp(getClientIp(request));
   const now = Date.now();
@@ -85,13 +107,15 @@ async function enforceRateLimit({ request, userId }) {
   const limits = LIMITS[tier];
 
   const [{ count: minute }, { count: hour }] = await Promise.all([
-    supabase.from('api_rate_limits')
+    supabase
+      .from('api_rate_limits')
       .select('*', { count: 'exact', head: true })
       .eq('route', ROUTE_NAME)
       .eq('ip_hash', ipHash)
       .gte('created_at', minuteAgo),
 
-    supabase.from('api_rate_limits')
+    supabase
+      .from('api_rate_limits')
       .select('*', { count: 'exact', head: true })
       .eq('route', ROUTE_NAME)
       .eq('ip_hash', ipHash)
@@ -99,11 +123,19 @@ async function enforceRateLimit({ request, userId }) {
   ]);
 
   if ((minute || 0) >= limits.perMinute) {
-    return { ok: false, status: 429, body: { error: 'Slow down (1 min limit)' } };
+    return {
+      ok: false,
+      status: 429,
+      body: { error: 'Slow down (1 min limit)' },
+    };
   }
 
   if ((hour || 0) >= limits.perHour) {
-    return { ok: false, status: 429, body: { error: 'Too many requests (1h limit)' } };
+    return {
+      ok: false,
+      status: 429,
+      body: { error: 'Too many requests (1h limit)' },
+    };
   }
 
   await supabase.from('api_rate_limits').insert({
@@ -115,18 +147,25 @@ async function enforceRateLimit({ request, userId }) {
   return { ok: true };
 }
 
-// 🔥 STRONGER INBOX LIMIT CHECK
 async function enforcePlanInboxLimit({ userId, plan }) {
   if (!userId) return { ok: true };
 
   const rules = getPlanRules(plan);
 
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('mailboxes')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('is_active', true)
     .gt('expires_at', new Date().toISOString());
+
+  if (error) {
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to check inbox limits' },
+    };
+  }
 
   if ((count || 0) >= rules.maxInboxes) {
     return {
@@ -142,17 +181,24 @@ async function enforcePlanInboxLimit({ userId, plan }) {
   return { ok: true };
 }
 
-// 🔥 ANTI-SPAM (PREVENT MASS CREATION BURST)
 async function preventBurstCreation(userId) {
   if (!userId) return { ok: true };
 
   const recent = new Date(Date.now() - 10 * 1000).toISOString();
 
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('mailboxes')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .gte('created_at', recent);
+
+  if (error) {
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to verify recent inbox creation' },
+    };
+  }
 
   if ((count || 0) >= 2) {
     return {
@@ -165,17 +211,20 @@ async function preventBurstCreation(userId) {
   return { ok: true };
 }
 
-// 🔥 UNIQUE ADDRESS SAFE
 async function generateUniqueAddress(domain, attempts = 10) {
-  for (let i = 0; i < attempts; i++) {
+  for (let i = 0; i < attempts; i += 1) {
     const username = generateUsername();
     const address = `${username}@${domain}`;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('mailboxes')
       .select('id')
       .eq('address', address)
       .limit(1);
+
+    if (error) {
+      throw new Error('Failed to verify unique mailbox address');
+    }
 
     if (!data || data.length === 0) {
       return { username, address };
@@ -187,59 +236,71 @@ async function generateUniqueAddress(domain, attempts = 10) {
 
 export async function POST(request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-const { success } = limiter(ip);
+    const ip = getClientIp(request);
+    const { success } = limiter(ip);
 
-if (!success) {
-  return Response.json({ error: 'Too many requests' }, { status: 429 });
-}
+    if (!success) {
+      return Response.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     let userId = null;
     let plan = 'ghost';
+    let extraEmailCredits = 0;
 
     const auth = request.headers.get('Authorization');
 
     if (auth?.startsWith('Bearer ')) {
       const token = auth.replace('Bearer ', '').trim();
 
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser(token);
 
       if (user) {
         userId = user.id;
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('plan')
+          .select('plan, extra_email_credits')
           .eq('id', user.id)
           .maybeSingle();
 
+        if (profileError) {
+          return Response.json(
+            { error: 'Failed to load profile' },
+            { status: 500 }
+          );
+        }
+
         plan = normalizePlan(profile?.plan);
+        extraEmailCredits = Number(profile?.extra_email_credits || 0);
       }
     }
 
-    // 🔒 RATE LIMIT
     const rate = await enforceRateLimit({ request, userId });
     if (!rate.ok) return Response.json(rate.body, { status: rate.status });
 
-    // 🔒 BURST PROTECTION
     const burst = await preventBurstCreation(userId);
     if (!burst.ok) return Response.json(burst.body, { status: burst.status });
 
-    // 🔒 PLAN LIMIT
     const limit = await enforcePlanInboxLimit({ userId, plan });
     if (!limit.ok) return Response.json(limit.body, { status: limit.status });
 
-    const { data: domains } = await supabase
+    const { data: domains, error: domainsError } = await supabase
       .from('domains')
       .select('id, name')
       .eq('is_active', true)
       .limit(1);
+
+    if (domainsError) {
+      return Response.json({ error: 'Failed to load domain' }, { status: 500 });
+    }
 
     if (!domains?.length) {
       return Response.json({ error: 'No domain available' }, { status: 500 });
     }
 
     const domain = domains[0];
-
     const { username, address } = await generateUniqueAddress(domain.name);
 
     const rules = getPlanRules(plan);
@@ -263,8 +324,11 @@ if (!success) {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    return Response.json(data);
-
+    return Response.json({
+      ...data,
+      plan,
+      extra_email_credits: extraEmailCredits,
+    });
   } catch (err) {
     console.error('CREATE ERROR:', err);
     return Response.json({ error: 'Internal error' }, { status: 500 });
