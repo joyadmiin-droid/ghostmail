@@ -12,12 +12,15 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="en">
-      <head>
+      <body>
+        {children}
+
+        {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GEHF8M2703"
           strategy="afterInteractive"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="ga-script" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -25,9 +28,7 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-GEHF8M2703');
           `}
         </Script>
-      </head>
-
-      <body>{children}</body>
+      </body>
     </html>
   );
 }
