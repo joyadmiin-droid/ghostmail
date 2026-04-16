@@ -101,13 +101,39 @@ async function reserveWebhookToken({ token, timestamp }) {
 function sanitizeEmailHtml(html) {
   return sanitizeHtml(String(html || ''), {
     allowedTags: [
-      'html', 'body', 'div', 'span', 'p', 'br', 'hr',
-      'b', 'strong', 'i', 'em', 'u', 's',
-      'blockquote', 'pre', 'code',
-      'ul', 'ol', 'li',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'a', 'img',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'html',
+      'body',
+      'div',
+      'span',
+      'p',
+      'br',
+      'hr',
+      'b',
+      'strong',
+      'i',
+      'em',
+      'u',
+      's',
+      'blockquote',
+      'pre',
+      'code',
+      'ul',
+      'ol',
+      'li',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'th',
+      'td',
+      'a',
+      'img',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
     ],
     allowedAttributes: {
       a: ['href', 'name', 'target', 'rel'],
@@ -131,7 +157,9 @@ function sanitizeEmailHtml(html) {
       const attrs = frame.attribs || {};
 
       if (tag === 'img') {
-        const src = String(attrs.src || '').trim().toLowerCase();
+        const src = String(attrs.src || '')
+          .trim()
+          .toLowerCase();
         if (!src) return true;
         if (
           src.startsWith('javascript:') ||
@@ -143,7 +171,9 @@ function sanitizeEmailHtml(html) {
       }
 
       if (tag === 'a') {
-        const href = String(attrs.href || '').trim().toLowerCase();
+        const href = String(attrs.href || '')
+          .trim()
+          .toLowerCase();
         if (
           href.startsWith('javascript:') ||
           href.startsWith('file:') ||
@@ -159,31 +189,44 @@ function sanitizeEmailHtml(html) {
 }
 
 function normalizePlainText(text) {
-  return String(text || '').replace(/\u0000/g, '').trim();
+  return String(text || '')
+    .replace(/\u0000/g, '')
+    .trim();
 }
 
 function getMonthStartIso() {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)).toISOString();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
+  ).toISOString();
 }
 
-async function getMailboxPlan(mailbox) {
+async function getMailboxPlanAndCredits(mailbox) {
   if (!mailbox?.user_id) {
-    return 'free';
+    return {
+      plan: 'free',
+      extraEmailCredits: 0,
+    };
   }
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('plan')
+    .select('plan, extra_email_credits')
     .eq('id', mailbox.user_id)
     .maybeSingle();
 
   if (error) {
     console.error('Profile fetch error during webhook:', error);
-    return 'free';
+    return {
+      plan: 'free',
+      extraEmailCredits: 0,
+    };
   }
 
-  return normalizePlan(profile?.plan);
+  return {
+    plan: normalizePlan(profile?.plan),
+    extraEmailCredits: Number(profile?.extra_email_credits || 0),
+  };
 }
 
 async function getMonthlyUsageCount({ mailbox }) {
@@ -249,7 +292,10 @@ export async function POST(request) {
     });
 
     if (!isValid) {
-      return Response.json({ error: 'Invalid Mailgun signature' }, { status: 401 });
+      return Response.json(
+        { error: 'Invalid Mailgun signature' },
+        { status: 401 }
+      );
     }
 
     const replayCheck = await reserveWebhookToken({ token, timestamp });
@@ -259,13 +305,19 @@ export async function POST(request) {
         return Response.json({ error: 'Replay detected' }, { status: 409 });
       }
 
-      return Response.json({ error: 'Webhook replay guard failed' }, { status: 500 });
+      return Response.json(
+        { error: 'Webhook replay guard failed' },
+        { status: 500 }
+      );
     }
 
     const recipient = formData.get('recipient');
     const sender = formData.get('sender');
     const from = formData.get('from');
-    const subject = String(formData.get('subject') || '(no subject)').slice(0, 500);
+    const subject = String(formData.get('subject') || '(no subject)').slice(
+      0,
+      500
+    );
     const rawBodyHtml = formData.get('body-html') || '';
     const rawBodyText = formData.get('body-plain') || '';
 
@@ -301,13 +353,13 @@ export async function POST(request) {
       });
     }
 
-    const freshPlan = await getMailboxPlan(mailbox);
-    const plan = normalizePlan(freshPlan);
-    const monthlyLimit = PLAN_EMAIL_LIMITS[plan] ?? PLAN_EMAIL_LIMITS.free;
+    const { plan, extraEmailCredits } = await getMailboxPlanAndCredits(mailbox);
+    const baseMonthlyLimit = PLAN_EMAIL_LIMITS[plan] ?? PLAN_EMAIL_LIMITS.free;
+    const monthlyLimit = baseMonthlyLimit + extraEmailCredits;
     const monthlyUsage = await getMonthlyUsageCount({ mailbox });
 
     console.log(
-      `📊 Usage check: user=${mailbox.user_id || 'guest'} plan=${plan} usage=${monthlyUsage}/${monthlyLimit}`
+      `📊 Usage check: user=${mailbox.user_id || 'guest'} plan=${plan} usage=${monthlyUsage}/${monthlyLimit} (base=${baseMonthlyLimit}, extra=${extraEmailCredits})`
     );
 
     if (monthlyUsage >= monthlyLimit) {
@@ -322,6 +374,8 @@ export async function POST(request) {
         plan,
         monthly_usage: monthlyUsage,
         monthly_limit: monthlyLimit,
+        base_monthly_limit: baseMonthlyLimit,
+        extra_email_credits: extraEmailCredits,
       });
     }
 
@@ -359,12 +413,15 @@ export async function POST(request) {
 
       if (acceptedAttachments >= MAX_ATTACHMENTS) continue;
       if (value.size > MAX_ATTACHMENT_SIZE_BYTES) continue;
-      if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES) continue;
+      if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES)
+        continue;
 
       const mimeType = value.type || 'application/octet-stream';
 
       if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
-        console.warn(`Skipping attachment "${value.name}": disallowed MIME type ${mimeType}`);
+        console.warn(
+          `Skipping attachment "${value.name}": disallowed MIME type ${mimeType}`
+        );
         continue;
       }
 
@@ -415,6 +472,8 @@ export async function POST(request) {
       plan,
       monthly_usage_after_save: monthlyUsage + 1,
       monthly_limit: monthlyLimit,
+      base_monthly_limit: baseMonthlyLimit,
+      extra_email_credits: extraEmailCredits,
     });
   } catch (err) {
     console.error('Webhook error:', err);
