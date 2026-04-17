@@ -35,18 +35,13 @@ export default function LoginPage() {
     setError('');
     setMessage('');
 
-    const nextPath = getSafeNextPath();
-    const origin =
-      typeof window !== 'undefined' && window.location.hostname === 'localhost'
-        ? 'http://localhost:3000'
-        : 'https://ghostmails.org';
-
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${origin}${nextPath}`,
-      },
-    });
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
+    } catch (err) {
+      setError(err?.message || 'Google sign-in failed.');
+    }
   };
 
   useEffect(() => {
@@ -182,11 +177,14 @@ export default function LoginPage() {
 
         {!isReset ? (
           <div style={{ marginTop: '12px' }}>
-            <button type="button" onClick={() => {
-              setIsSignup(!isSignup);
-              setError('');
-              setMessage('');
-            }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignup(!isSignup);
+                setError('');
+                setMessage('');
+              }}
+            >
               {isSignup ? 'Back to login' : 'Create account'}
             </button>
 
