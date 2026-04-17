@@ -33,10 +33,7 @@ export default function LoginPage() {
 
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "https://ghostmails.org/dashboard",
-      },
+      provider: "google"
     });
   };
 
@@ -134,158 +131,27 @@ export default function LoginPage() {
     }
   }
 
-  const inputStyle = {
-    width: '100%',
-    padding: '14px 16px',
-    background: 'var(--surface-elevated)',
-    border: '1px solid var(--border-soft)',
-    borderRadius: '12px',
-    color: 'var(--text)',
-    fontSize: '15px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    boxSizing: 'border-box',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)',
-  };
-
-  const linkBtnStyle = {
-    background: 'none',
-    border: 'none',
-    color: 'var(--accent)',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '14px',
-    padding: 0,
-    fontFamily: 'inherit',
-  };
-
-  if (checkingSession) {
-    return (
-      <main
-        style={{
-          minHeight: '100vh',
-          background: 'var(--bg)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--accent)',
-          fontFamily: 'DM Sans, sans-serif',
-        }}
-      >
-        Loading...
-      </main>
-    );
-  }
+  if (checkingSession) return <div>Loading...</div>;
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'DM Sans, sans-serif',
-        padding: '24px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <a
-        href="/"
-        style={{
-          textDecoration: 'none',
-          marginBottom: '40px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 1,
-        }}
-      >
-        <span style={{ color: 'var(--accent)', fontSize: '20px' }}>&#10022;</span>
-        <span style={{ color: 'var(--text)', fontSize: '18px', fontWeight: '700' }}>
-          GhostMail
-        </span>
-      </a>
+    <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div style={{ width: '320px' }}>
+        <h2>{isSignup ? 'Create account' : 'Login'}</h2>
 
-      <div
-        style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: '24px',
-          padding: '40px',
-          width: '100%',
-          maxWidth: '420px',
-        }}
-      >
-        <h1 style={{ textAlign: 'center', marginBottom: '10px' }}>
-          {isReset ? 'Reset password' : isSignup ? 'Create account' : 'Welcome back'}
-        </h1>
-
-        <p style={{ textAlign: 'center', marginBottom: '20px' }}>
-          {isSignup ? 'Join GhostMail instantly' : 'Sign in instantly'}
-        </p>
-
-        {/* GOOGLE BUTTON */}
         {!isReset && (
           <>
-            <button
-              onClick={signInWithGoogle}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: '#fff',
-                color: '#000',
-                border: '1px solid #ddd',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                marginBottom: '12px',
-              }}
-            >
+            <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
               Continue with Google
             </button>
-
-            <div style={{ textAlign: 'center', margin: '10px 0', fontSize: '12px' }}>
-              or
-            </div>
+            <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
           </>
         )}
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={inputStyle}
-        />
+        <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+        {!isReset && <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />}
 
-        {!isReset && (
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ ...inputStyle, marginTop: '10px' }}
-          />
-        )}
-
-        <button
-          onClick={handleSubmit}
-          style={{
-            width: '100%',
-            padding: '14px',
-            marginTop: '15px',
-            background: 'purple',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '12px',
-            cursor: 'pointer',
-          }}
-        >
-          {isSignup ? 'Create account' : isReset ? 'Reset password' : 'Sign in'}
+        <button onClick={handleSubmit}>
+          {isSignup ? 'Sign up' : isReset ? 'Reset' : 'Login'}
         </button>
       </div>
     </main>
