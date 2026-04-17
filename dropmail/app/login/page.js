@@ -31,32 +31,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const signInWithGoogle = async () => {
-    setError('');
-    setMessage('');
-
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-      });
-    } catch (err) {
-      setError(err?.message || 'Google sign-in failed.');
-    }
-  };
-
-  const signInWithGithub = async () => {
-    setError('');
-    setMessage('');
-
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'github',
-      });
-    } catch (err) {
-      setError(err?.message || 'GitHub sign-in failed.');
-    }
-  };
-
   useEffect(() => {
     let mounted = true;
 
@@ -153,20 +127,6 @@ export default function LoginPage() {
     <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
       <div style={{ width: '320px' }}>
         <h2>{isReset ? 'Reset password' : isSignup ? 'Create account' : 'Login'}</h2>
-
-        {!isReset && (
-          <>
-            <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
-              Continue with Google
-            </button>
-
-            <button onClick={signInWithGithub} style={{ width: '100%', marginBottom: '10px' }}>
-              Continue with GitHub
-            </button>
-
-            <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
-          </>
-        )}
 
         {error ? <p style={{ color: 'red' }}>{error}</p> : null}
         {message ? <p style={{ color: 'green' }}>{message}</p> : null}
