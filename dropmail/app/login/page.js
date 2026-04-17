@@ -50,7 +50,7 @@ export default function LoginPage() {
         }
 
         setCheckingSession(false);
-      } catch (err) {
+      } catch {
         if (!mounted) return;
         setCheckingSession(false);
         setError('Could not check session.');
@@ -121,45 +121,240 @@ export default function LoginPage() {
     }
   }
 
-  if (checkingSession) return <div>Loading...</div>;
+  if (checkingSession) {
+    return (
+      <main
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background:
+            'radial-gradient(circle at top, rgba(124,58,237,0.18), transparent 35%), linear-gradient(135deg, #0b1020, #111827 55%, #050816)',
+          color: '#ffffff',
+          fontFamily: 'Inter, system-ui, sans-serif',
+        }}
+      >
+        Loading...
+      </main>
+    );
+  }
 
   return (
-    <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div style={{ width: '320px' }}>
-        <h2>{isReset ? 'Reset password' : isSignup ? 'Create account' : 'Login'}</h2>
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        background:
+          'radial-gradient(circle at top, rgba(124,58,237,0.18), transparent 35%), linear-gradient(135deg, #0b1020, #111827 55%, #050816)',
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '430px',
+          background: 'rgba(15, 23, 42, 0.88)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '24px',
+          padding: '32px',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(16px)',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <a
+            href="/"
+            style={{
+              textDecoration: 'none',
+              color: '#ffffff',
+              fontSize: '28px',
+              fontWeight: '800',
+              letterSpacing: '-0.02em',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '10px',
+            }}
+          >
+            <span style={{ color: '#8b5cf6', fontSize: '24px' }}>&#10022;</span>
+            GhostMail
+          </a>
 
-        {error ? <p style={{ color: 'red' }}>{error}</p> : null}
-        {message ? <p style={{ color: 'green' }}>{message}</p> : null}
+          <h1
+            style={{
+              margin: '8px 0 8px',
+              color: '#ffffff',
+              fontSize: '30px',
+              fontWeight: '800',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {isReset ? 'Reset password' : isSignup ? 'Create account' : 'Welcome back'}
+          </h1>
 
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ display: 'block', width: '100%', marginBottom: '10px' }}
-        />
+          <p
+            style={{
+              margin: 0,
+              color: '#94a3b8',
+              fontSize: '15px',
+              lineHeight: 1.5,
+            }}
+          >
+            {isReset
+              ? 'Enter your email and we’ll send you a reset link.'
+              : isSignup
+              ? 'Create your GhostMail account to manage inboxes faster.'
+              : 'Sign in to continue to your dashboard.'}
+          </p>
+        </div>
 
-        {!isReset && (
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ display: 'block', width: '100%', marginBottom: '10px' }}
-          />
-        )}
+        {error ? (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: 'rgba(239,68,68,0.12)',
+              border: '1px solid rgba(239,68,68,0.28)',
+              color: '#fca5a5',
+              fontSize: '14px',
+            }}
+          >
+            {error}
+          </div>
+        ) : null}
 
-        <button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Loading...' : isReset ? 'Send reset link' : isSignup ? 'Create account' : 'Login'}
-        </button>
+        {message ? (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: 'rgba(34,197,94,0.12)',
+              border: '1px solid rgba(34,197,94,0.28)',
+              color: '#86efac',
+              fontSize: '14px',
+            }}
+          >
+            {message}
+          </div>
+        ) : null}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '8px',
+                color: '#cbd5e1',
+                fontSize: '14px',
+                fontWeight: '600',
+              }}
+            >
+              Email
+            </label>
+            <input
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '14px 16px',
+                borderRadius: '14px',
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(2,6,23,0.7)',
+                color: '#ffffff',
+                fontSize: '15px',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {!isReset && (
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  color: '#cbd5e1',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                }}
+              >
+                Password
+              </label>
+              <input
+                placeholder="Enter your password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(2,6,23,0.7)',
+                  color: '#ffffff',
+                  fontSize: '15px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{
+              width: '100%',
+              marginTop: '6px',
+              padding: '14px 16px',
+              border: 'none',
+              borderRadius: '14px',
+              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              boxShadow: '0 16px 40px rgba(79,70,229,0.35)',
+            }}
+          >
+            {loading ? 'Loading...' : isReset ? 'Send reset link' : isSignup ? 'Create account' : 'Login'}
+          </button>
+        </div>
 
         {!isReset ? (
-          <div style={{ marginTop: '12px' }}>
+          <div
+            style={{
+              marginTop: '18px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
             <button
               type="button"
               onClick={() => {
                 setIsSignup(!isSignup);
                 setError('');
                 setMessage('');
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#a78bfa',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                padding: 0,
               }}
             >
               {isSignup ? 'Back to login' : 'Create account'}
@@ -172,19 +367,36 @@ export default function LoginPage() {
                 setError('');
                 setMessage('');
               }}
-              style={{ marginLeft: '8px' }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#cbd5e1',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                padding: 0,
+              }}
             >
-              Forgot password
+              Forgot password?
             </button>
           </div>
         ) : (
-          <div style={{ marginTop: '12px' }}>
+          <div style={{ marginTop: '18px' }}>
             <button
               type="button"
               onClick={() => {
                 setIsReset(false);
                 setError('');
                 setMessage('');
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#a78bfa',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                padding: 0,
               }}
             >
               Back to login
