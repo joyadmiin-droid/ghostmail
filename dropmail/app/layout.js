@@ -15,18 +15,10 @@ export default function RootLayout({ children }) {
         {children}
 
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-GEHF8M2703"
+          src="https://cloud.umami.is/script.js"
+          data-website-id="ea201a27-2a31-45d2-aebd-43bb4b067ee6"
           strategy="afterInteractive"
         />
-        <Script id="ga-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){window.dataLayer.push(arguments);}
-            window.gtag = gtag;
-            gtag('js', new Date());
-            gtag('config', 'G-GEHF8M2703');
-          `}
-        </Script>
       </body>
     </html>
   );
