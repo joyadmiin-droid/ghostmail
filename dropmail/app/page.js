@@ -436,12 +436,14 @@ export default function Home() {
               </div>
 
               <button
-                className={styles.planButton}
-                onClick={generateMailbox}
-                type="button"
-              >
-                Start free
-              </button>
+  className={styles.planButton}
+  onClick={() => {
+    window.location.href = '/login';
+  }}
+  type="button"
+>
+  Start free
+</button>
             </div>
 
             <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
