@@ -27,13 +27,19 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [isReset, setIsReset] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
 
   const signInWithGoogle = async () => {
+    const redirectUrl =
+      window.location.hostname === "localhost"
+        ? "http://localhost:3000/dashboard"
+        : "https://ghostmails.org/dashboard";
+
     await supabase.auth.signInWithOAuth({
-      provider: "google"
+      provider: "google",
+      options: {
+        redirectTo: redirectUrl,
+      },
     });
   };
 
@@ -41,25 +47,20 @@ export default function LoginPage() {
     let mounted = true;
 
     const init = async () => {
-      try {
-        const nextPath = getSafeNextPath();
+      const nextPath = getSafeNextPath();
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        if (session?.user) {
-          window.location.replace(nextPath);
-          return;
-        }
-
-        setCheckingSession(false);
-      } catch (err) {
-        console.error('Login init error:', err);
-        if (mounted) setCheckingSession(false);
+      if (session?.user) {
+        window.location.replace(nextPath);
+        return;
       }
+
+      setCheckingSession(false);
     };
 
     init();
@@ -69,7 +70,7 @@ export default function LoginPage() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+      if (session?.user) {
         const nextPath = getSafeNextPath();
         window.location.replace(nextPath);
       }
@@ -83,49 +84,21 @@ export default function LoginPage() {
 
   async function handleSubmit() {
     setLoading(true);
-    setError('');
-    setMessage('');
 
     try {
-      const nextPath = getSafeNextPath();
-
       if (isReset) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: 'https://ghostmails.org/reset-password',
         });
-
-        if (error) throw error;
-
-        setMessage('Password reset email sent! Check your inbox.');
         return;
       }
 
       if (isSignup) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        if (data?.user && !data?.session) {
-          setMessage('Check your email to confirm your account!');
-        } else {
-          window.location.replace(nextPath);
-        }
+        await supabase.auth.signUp({ email, password });
         return;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      setMessage('Signed in. Redirecting...');
-    } catch (err) {
-      setError(err.message || 'Something went wrong.');
+      await supabase.auth.signInWithPassword({ email, password });
     } finally {
       setLoading(false);
     }
@@ -136,22 +109,19 @@ export default function LoginPage() {
   return (
     <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
       <div style={{ width: '320px' }}>
-        <h2>{isSignup ? 'Create account' : 'Login'}</h2>
+        <h2>Login</h2>
 
-        {!isReset && (
-          <>
-            <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
-              Continue with Google
-            </button>
-            <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
-          </>
-        )}
+        <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
+          Continue with Google
+        </button>
+
+        <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
 
         <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-        {!isReset && <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />}
+        <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
 
         <button onClick={handleSubmit}>
-          {isSignup ? 'Sign up' : isReset ? 'Reset' : 'Login'}
+          Login
         </button>
       </div>
     </main>
