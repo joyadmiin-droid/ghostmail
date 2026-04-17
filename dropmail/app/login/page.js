@@ -28,17 +28,23 @@ export default function LoginPage() {
   const [isReset, setIsReset] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const signInWithGoogle = async () => {
-    const redirectUrl =
-      window.location.hostname === "localhost"
-        ? "http://localhost:3000/dashboard"
-        : "https://ghostmails.org/dashboard";
+    setError('');
+    setMessage('');
+
+    const nextPath = getSafeNextPath();
+    const origin =
+      typeof window !== 'undefined' && window.location.hostname === 'localhost'
+        ? 'http://localhost:3000'
+        : 'https://ghostmails.org';
 
     await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider: 'google',
       options: {
-        redirectTo: redirectUrl,
+        redirectTo: `${origin}${nextPath}`,
       },
     });
   };
@@ -47,20 +53,26 @@ export default function LoginPage() {
     let mounted = true;
 
     const init = async () => {
-      const nextPath = getSafeNextPath();
+      try {
+        const nextPath = getSafeNextPath();
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (session?.user) {
-        window.location.replace(nextPath);
-        return;
+        if (session?.user) {
+          window.location.replace(nextPath);
+          return;
+        }
+
+        setCheckingSession(false);
+      } catch (err) {
+        if (!mounted) return;
+        setCheckingSession(false);
+        setError('Could not check session.');
       }
-
-      setCheckingSession(false);
     };
 
     init();
@@ -70,7 +82,7 @@ export default function LoginPage() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      if (session?.user) {
+      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         const nextPath = getSafeNextPath();
         window.location.replace(nextPath);
       }
@@ -84,21 +96,44 @@ export default function LoginPage() {
 
   async function handleSubmit() {
     setLoading(true);
+    setError('');
+    setMessage('');
 
     try {
+      const nextPath = getSafeNextPath();
+
       if (isReset) {
-        await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: 'https://ghostmails.org/reset-password',
+        const origin =
+          typeof window !== 'undefined' && window.location.hostname === 'localhost'
+            ? 'http://localhost:3000'
+            : 'https://ghostmails.org';
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${origin}/reset-password`,
         });
+
+        if (error) throw error;
+
+        setMessage('Password reset email sent.');
         return;
       }
 
       if (isSignup) {
-        await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({ email, password });
+
+        if (error) throw error;
+
+        setMessage('Account created. Check your email if confirmation is required.');
         return;
       }
 
-      await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) throw error;
+
+      window.location.replace(nextPath);
+    } catch (err) {
+      setError(err?.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -109,20 +144,78 @@ export default function LoginPage() {
   return (
     <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
       <div style={{ width: '320px' }}>
-        <h2>Login</h2>
+        <h2>{isReset ? 'Reset password' : isSignup ? 'Create account' : 'Login'}</h2>
 
-        <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
-          Continue with Google
+        {!isReset && (
+          <>
+            <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
+              Continue with Google
+            </button>
+
+            <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
+          </>
+        )}
+
+        {error ? <p style={{ color: 'red' }}>{error}</p> : null}
+        {message ? <p style={{ color: 'green' }}>{message}</p> : null}
+
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ display: 'block', width: '100%', marginBottom: '10px' }}
+        />
+
+        {!isReset && (
+          <input
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ display: 'block', width: '100%', marginBottom: '10px' }}
+          />
+        )}
+
+        <button onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Loading...' : isReset ? 'Send reset link' : isSignup ? 'Create account' : 'Login'}
         </button>
 
-        <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
+        {!isReset ? (
+          <div style={{ marginTop: '12px' }}>
+            <button type="button" onClick={() => {
+              setIsSignup(!isSignup);
+              setError('');
+              setMessage('');
+            }}>
+              {isSignup ? 'Back to login' : 'Create account'}
+            </button>
 
-        <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-        <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-
-        <button onClick={handleSubmit}>
-          Login
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsReset(true);
+                setError('');
+                setMessage('');
+              }}
+              style={{ marginLeft: '8px' }}
+            >
+              Forgot password
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginTop: '12px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsReset(false);
+                setError('');
+                setMessage('');
+              }}
+            >
+              Back to login
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );
