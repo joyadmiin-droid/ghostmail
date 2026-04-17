@@ -44,6 +44,19 @@ export default function LoginPage() {
     }
   };
 
+  const signInWithGithub = async () => {
+    setError('');
+    setMessage('');
+
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'github',
+      });
+    } catch (err) {
+      setError(err?.message || 'GitHub sign-in failed.');
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -145,6 +158,10 @@ export default function LoginPage() {
           <>
             <button onClick={signInWithGoogle} style={{ width: '100%', marginBottom: '10px' }}>
               Continue with Google
+            </button>
+
+            <button onClick={signInWithGithub} style={{ width: '100%', marginBottom: '10px' }}>
+              Continue with GitHub
             </button>
 
             <div style={{ textAlign: 'center', margin: '10px 0' }}>or</div>
