@@ -12,6 +12,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('feedback_entries')
       .select('*')
+      .order('is_important', { ascending: false })
       .order('created_at', { ascending: false });
 
     if (error) {

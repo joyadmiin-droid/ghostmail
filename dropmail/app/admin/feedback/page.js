@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -16,6 +16,10 @@ export default function FeedbackAdminPage() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [importantOnly, setImportantOnly] = useState(false);
+  const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -44,19 +48,10 @@ export default function FeedbackAdminPage() {
 
         setAllowed(true);
         setChecking(false);
-
-        const res = await fetch('/api/feedback/list');
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data?.error || 'Could not load feedback.');
-        }
-
-        setEntries(data.entries || []);
+        await loadEntries();
       } catch (err) {
         setError(err?.message || 'Something went wrong.');
-      } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     }
 
@@ -67,6 +62,55 @@ export default function FeedbackAdminPage() {
     };
   }, []);
 
+  async function loadEntries() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/feedback/list');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Could not load feedback.');
+      }
+
+      setEntries(data.entries || []);
+    } catch (err) {
+      setError(err?.message || 'Could not load feedback.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAction(id, action, value = null) {
+    setBusyId(id);
+    setError('');
+
+    try {
+      const res = await fetch('/api/feedback/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action, value }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Action failed.');
+      }
+
+      if (action === 'delete') {
+        setEntries((prev) => prev.filter((item) => item.id !== id));
+      } else {
+        await loadEntries();
+      }
+    } catch (err) {
+      setError(err?.message || 'Action failed.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function formatDate(value) {
     try {
       return new Date(value).toLocaleString();
@@ -74,6 +118,28 @@ export default function FeedbackAdminPage() {
       return value;
     }
   }
+
+  const filteredEntries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return entries.filter((item) => {
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+      if (importantOnly && !item.is_important) return false;
+
+      if (!q) return true;
+
+      return [
+        item.message,
+        item.email,
+        item.page,
+        item.user_id,
+        item.admin_note,
+        item.status,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q));
+    });
+  }, [entries, search, statusFilter, importantOnly]);
 
   if (checking) {
     return (
@@ -96,7 +162,7 @@ export default function FeedbackAdminPage() {
 
   return (
     <main style={pageStyle}>
-      <div style={{ width: '100%', maxWidth: '1100px' }}>
+      <div style={{ width: '100%', maxWidth: '1200px' }}>
         <div style={headerRow}>
           <div>
             <p style={eyebrowStyle}>Admin</p>
@@ -106,29 +172,66 @@ export default function FeedbackAdminPage() {
             </p>
           </div>
 
-          <a href="/dashboard" style={backButtonStyle}>
-            Back to dashboard
-          </a>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <a href="/dashboard" style={backButtonStyle}>
+              Back to dashboard
+            </a>
+            <button onClick={loadEntries} style={secondaryButtonStyle} type="button">
+              Refresh
+            </button>
+          </div>
         </div>
 
-        {error ? (
-          <div style={errorBoxStyle}>{error}</div>
-        ) : null}
+        <div style={toolbarStyle}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search feedback..."
+            style={inputStyle}
+          />
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="all">All statuses</option>
+            <option value="open">Open</option>
+            <option value="fixed">Fixed</option>
+            <option value="ignored">Ignored</option>
+          </select>
+
+          <label style={checkboxLabelStyle}>
+            <input
+              type="checkbox"
+              checked={importantOnly}
+              onChange={(e) => setImportantOnly(e.target.checked)}
+            />
+            Important only
+          </label>
+        </div>
+
+        {error ? <div style={errorBoxStyle}>{error}</div> : null}
 
         {loading ? (
           <div style={cardStyle}>Loading feedback...</div>
-        ) : entries.length === 0 ? (
-          <div style={cardStyle}>No feedback yet.</div>
+        ) : filteredEntries.length === 0 ? (
+          <div style={cardStyle}>No matching feedback found.</div>
         ) : (
           <div style={gridStyle}>
-            {entries.map((item) => (
+            {filteredEntries.map((item) => (
               <div key={item.id} style={feedbackCardStyle}>
                 <div style={metaTopStyle}>
-                  <span style={pillStyle}>#{item.id}</span>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={pillStyle}>#{item.id}</span>
+                    <span style={statusPill(item.status)}>{item.status || 'open'}</span>
+                    {item.is_important ? <span style={importantPillStyle}>Important</span> : null}
+                  </div>
+
                   <span style={dateStyle}>{formatDate(item.created_at)}</span>
                 </div>
 
-                <div style={{ marginBottom: '12px' }}>
+                <div style={{ marginBottom: '14px' }}>
                   <p style={labelStyle}>Message</p>
                   <div style={messageBoxStyle}>{item.message}</div>
                 </div>
@@ -164,6 +267,72 @@ export default function FeedbackAdminPage() {
                       <p style={valueStyle}>No screenshot</p>
                     )}
                   </div>
+                </div>
+
+                <div style={{ marginTop: '16px' }}>
+                  <p style={labelStyle}>Admin note</p>
+                  <textarea
+                    defaultValue={item.admin_note || ''}
+                    placeholder="Add your internal note..."
+                    style={noteTextareaStyle}
+                    onBlur={(e) => {
+                      if ((item.admin_note || '') !== e.target.value) {
+                        handleAction(item.id, 'set-note', e.target.value);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div style={actionsRowStyle}>
+                  <button
+                    type="button"
+                    style={smallButtonStyle}
+                    disabled={busyId === item.id}
+                    onClick={() =>
+                      handleAction(item.id, 'toggle-important', !item.is_important)
+                    }
+                  >
+                    {item.is_important ? 'Unmark important' : 'Mark important'}
+                  </button>
+
+                  <button
+                    type="button"
+                    style={smallButtonStyle}
+                    disabled={busyId === item.id}
+                    onClick={() => handleAction(item.id, 'set-status', 'open')}
+                  >
+                    Mark open
+                  </button>
+
+                  <button
+                    type="button"
+                    style={smallButtonStyle}
+                    disabled={busyId === item.id}
+                    onClick={() => handleAction(item.id, 'set-status', 'fixed')}
+                  >
+                    Mark fixed
+                  </button>
+
+                  <button
+                    type="button"
+                    style={smallButtonStyle}
+                    disabled={busyId === item.id}
+                    onClick={() => handleAction(item.id, 'set-status', 'ignored')}
+                  >
+                    Ignore
+                  </button>
+
+                  <button
+                    type="button"
+                    style={dangerButtonStyle}
+                    disabled={busyId === item.id}
+                    onClick={() => {
+                      const ok = window.confirm('Delete this feedback?');
+                      if (ok) handleAction(item.id, 'delete');
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
 
                 {item.screenshot_url ? (
@@ -202,6 +371,38 @@ const headerRow = {
   gap: '20px',
   marginBottom: '24px',
   flexWrap: 'wrap',
+};
+
+const toolbarStyle = {
+  display: 'flex',
+  gap: '12px',
+  flexWrap: 'wrap',
+  marginBottom: '18px',
+};
+
+const inputStyle = {
+  flex: '1 1 280px',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(15, 23, 42, 0.9)',
+  color: '#fff',
+};
+
+const selectStyle = {
+  padding: '12px 14px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(15, 23, 42, 0.9)',
+  color: '#fff',
+};
+
+const checkboxLabelStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  color: '#cbd5e1',
+  padding: '0 6px',
 };
 
 const cardStyle = {
@@ -254,6 +455,16 @@ const backButtonStyle = {
   fontWeight: 700,
 };
 
+const secondaryButtonStyle = {
+  padding: '12px 16px',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
 const errorBoxStyle = {
   marginBottom: '18px',
   padding: '14px 16px',
@@ -282,6 +493,43 @@ const pillStyle = {
   fontWeight: 700,
   fontSize: '12px',
 };
+
+const importantPillStyle = {
+  display: 'inline-block',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  background: 'rgba(250,204,21,0.14)',
+  border: '1px solid rgba(250,204,21,0.28)',
+  color: '#fde68a',
+  fontWeight: 700,
+  fontSize: '12px',
+};
+
+const statusPill = (status) => ({
+  display: 'inline-block',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  background:
+    status === 'fixed'
+      ? 'rgba(34,197,94,0.14)'
+      : status === 'ignored'
+      ? 'rgba(148,163,184,0.14)'
+      : 'rgba(59,130,246,0.14)',
+  border:
+    status === 'fixed'
+      ? '1px solid rgba(34,197,94,0.28)'
+      : status === 'ignored'
+      ? '1px solid rgba(148,163,184,0.22)'
+      : '1px solid rgba(59,130,246,0.28)',
+  color:
+    status === 'fixed'
+      ? '#86efac'
+      : status === 'ignored'
+      ? '#cbd5e1'
+      : '#93c5fd',
+  fontWeight: 700,
+  fontSize: '12px',
+});
 
 const dateStyle = {
   color: '#94a3b8',
@@ -331,6 +579,46 @@ const linkStyle = {
   color: '#93c5fd',
   textDecoration: 'none',
   fontWeight: 700,
+};
+
+const noteTextareaStyle = {
+  width: '100%',
+  minHeight: '90px',
+  resize: 'vertical',
+  borderRadius: '12px',
+  border: '1px solid rgba(255,255,255,0.10)',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  padding: '12px',
+  fontSize: '14px',
+  boxSizing: 'border-box',
+};
+
+const actionsRowStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '10px',
+  marginTop: '16px',
+};
+
+const smallButtonStyle = {
+  padding: '10px 12px',
+  borderRadius: '10px',
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const dangerButtonStyle = {
+  padding: '10px 12px',
+  borderRadius: '10px',
+  border: '1px solid rgba(239,68,68,0.24)',
+  background: 'rgba(239,68,68,0.12)',
+  color: '#fca5a5',
+  fontWeight: 700,
+  cursor: 'pointer',
 };
 
 const imageStyle = {
