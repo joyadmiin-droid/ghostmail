@@ -210,49 +210,53 @@ export default function Home() {
   }
 
   async function handleFeedbackSubmit() {
-    setFeedbackError('');
-    setFeedbackSuccess('');
+  setFeedbackError('');
+  setFeedbackSuccess('');
 
-    if (!feedbackText.trim() && !feedbackImage) {
-      setFeedbackError('Add a message or upload a screenshot.');
-      return;
-    }
-
-    setFeedbackSending(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('message', feedbackText.trim() || 'Screenshot feedback');
-      formData.append('email', user?.email || '');
-      formData.append('page', '/');
-      formData.append('userId', user?.id || '');
-
-      if (feedbackImage) {
-        formData.append('screenshot', feedbackImage);
-      }
-
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || 'Could not send feedback.');
-      }
-
-      setFeedbackSuccess('Feedback sent. Thanks.');
-
-      setTimeout(() => {
-        resetFeedbackModal();
-      }, 1200);
-    } catch (err) {
-      setFeedbackError(err?.message || 'Could not send feedback.');
-    } finally {
-      setFeedbackSending(false);
-    }
+  if (!feedbackText.trim() && !feedbackImage) {
+    setFeedbackError('Add a message or upload a screenshot.');
+    return;
   }
+
+  setFeedbackSending(true);
+
+  try {
+    const formData = new FormData();
+    formData.append('message', feedbackText.trim() || 'Screenshot feedback');
+    formData.append('email', user?.email || '');
+    formData.append('page', '/');
+    formData.append('userId', user?.id || '');
+
+    if (feedbackImage) {
+      formData.append('screenshot', feedbackImage);
+    }
+
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || 'Could not send feedback.');
+    }
+
+    setFeedbackSuccess('✅ Feedback submitted successfully.');
+
+    setFeedbackText('');
+    setFeedbackImage(null);
+    setFeedbackImageName('');
+
+    setTimeout(() => {
+      resetFeedbackModal();
+    }, 2500);
+  } catch (err) {
+    setFeedbackError(err?.message || 'Could not send feedback.');
+  } finally {
+    setFeedbackSending(false);
+  }
+}
 
   return (
     <main className={styles.main}>
@@ -603,8 +607,10 @@ export default function Home() {
             </label>
 
             {feedbackSuccess ? (
-              <p className={styles.feedbackSuccess}>{feedbackSuccess}</p>
-            ) : null}
+  <div className={styles.feedbackSuccess}>
+    {feedbackSuccess}
+  </div>
+) : null}
 
             <textarea
               className={styles.feedbackTextarea}
