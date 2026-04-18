@@ -210,49 +210,49 @@ export default function Home() {
   }
 
   async function handleFeedbackSubmit() {
-  setFeedbackError('');
-  setFeedbackSuccess('');
+    setFeedbackError('');
+    setFeedbackSuccess('');
 
-  if (!feedbackText.trim() && !feedbackImage) {
-  setFeedbackError('Add a message or upload a screenshot.');
-  return;
-}
-
-  setFeedbackSending(true);
-
-  try {
-    const formData = new FormData();
-    formData.append('message', feedbackText.trim() || 'Screenshot feedback');
-    formData.append('email', user?.email || '');
-    formData.append('page', '/');
-    formData.append('userId', user?.id || '');
-
-    if (feedbackImage) {
-      formData.append('screenshot', feedbackImage);
+    if (!feedbackText.trim() && !feedbackImage) {
+      setFeedbackError('Add a message or upload a screenshot.');
+      return;
     }
 
-    const res = await fetch('/api/feedback', {
-      method: 'POST',
-      body: formData,
-    });
+    setFeedbackSending(true);
 
-    const data = await res.json();
+    try {
+      const formData = new FormData();
+      formData.append('message', feedbackText.trim() || 'Screenshot feedback');
+      formData.append('email', user?.email || '');
+      formData.append('page', '/');
+      formData.append('userId', user?.id || '');
 
-    if (!res.ok) {
-      throw new Error(data?.error || 'Could not send feedback.');
+      if (feedbackImage) {
+        formData.append('screenshot', feedbackImage);
+      }
+
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Could not send feedback.');
+      }
+
+      setFeedbackSuccess('Feedback sent. Thanks.');
+
+      setTimeout(() => {
+        resetFeedbackModal();
+      }, 1200);
+    } catch (err) {
+      setFeedbackError(err?.message || 'Could not send feedback.');
+    } finally {
+      setFeedbackSending(false);
     }
-
-    setFeedbackSuccess('Feedback sent. Thanks.');
-
-    setTimeout(() => {
-      resetFeedbackModal();
-    }, 1000);
-  } catch (err) {
-    setFeedbackError(err?.message || 'Could not send feedback.');
-  } finally {
-    setFeedbackSending(false);
   }
-}
 
   return (
     <main className={styles.main}>
@@ -593,6 +593,8 @@ export default function Home() {
                   const file = e.target.files?.[0] || null;
                   setFeedbackImage(file);
                   setFeedbackImageName(file ? file.name : '');
+                  setFeedbackError('');
+                  setFeedbackSuccess('');
                 }}
               />
               <span className={styles.feedbackUploadText}>
@@ -600,21 +602,29 @@ export default function Home() {
               </span>
             </label>
 
+            {feedbackSuccess ? (
+              <p className={styles.feedbackSuccess}>{feedbackSuccess}</p>
+            ) : null}
+
             <textarea
               className={styles.feedbackTextarea}
               placeholder="Write your suggestion, fix, or issue here..."
               value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
+              onChange={(e) => {
+                setFeedbackText(e.target.value);
+                setFeedbackError('');
+                setFeedbackSuccess('');
+              }}
             />
 
             {feedbackError ? <p className={styles.feedbackError}>{feedbackError}</p> : null}
-            {feedbackSuccess ? <p className={styles.feedbackSuccess}>{feedbackSuccess}</p> : null}
 
             <div className={styles.feedbackActions}>
               <button
                 type="button"
                 className={styles.feedbackCancel}
                 onClick={resetFeedbackModal}
+                disabled={feedbackSending}
               >
                 Cancel
               </button>
