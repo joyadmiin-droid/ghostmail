@@ -213,16 +213,16 @@ export default function Home() {
   setFeedbackError('');
   setFeedbackSuccess('');
 
-  if (!feedbackText.trim()) {
-    setFeedbackError('Please write your feedback first.');
-    return;
-  }
+  if (!feedbackText.trim() && !feedbackImage) {
+  setFeedbackError('Add a message or upload a screenshot.');
+  return;
+}
 
   setFeedbackSending(true);
 
   try {
     const formData = new FormData();
-    formData.append('message', feedbackText.trim());
+    formData.append('message', feedbackText.trim() || 'Screenshot feedback');
     formData.append('email', user?.email || '');
     formData.append('page', '/');
     formData.append('userId', user?.id || '');
