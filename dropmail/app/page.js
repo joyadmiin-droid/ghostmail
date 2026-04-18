@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import styles from './page.module.css';
-import { PRICING } from '../lib/pricing';
+import { PRICING } from '@/lib/pricing';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
