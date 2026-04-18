@@ -1102,3 +1102,53 @@
     0 14px 34px rgba(15, 23, 42, 0.12),
     0 0 0 6px rgba(84, 176, 255, 0.08);
 }
+.billingToggle {
+  margin: 26px auto 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.billingToggleBtn {
+  border: none;
+  background: transparent;
+  color: #a1a1aa;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.billingToggleBtn:hover {
+  color: #ffffff;
+  background: rgba(255,255,255,0.06);
+}
+
+.billingToggleBtnActive {
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.22);
+}
+
+:global(html.light) .billingToggle {
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(15,23,42,0.08);
+}
+
+:global(html.light) .billingToggleBtn {
+  color: #475569;
+}
+
+:global(html.light) .billingToggleBtn:hover {
+  color: #0f172a;
+  background: rgba(15,23,42,0.05);
+}

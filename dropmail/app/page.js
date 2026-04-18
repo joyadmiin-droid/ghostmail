@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import styles from './page.module.css';
+import { PRICING } from '../lib/pricing';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,6 +13,7 @@ const supabase = createClient(
 export default function Home() {
   const [plan, setPlan] = useState('free');
   const [theme, setTheme] = useState('dark');
+  const [billingCycle, setBillingCycle] = useState('monthly');
   const [mailbox, setMailbox] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(null);
@@ -97,7 +99,19 @@ export default function Home() {
         setPlan('free');
       }
     });
+    const phantomPricing = PRICING.phantom[billingCycle];
+const spectrePricing = PRICING.spectre[billingCycle];
 
+function formatPlanPrice(value) {
+  return `$${value.toFixed(2)}`;
+}
+
+function getBillingLabel(cycle) {
+  if (cycle === 'monthly') return '/ month';
+  if (cycle === '3m') return '/ 3 months';
+  if (cycle === '6m') return '/ 6 months';
+  return '/ year';
+}
     return () => {
       mounted = false;
       subscription.unsubscribe();
@@ -441,12 +455,32 @@ export default function Home() {
       <section id="pricing" className={styles.pricingSection}>
         <div className={styles.pricingInner}>
           <div className={styles.pricingTop}>
-            <p className={styles.pricingEyebrow}>Plans</p>
-            <h2 className={styles.pricingTitle}>Simple pricing</h2>
-            <p className={styles.pricingSub}>
-              Start free. Upgrade when you need more inboxes and longer lifetimes.
-            </p>
-          </div>
+  <p className={styles.pricingEyebrow}>Plans</p>
+  <h2 className={styles.pricingTitle}>Simple pricing</h2>
+  <p className={styles.pricingSub}>
+    Start free. Upgrade when you need more inboxes and longer lifetimes.
+  </p>
+
+  <div className={styles.billingToggle}>
+    {[
+      { key: 'monthly', label: 'Monthly' },
+      { key: '3m', label: '3 Months' },
+      { key: '6m', label: '6 Months' },
+      { key: 'yearly', label: 'Yearly' },
+    ].map((option) => (
+      <button
+        key={option.key}
+        type="button"
+        className={`${styles.billingToggleBtn} ${
+          billingCycle === option.key ? styles.billingToggleBtnActive : ''
+        }`}
+        onClick={() => setBillingCycle(option.key)}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+</div>
 
           <div className={styles.pricingGrid}>
             <div className={styles.pricingCard}>
@@ -459,9 +493,9 @@ export default function Home() {
               </div>
 
               <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$0</span>
-                <span className={styles.planPeriod}>/ month</span>
-              </div>
+  <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
+  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
+</div>
 
               <div className={styles.planFeatures}>
                 <p>• 1 private inbox at a time</p>
@@ -498,11 +532,19 @@ export default function Home() {
               </div>
 
               <div className={styles.planFeatures}>
-                <p>• Up to 5 active inboxes</p>
-                <p>• 24-hour expiry window</p>
-                <p>• Better QA workflow</p>
-                <p>• Ideal for repeated testing</p>
-              </div>
+  <p>• Up to 5 active inboxes</p>
+  <p>• 24-hour expiry window</p>
+  <p>• Better QA workflow</p>
+  <p>
+    • {billingCycle === 'monthly'
+      ? 'Flexible monthly billing'
+      : billingCycle === '3m'
+      ? '3 months upfront'
+      : billingCycle === '6m'
+      ? '6 months upfront'
+      : 'Best yearly value'}
+  </p>
+</div>
 
               <a
                 href={getPaidPlanHref('phantom')}
@@ -522,16 +564,24 @@ export default function Home() {
               </div>
 
               <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$8.99</span>
-                <span className={styles.planPeriod}>/ month</span>
-              </div>
+  <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
+  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
+</div>
 
               <div className={styles.planFeatures}>
-                <p>Unlimited active inboxes</p>
-                <p>Up to 1-year inbox expiry</p>
-                <p>High-volume workflows</p>
-                <p>Built for teams and advanced use</p>
-              </div>
+  <p>• Unlimited active inboxes</p>
+  <p>• Up to 1-year inbox expiry</p>
+  <p>• High-volume workflows</p>
+  <p>
+    • {billingCycle === 'monthly'
+      ? 'Flexible monthly billing'
+      : billingCycle === '3m'
+      ? '3 months upfront'
+      : billingCycle === '6m'
+      ? '6 months upfront'
+      : 'Best yearly value'}
+  </p>
+</div>
 
               <a
                 href={getPaidPlanHref('spectre')}
