@@ -170,9 +170,7 @@ export default function Home() {
 
   function getPaidPlanHref(targetPlan) {
     const checkoutPath = `/checkout?plan=${encodeURIComponent(targetPlan)}`;
-
     if (user) return checkoutPath;
-
     return `/login?next=${encodeURIComponent(checkoutPath)}`;
   }
 
@@ -196,9 +194,37 @@ export default function Home() {
       <div className={styles.bg} />
 
       <header className={styles.header}>
-        <div className={styles.logo}>
-          <span className={styles.logoIcon}>&#10022;</span>
-          <span className={styles.logoText}>GhostMail</span>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div className={styles.logo}>
+            <span className={styles.logoIcon}>&#10022;</span>
+            <span className={styles.logoText}>GhostMail</span>
+          </div>
+
+          <a
+            href="mailto:support@ghostmails.org?subject=GhostMail%20Feedback"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 14px',
+              borderRadius: '999px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: 700,
+              color: '#6d28d9',
+              background: 'rgba(139,92,246,0.10)',
+              border: '1px solid rgba(139,92,246,0.18)',
+            }}
+          >
+            Feedback
+          </a>
         </div>
 
         <div className={styles.navLinks}>
@@ -215,10 +241,7 @@ export default function Home() {
           <a href="/about">About</a>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
-          <a
-            href={user ? '/dashboard' : '/login'}
-            className={styles.navCta}
-          >
+          <a href={user ? '/dashboard' : '/login'} className={styles.navCta}>
             {user ? 'Dashboard' : 'Sign in'}
           </a>
         </div>
@@ -226,26 +249,17 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.tagline}>
-          PRIVATE EMAIL FOR DEVELOPERS & TESTING
+          PRIVATE EMAIL FOR TESTING
         </div>
 
         <h1 className={styles.headline}>
-          Private email inbox for
+          Private inboxes for
           <br />
-          <span className={styles.accentLine}>testing & development.</span>
+          <span className={styles.accentLine}>developers & QA.</span>
         </h1>
 
         <p className={styles.sub}>
-          Create secure, <strong>short-lived email inboxes for QA testing,</strong> integrations, and protecting your primary email.
-        </p>
-
-        <p className={styles.trustLine}>
-          GhostMail is designed for developers, QA testing, and privacy protection.
-          We actively prevent abuse, spam, and misuse of the platform.
-        </p>
-
-        <p className={styles.helperLine}>
-          Built for responsible use with automatic expiration and abuse prevention.
+          Generate short-lived email inboxes fast. Test flows, receive emails, protect your real inbox.
         </p>
 
         {totalEmails !== null && (
@@ -275,7 +289,7 @@ export default function Home() {
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                Generate first. Sign in only when you want to open and manage the inbox.
+                Generate first. Login only when you want to open and manage inboxes.
               </p>
             </div>
           ) : (
@@ -324,92 +338,238 @@ export default function Home() {
               {error && <p className={styles.errorMsg}>{error}</p>}
 
               <p className={styles.tokenNote}>
-                Login only when you open the inbox.
-                No signup needed to generate.
+                Fast for testing. Login only when needed.
               </p>
             </div>
           )}
         </div>
 
-        <section className={styles.howSection}>
-          <h2 className={styles.howTitle}>How it works</h2>
+        <section
+          style={{
+            width: '100%',
+            maxWidth: '980px',
+            margin: '42px auto 0',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: '18px',
+          }}
+        >
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.72)',
+              border: '1px solid rgba(139,92,246,0.10)',
+              borderRadius: '24px',
+              padding: '24px',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 10px',
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#6d28d9',
+              }}
+            >
+              What is GhostMail
+            </p>
+            <h3
+              style={{
+                margin: '0 0 10px',
+                fontSize: '24px',
+                lineHeight: 1.2,
+                color: '#0f172a',
+              }}
+            >
+              A private inbox tool for testing.
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                color: '#334155',
+                lineHeight: 1.7,
+                fontSize: '15px',
+              }}
+            >
+              Generate temporary inboxes, receive emails, and keep your primary email out of test flows.
+            </p>
+          </div>
 
-          <div className={styles.howGrid}>
-            <div className={styles.howCard}>
-              <span className={styles.howStep}>01</span>
-              <h3 className={styles.howCardTitle}>Generate</h3>
-              <p className={styles.howCardText}>
-                Create a private test inbox instantly from the homepage.
-              </p>
-            </div>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.72)',
+              border: '1px solid rgba(139,92,246,0.10)',
+              borderRadius: '24px',
+              padding: '24px',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 10px',
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#6d28d9',
+              }}
+            >
+              Problems it solves
+            </p>
+            <ul
+              style={{
+                margin: 0,
+                paddingLeft: '18px',
+                color: '#334155',
+                lineHeight: 1.9,
+                fontSize: '15px',
+              }}
+            >
+              <li>Testing signup and password reset emails</li>
+              <li>Protecting your real inbox from noise</li>
+              <li>Checking integrations and transactional emails</li>
+              <li>Running QA flows with fast disposable inboxes</li>
+            </ul>
+          </div>
 
-            <div className={styles.howCard}>
-              <span className={styles.howStep}>02</span>
-              <h3 className={styles.howCardTitle}>Open inbox when ready</h3>
-              <p className={styles.howCardText}>
-                Login is only required when you want to open and manage the inbox.
-              </p>
-            </div>
-
-            <div className={styles.howCard}>
-              <span className={styles.howStep}>03</span>
-              <h3 className={styles.howCardTitle}>Auto-delete</h3>
-              <p className={styles.howCardText}>
-                The inbox expires automatically, keeping your workflow clean and short-lived.
-              </p>
-            </div>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.72)',
+              border: '1px solid rgba(139,92,246,0.10)',
+              borderRadius: '24px',
+              padding: '24px',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 10px',
+                fontSize: '13px',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#6d28d9',
+              }}
+            >
+              Why it feels better
+            </p>
+            <ul
+              style={{
+                margin: 0,
+                paddingLeft: '18px',
+                color: '#334155',
+                lineHeight: 1.9,
+                fontSize: '15px',
+              }}
+            >
+              <li>Generate inboxes from homepage</li>
+              <li>Login only when needed</li>
+              <li>Short-lived by default</li>
+              <li>Built for dev and QA workflows</li>
+            </ul>
           </div>
         </section>
 
-        <section className={styles.perfectSection}>
-          <h2 className={styles.perfectTitle}>Perfect for</h2>
-
-          <div className={styles.perfectGrid}>
-            <div className={styles.perfectCard}>
-              <h3 className={styles.perfectCardTitle}>QA testing</h3>
-              <p className={styles.perfectCardText}>
-                Test registration flows, password resets, OTPs, and welcome emails safely.
+        <section
+          style={{
+            width: '100%',
+            maxWidth: '980px',
+            margin: '38px auto 0',
+            background: 'rgba(255,255,255,0.72)',
+            border: '1px solid rgba(139,92,246,0.10)',
+            borderRadius: '24px',
+            padding: '24px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '16px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  margin: '0 0 8px',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: '#6d28d9',
+                }}
+              >
+                Recent improvements
               </p>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '24px',
+                  color: '#0f172a',
+                }}
+              >
+                Homepage simplified.
+              </h3>
             </div>
 
-            <div className={styles.perfectCard}>
-              <h3 className={styles.perfectCardTitle}>Developers</h3>
-              <p className={styles.perfectCardText}>
-                Verify integrations, debug email delivery, and test app notifications fast.
-              </p>
-            </div>
+            <a
+              href="mailto:support@ghostmails.org?subject=GhostMail%20Feedback"
+              style={{
+                textDecoration: 'none',
+                padding: '10px 16px',
+                borderRadius: '999px',
+                background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
+                color: '#fff',
+                fontWeight: 700,
+              }}
+            >
+              Send feedback
+            </a>
+          </div>
 
-            <div className={styles.perfectCard}>
-              <h3 className={styles.perfectCardTitle}>Privacy-conscious users</h3>
-              <p className={styles.perfectCardText}>
-                Protect your main inbox when you need a short-lived address for testing.
-              </p>
-            </div>
+          <div
+            style={{
+              marginTop: '18px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '12px',
+            }}
+          >
+            {[
+              'Cleaner login and signup flow',
+              'Google, GitHub, and X auth added',
+              'Shorter homepage copy',
+              'Faster path to generate inboxes',
+              'Improved testing-focused messaging',
+              'Feedback entry added in header',
+            ].map((item) => (
+              <div
+                key={item}
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '16px',
+                  background: 'rgba(15,23,42,0.04)',
+                  border: '1px solid rgba(15,23,42,0.06)',
+                  color: '#334155',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                }}
+              >
+                {item}
+              </div>
+            ))}
           </div>
         </section>
-
-        <section className={styles.responsibleSection}>
-          <h3 className={styles.responsibleTitle}>Responsible Use</h3>
-          <p className={styles.responsibleItem}>• Software testing and QA environments</p>
-          <p className={styles.responsibleItem}>• Developer workflows and debugging email flows</p>
-          <p className={styles.responsibleItem}>• Short-lived inboxes for testing integrations</p>
-          <p className={styles.responsibleNote}>
-            GhostMail is not intended for bypassing platform restrictions, creating fake accounts, spam, or abusive activity.
-          </p>
-        </section>
-
-        <p className={styles.bottomNote}>
-          Built for developers and responsible use — not for abuse.
-        </p>
       </section>
 
       <section id="pricing" className={styles.pricingSection}>
         <div className={styles.pricingInner}>
           <div className={styles.pricingTop}>
             <p className={styles.pricingEyebrow}>Plans</p>
-            <h2 className={styles.pricingTitle}>Simple pricing for every workflow</h2>
+            <h2 className={styles.pricingTitle}>Simple pricing</h2>
             <p className={styles.pricingSub}>
-              Start free, then upgrade when you need more inboxes, longer lifetimes, and a smoother workflow.
+              Start free. Upgrade when you need more inboxes and longer lifetimes.
             </p>
           </div>
 
@@ -431,19 +591,19 @@ export default function Home() {
               <div className={styles.planFeatures}>
                 <p>• 1 private inbox at a time</p>
                 <p>• 10-minute expiry</p>
-                <p>• Fast generation for testing</p>
+                <p>• Fast generation</p>
                 <p>• Login only when opening inbox</p>
               </div>
 
               <button
-  className={styles.planButton}
-  onClick={() => {
-    window.location.href = '/login';
-  }}
-  type="button"
->
-  Start free
-</button>
+                className={styles.planButton}
+                onClick={() => {
+                  window.location.href = '/login';
+                }}
+                type="button"
+              >
+                Start free
+              </button>
             </div>
 
             <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
@@ -465,7 +625,7 @@ export default function Home() {
               <div className={styles.planFeatures}>
                 <p>• Up to 5 active inboxes</p>
                 <p>• 24-hour expiry window</p>
-                <p>• Better workflow for QA sessions</p>
+                <p>• Better QA workflow</p>
                 <p>• Ideal for repeated testing</p>
               </div>
 
@@ -494,8 +654,8 @@ export default function Home() {
               <div className={styles.planFeatures}>
                 <p>Unlimited active inboxes</p>
                 <p>Up to 1-year inbox expiry</p>
-                <p>High-volume testing workflows</p>
-                <p>Built for advanced workflows and teams</p>
+                <p>High-volume workflows</p>
+                <p>Built for teams and advanced use</p>
               </div>
 
               <a
