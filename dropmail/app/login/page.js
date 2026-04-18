@@ -27,6 +27,7 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [isReset, setIsReset] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -75,6 +76,32 @@ export default function LoginPage() {
       subscription.unsubscribe();
     };
   }, []);
+
+  async function handleOAuth(provider) {
+    setError('');
+    setMessage('');
+    setOauthLoading(provider);
+
+    try {
+      const nextPath = getSafeNextPath();
+      const origin =
+        typeof window !== 'undefined' && window.location.hostname === 'localhost'
+          ? 'http://localhost:3000'
+          : 'https://ghostmails.org';
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${origin}${nextPath}`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err) {
+      setError(err?.message || `${provider} sign-in failed.`);
+      setOauthLoading('');
+    }
+  }
 
   async function handleSubmit() {
     setLoading(true);
@@ -156,8 +183,8 @@ export default function LoginPage() {
       <div
         style={{
           width: '100%',
-          maxWidth: '430px',
-          background: 'rgba(15, 23, 42, 0.88)',
+          maxWidth: '440px',
+          background: 'rgba(15, 23, 42, 0.9)',
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '24px',
           padding: '32px',
@@ -193,7 +220,7 @@ export default function LoginPage() {
               letterSpacing: '-0.03em',
             }}
           >
-            {isReset ? 'Reset password' : isSignup ? 'Create account' : 'Welcome back'}
+            {isReset ? 'Reset password' : isSignup ? 'Create your account' : 'Welcome back'}
           </h1>
 
           <p
@@ -207,10 +234,121 @@ export default function LoginPage() {
             {isReset
               ? 'Enter your email and we’ll send you a reset link.'
               : isSignup
-              ? 'Create your GhostMail account to manage inboxes faster.'
+              ? 'Create your GhostMail account and start faster.'
               : 'Sign in to continue to your dashboard.'}
           </p>
         </div>
+
+        {!isReset && (
+          <>
+            <div
+              style={{
+                marginBottom: '18px',
+                display: 'flex',
+                background: 'rgba(2,6,23,0.65)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '14px',
+                padding: '4px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignup(false);
+                  setError('');
+                  setMessage('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: !isSignup ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'transparent',
+                  color: '#ffffff',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                Login
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignup(true);
+                  setIsReset(false);
+                  setError('');
+                  setMessage('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: isSignup ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'transparent',
+                  color: '#ffffff',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                Sign up
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+              <button
+                type="button"
+                onClick={() => handleOAuth('google')}
+                disabled={oauthLoading !== ''}
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: '#ffffff',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: oauthLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {oauthLoading === 'google' ? 'Opening Google...' : 'Continue with Google'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOAuth('github')}
+                disabled={oauthLoading !== ''}
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: '#ffffff',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: oauthLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {oauthLoading === 'github' ? 'Opening GitHub...' : 'Continue with GitHub'}
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '18px',
+              }}
+            >
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+              <span style={{ color: '#94a3b8', fontSize: '13px' }}>or continue with email</span>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+          </>
+        )}
 
         {error ? (
           <div
@@ -289,7 +427,7 @@ export default function LoginPage() {
                 Password
               </label>
               <input
-                placeholder="Enter your password"
+                placeholder={isSignup ? 'Create a password' : 'Enter your password'}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -326,7 +464,13 @@ export default function LoginPage() {
               boxShadow: '0 16px 40px rgba(79,70,229,0.35)',
             }}
           >
-            {loading ? 'Loading...' : isReset ? 'Send reset link' : isSignup ? 'Create account' : 'Login'}
+            {loading
+              ? 'Loading...'
+              : isReset
+              ? 'Send reset link'
+              : isSignup
+              ? 'Create account'
+              : 'Login'}
           </button>
         </div>
 
@@ -357,7 +501,7 @@ export default function LoginPage() {
                 padding: 0,
               }}
             >
-              {isSignup ? 'Back to login' : 'Create account'}
+              {isSignup ? 'Already have an account? Login' : 'New here? Sign up'}
             </button>
 
             <button
