@@ -333,6 +333,25 @@ export default function LoginPage() {
               >
                 {oauthLoading === 'github' ? 'Opening GitHub...' : 'Continue with GitHub'}
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleOAuth('x')}
+                disabled={oauthLoading !== ''}
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: '#ffffff',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: oauthLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {oauthLoading === 'x' ? 'Opening X...' : 'Continue with X'}
+              </button>
             </div>
 
             <div
