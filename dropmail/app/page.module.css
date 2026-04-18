@@ -36,6 +36,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.logoWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .logo {
   display: flex;
   align-items: center;
@@ -51,6 +58,24 @@
   font-size: 18px;
   font-weight: 700;
   color: #fff;
+}
+
+.feedbackBtn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.feedbackBtn:hover {
+  transform: translateY(-1px);
+  background: rgba(167, 139, 250, 0.18);
+  border-color: rgba(167, 139, 250, 0.38);
 }
 
 .hero {
@@ -105,21 +130,6 @@
 .sub strong {
   color: #d8c8ff;
   font-weight: 700;
-}
-
-.trustLine {
-  font-size: 13px;
-  line-height: 1.7;
-  color: rgba(232, 230, 223, 0.72);
-  max-width: 880px;
-  margin: 0 0 6px;
-}
-
-.helperLine {
-  font-size: 13px;
-  line-height: 1.6;
-  color: rgba(232, 230, 223, 0.58);
-  margin: 0 0 10px;
 }
 
 .liveStat {
@@ -321,55 +331,54 @@
   white-space: pre-line;
 }
 
-.responsibleSection {
-  margin-top: 44px;
-  max-width: 760px;
+.infoGrid {
+  width: 100%;
+  max-width: 980px;
+  margin: 42px auto 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
 }
 
-.responsibleTitle {
-  margin: 0 0 12px;
-  font-size: 28px;
-  font-weight: 800;
-  color: #fff;
-}
-
-.responsibleItem {
-  margin: 0 0 8px;
-  color: #d9d3e6;
-  font-size: 15px;
-  line-height: 1.7;
-}
-
-.responsibleNote {
-  margin: 18px 0 0;
-  color: rgba(232, 230, 223, 0.66);
-  font-size: 14px;
-  line-height: 1.7;
-  max-width: 760px;
-}
-
-.bottomNote {
-  font-size: 12px;
-  opacity: 0.62;
-  margin-top: 22px;
-}
-
-.footer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px 48px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 12px;
-  color: #5d576d;
+.infoCard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  padding: 24px;
   text-align: center;
 }
 
-/* =========================
-   NAV UPGRADE
-========================= */
+.infoEyebrow {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a78bfa;
+}
+
+.infoTitle {
+  margin: 0 0 12px;
+  font-size: 22px;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.infoText {
+  margin: 0;
+  color: #9a95ac;
+  line-height: 1.75;
+  font-size: 15px;
+}
+
+.infoList {
+  margin: 0;
+  padding-left: 18px;
+  color: #9a95ac;
+  line-height: 1.9;
+  font-size: 15px;
+  text-align: left;
+}
 
 .navLinks {
   display: flex;
@@ -398,10 +407,6 @@
   color: #a78bfa !important;
   font-weight: 600;
 }
-
-/* =========================
-   PRICING SECTION
-========================= */
 
 .pricingSection {
   padding: 100px 20px 80px;
@@ -558,116 +563,17 @@
   color: #ffffff !important;
 }
 
-/* =========================
-   HOW IT WORKS
-========================= */
-
-.howSection {
-  margin-top: 80px;
-  max-width: 1000px;
-  width: 100%;
-  text-align: center;
-}
-
-.howTitle {
-  font-size: 32px;
-  color: #fff;
-  margin-bottom: 40px;
-}
-
-.howGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-}
-
-.howCard {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 18px;
-  padding: 24px;
-  text-align: left;
-  transition: 0.2s, background 0.25s ease;
-}
-
-.howCard:hover {
-  transform: translateY(-4px);
-  border-color: rgba(167,139,250,0.4);
-}
-
-.howStep {
-  font-size: 12px;
-  color: #a78bfa;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-
-.howCardTitle {
-  margin: 8px 0;
-  font-size: 18px;
-  color: #fff;
-}
-
-.howCardText {
-  font-size: 14px;
-  color: #9a95ac;
-  line-height: 1.6;
-}
-
-/* =========================
-   PERFECT FOR
-========================= */
-
-.perfectSection {
-  margin-top: 80px;
-  max-width: 1000px;
-  width: 100%;
-  text-align: center;
-}
-
-.perfectTitle {
-  font-size: 32px;
-  color: #fff;
-  margin-bottom: 40px;
-}
-
-.perfectGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-}
-
-.perfectCard {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 18px;
-  padding: 24px;
-  text-align: left;
-  transition: 0.2s, background 0.25s ease;
-}
-
-.perfectCard:hover {
-  transform: translateY(-4px);
-  border-color: rgba(167,139,250,0.4);
-}
-
-.perfectCardTitle {
-  margin: 0 0 10px;
-  font-size: 18px;
-  color: #fff;
-}
-
-.perfectCardText {
-  font-size: 14px;
-  color: #9a95ac;
-  line-height: 1.6;
-}
-
-/* =========================
-   FOOTER UPGRADE
-========================= */
-
 .footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 48px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  color: #5d576d;
+  text-align: center;
   flex-direction: column;
   gap: 12px;
 }
@@ -689,9 +595,170 @@
   color: #fff;
 }
 
-/* =========================
-   LIGHT MODE
-========================= */
+.footerFeedbackLink {
+  background: transparent;
+  border: none;
+  color: #8d89a0;
+  text-decoration: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.footerFeedbackLink:hover {
+  color: #fff;
+}
+
+.feedbackOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(2, 6, 23, 0.74);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.feedbackModal {
+  width: 100%;
+  max-width: 520px;
+  background: #0f0a18;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.45);
+}
+
+.feedbackHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.feedbackEyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a78bfa;
+}
+
+.feedbackTitle {
+  margin: 0;
+  font-size: 24px;
+  color: #fff;
+}
+
+.feedbackClose {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
+  color: #d7d2e4;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.feedbackHint {
+  margin: 0 0 16px;
+  color: #9a95ac;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.feedbackUpload {
+  display: block;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.feedbackFileInput {
+  display: none;
+}
+
+.feedbackUploadText {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px dashed rgba(167,139,250,0.35);
+  background: rgba(255,255,255,0.03);
+  color: #d7d2e4;
+  font-size: 14px;
+  text-align: center;
+}
+
+.feedbackTextarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.7;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.feedbackTextarea:focus {
+  outline: none;
+  border-color: rgba(167,139,250,0.42);
+  box-shadow: 0 0 0 4px rgba(167,139,250,0.08);
+}
+
+.feedbackError {
+  margin: 12px 0 0;
+  color: #f87171;
+  font-size: 14px;
+}
+
+.feedbackSuccess {
+  margin: 12px 0 0;
+  color: #22c55e;
+  font-size: 14px;
+}
+
+.feedbackActions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.feedbackCancel {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #d7d2e4;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.feedbackSubmit {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.feedbackSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 :global(html.light) .main {
   background: #eef3f8;
@@ -712,6 +779,13 @@
 :global(html.light) .logoText {
   color: #0f172a;
 }
+
+:global(html.light) .feedbackBtn {
+  background: rgba(124, 58, 237, 0.10);
+  border-color: rgba(124, 58, 237, 0.18);
+  color: #6d28d9;
+}
+
 :global(html.light) .planButton,
 :global(html.light) .planButtonLink {
   color: #ffffff !important;
@@ -745,26 +819,13 @@
   color: #334155;
 }
 
-:global(html.light) .sub strong {
-  color: #0f172a;
-}
-
-:global(html.light) .trustLine {
-  color: #334155;
-}
-
-:global(html.light) .helperLine {
-  color: #475569;
-}
-
 :global(html.light) .liveStat {
   color: #16a34a;
 }
 
 :global(html.light) .card,
 :global(html.light) .pricingCard,
-:global(html.light) .howCard,
-:global(html.light) .perfectCard {
+:global(html.light) .infoCard {
   background: rgba(255, 255, 255, 0.97);
   border-color: rgba(15, 23, 42, 0.12);
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
@@ -818,20 +879,16 @@
   color: #475569;
 }
 
-:global(html.light) .tokenNote {
-  color: #334155;
-}
-
+:global(html.light) .tokenNote,
 :global(html.light) .pricingSub,
 :global(html.light) .planDesc,
 :global(html.light) .planPeriod,
 :global(html.light) .planFeatures,
-:global(html.light) .howCardText,
-:global(html.light) .perfectCardText,
-:global(html.light) .responsibleNote,
+:global(html.light) .infoText,
+:global(html.light) .infoList,
 :global(html.light) .footer,
 :global(html.light) .footerLinks a,
-:global(html.light) .bottomNote {
+:global(html.light) .footerFeedbackLink {
   color: #475569;
 }
 
@@ -846,19 +903,16 @@
   border-color: rgba(109, 40, 217, 0.20);
 }
 
-:global(html.light) .responsibleTitle,
 :global(html.light) .pricingTitle,
-:global(html.light) .howTitle,
-:global(html.light) .perfectTitle,
-:global(html.light) .howCardTitle,
-:global(html.light) .perfectCardTitle,
 :global(html.light) .planName,
-:global(html.light) .planPrice {
+:global(html.light) .planPrice,
+:global(html.light) .infoTitle {
   color: #0f172a;
 }
 
-:global(html.light) .responsibleItem {
-  color: #1e293b;
+:global(html.light) .infoEyebrow,
+:global(html.light) .pricingEyebrow {
+  color: #6d28d9;
 }
 
 :global(html.light) .pricingFeatured {
@@ -875,8 +929,40 @@
   border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-:global(html.light) .footerLinks a:hover {
+:global(html.light) .footerLinks a:hover,
+:global(html.light) .footerFeedbackLink:hover {
   color: #0f172a;
+}
+
+:global(html.light) .feedbackModal {
+  background: #ffffff;
+  border-color: rgba(15,23,42,0.10);
+}
+
+:global(html.light) .feedbackTitle {
+  color: #0f172a;
+}
+
+:global(html.light) .feedbackHint,
+:global(html.light) .feedbackUploadText {
+  color: #475569;
+}
+
+:global(html.light) .feedbackTextarea {
+  background: rgba(15,23,42,0.03);
+  color: #0f172a;
+  border-color: rgba(15,23,42,0.10);
+}
+
+:global(html.light) .feedbackClose {
+  background: rgba(15,23,42,0.04);
+  color: #334155;
+  border-color: rgba(15,23,42,0.10);
+}
+
+:global(html.light) .feedbackCancel {
+  color: #334155;
+  border-color: rgba(15,23,42,0.12);
 }
 
 @media (max-width: 768px) {
@@ -896,12 +982,6 @@
 
   .sub {
     font-size: 16px;
-  }
-
-  .trustLine,
-  .helperLine,
-  .liveStat {
-    max-width: 100%;
   }
 
   .card {
@@ -927,10 +1007,6 @@
     flex-direction: column;
   }
 
-  .responsibleTitle {
-    font-size: 24px;
-  }
-
   .footer {
     padding: 18px 20px;
   }
@@ -938,6 +1014,16 @@
   .navLinks {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .logoWrap {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .feedbackModal {
+    padding: 18px;
+    border-radius: 20px;
   }
 }
 

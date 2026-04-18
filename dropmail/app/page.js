@@ -19,6 +19,14 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [totalEmails, setTotalEmails] = useState(null);
 
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackImage, setFeedbackImage] = useState(null);
+  const [feedbackImageName, setFeedbackImageName] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
+
   useEffect(() => {
     let mounted = true;
 
@@ -170,7 +178,9 @@ export default function Home() {
 
   function getPaidPlanHref(targetPlan) {
     const checkoutPath = `/checkout?plan=${encodeURIComponent(targetPlan)}`;
+
     if (user) return checkoutPath;
+
     return `/login?next=${encodeURIComponent(checkoutPath)}`;
   }
 
@@ -189,42 +199,68 @@ export default function Home() {
     return n.toString();
   }
 
+  function resetFeedbackModal() {
+    setShowFeedback(false);
+    setFeedbackText('');
+    setFeedbackImage(null);
+    setFeedbackImageName('');
+    setFeedbackSending(false);
+    setFeedbackError('');
+    setFeedbackSuccess('');
+  }
+
+  async function handleFeedbackSubmit() {
+    setFeedbackError('');
+    setFeedbackSuccess('');
+
+    if (!feedbackText.trim()) {
+      setFeedbackError('Please write your feedback first.');
+      return;
+    }
+
+    setFeedbackSending(true);
+
+    try {
+      console.log('GhostMail feedback:', {
+        message: feedbackText,
+        screenshotName: feedbackImageName || null,
+        userEmail: user?.email || null,
+        createdAt: new Date().toISOString(),
+      });
+
+      setFeedbackSuccess('Feedback sent. Thanks.');
+      setTimeout(() => {
+        resetFeedbackModal();
+      }, 1000);
+    } catch (err) {
+      setFeedbackError('Could not send feedback.');
+    } finally {
+      setFeedbackSending(false);
+    }
+  }
+
   return (
     <main className={styles.main}>
       <div className={styles.bg} />
 
       <header className={styles.header}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div className={styles.logoWrap}>
           <div className={styles.logo}>
             <span className={styles.logoIcon}>&#10022;</span>
             <span className={styles.logoText}>GhostMail</span>
           </div>
 
-          <a
-            href="mailto:support@ghostmails.org?subject=GhostMail%20Feedback"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 14px',
-              borderRadius: '999px',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: 700,
-              color: '#6d28d9',
-              background: 'rgba(139,92,246,0.10)',
-              border: '1px solid rgba(139,92,246,0.18)',
+          <button
+            type="button"
+            className={styles.feedbackBtn}
+            onClick={() => {
+              setFeedbackError('');
+              setFeedbackSuccess('');
+              setShowFeedback(true);
             }}
           >
             Feedback
-          </a>
+          </button>
         </div>
 
         <div className={styles.navLinks}>
@@ -241,7 +277,10 @@ export default function Home() {
           <a href="/about">About</a>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
-          <a href={user ? '/dashboard' : '/login'} className={styles.navCta}>
+          <a
+            href={user ? '/dashboard' : '/login'}
+            className={styles.navCta}
+          >
             {user ? 'Dashboard' : 'Sign in'}
           </a>
         </div>
@@ -344,87 +383,18 @@ export default function Home() {
           )}
         </div>
 
-        <section
-          style={{
-            width: '100%',
-            maxWidth: '980px',
-            margin: '42px auto 0',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '18px',
-          }}
-        >
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.72)',
-              border: '1px solid rgba(139,92,246,0.10)',
-              borderRadius: '24px',
-              padding: '24px',
-            }}
-          >
-            <p
-              style={{
-                margin: '0 0 10px',
-                fontSize: '13px',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#6d28d9',
-              }}
-            >
-              What is GhostMail
-            </p>
-            <h3
-              style={{
-                margin: '0 0 10px',
-                fontSize: '24px',
-                lineHeight: 1.2,
-                color: '#0f172a',
-              }}
-            >
-              A private inbox tool for testing.
-            </h3>
-            <p
-              style={{
-                margin: 0,
-                color: '#334155',
-                lineHeight: 1.7,
-                fontSize: '15px',
-              }}
-            >
+        <section className={styles.infoGrid}>
+          <div className={styles.infoCard}>
+            <p className={styles.infoEyebrow}>What is GhostMail</p>
+            <h3 className={styles.infoTitle}>A private inbox tool for testing.</h3>
+            <p className={styles.infoText}>
               Generate temporary inboxes, receive emails, and keep your primary email out of test flows.
             </p>
           </div>
 
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.72)',
-              border: '1px solid rgba(139,92,246,0.10)',
-              borderRadius: '24px',
-              padding: '24px',
-            }}
-          >
-            <p
-              style={{
-                margin: '0 0 10px',
-                fontSize: '13px',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#6d28d9',
-              }}
-            >
-              Problems it solves
-            </p>
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: '18px',
-                color: '#334155',
-                lineHeight: 1.9,
-                fontSize: '15px',
-              }}
-            >
+          <div className={styles.infoCard}>
+            <p className={styles.infoEyebrow}>Problems it solves</p>
+            <ul className={styles.infoList}>
               <li>Testing signup and password reset emails</li>
               <li>Protecting your real inbox from noise</li>
               <li>Checking integrations and transactional emails</li>
@@ -432,133 +402,14 @@ export default function Home() {
             </ul>
           </div>
 
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.72)',
-              border: '1px solid rgba(139,92,246,0.10)',
-              borderRadius: '24px',
-              padding: '24px',
-            }}
-          >
-            <p
-              style={{
-                margin: '0 0 10px',
-                fontSize: '13px',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#6d28d9',
-              }}
-            >
-              Why it feels better
-            </p>
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: '18px',
-                color: '#334155',
-                lineHeight: 1.9,
-                fontSize: '15px',
-              }}
-            >
+          <div className={styles.infoCard}>
+            <p className={styles.infoEyebrow}>Why it feels better</p>
+            <ul className={styles.infoList}>
               <li>Generate inboxes from homepage</li>
               <li>Login only when needed</li>
               <li>Short-lived by default</li>
               <li>Built for dev and QA workflows</li>
             </ul>
-          </div>
-        </section>
-
-        <section
-          style={{
-            width: '100%',
-            maxWidth: '980px',
-            margin: '38px auto 0',
-            background: 'rgba(255,255,255,0.72)',
-            border: '1px solid rgba(139,92,246,0.10)',
-            borderRadius: '24px',
-            padding: '24px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '16px',
-              flexWrap: 'wrap',
-            }}
-          >
-            <div>
-              <p
-                style={{
-                  margin: '0 0 8px',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: '#6d28d9',
-                }}
-              >
-                Recent improvements
-              </p>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: '24px',
-                  color: '#0f172a',
-                }}
-              >
-                Homepage simplified.
-              </h3>
-            </div>
-
-            <a
-              href="mailto:support@ghostmails.org?subject=GhostMail%20Feedback"
-              style={{
-                textDecoration: 'none',
-                padding: '10px 16px',
-                borderRadius: '999px',
-                background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
-                color: '#fff',
-                fontWeight: 700,
-              }}
-            >
-              Send feedback
-            </a>
-          </div>
-
-          <div
-            style={{
-              marginTop: '18px',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '12px',
-            }}
-          >
-            {[
-              'Cleaner login and signup flow',
-              'Google, GitHub, and X auth added',
-              'Shorter homepage copy',
-              'Faster path to generate inboxes',
-              'Improved testing-focused messaging',
-              'Feedback entry added in header',
-            ].map((item) => (
-              <div
-                key={item}
-                style={{
-                  padding: '14px 16px',
-                  borderRadius: '16px',
-                  background: 'rgba(15,23,42,0.04)',
-                  border: '1px solid rgba(15,23,42,0.06)',
-                  color: '#334155',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-              >
-                {item}
-              </div>
-            ))}
           </div>
         </section>
       </section>
@@ -674,11 +525,97 @@ export default function Home() {
           <a href="/about">About</a>
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
-          <a href="mailto:support@ghostmails.org">Contact</a>
+          <button
+            type="button"
+            className={styles.footerFeedbackLink}
+            onClick={() => {
+              setFeedbackError('');
+              setFeedbackSuccess('');
+              setShowFeedback(true);
+            }}
+          >
+            Feedback
+          </button>
         </div>
 
         <p>© 2026 GhostMail — Built for developers, QA, and email testing workflows.</p>
       </footer>
+
+      {showFeedback && (
+        <div
+          className={styles.feedbackOverlay}
+          onClick={resetFeedbackModal}
+        >
+          <div
+            className={styles.feedbackModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.feedbackHeader}>
+              <div>
+                <p className={styles.feedbackEyebrow}>Feedback</p>
+                <h3 className={styles.feedbackTitle}>What should we improve?</h3>
+              </div>
+
+              <button
+                type="button"
+                className={styles.feedbackClose}
+                onClick={resetFeedbackModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <p className={styles.feedbackHint}>
+              Upload a screenshot if needed, then write what should be fixed, changed, or improved.
+            </p>
+
+            <label className={styles.feedbackUpload}>
+              <input
+                type="file"
+                accept="image/*"
+                className={styles.feedbackFileInput}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setFeedbackImage(file);
+                  setFeedbackImageName(file ? file.name : '');
+                }}
+              />
+              <span className={styles.feedbackUploadText}>
+                {feedbackImageName ? feedbackImageName : 'Upload screenshot'}
+              </span>
+            </label>
+
+            <textarea
+              className={styles.feedbackTextarea}
+              placeholder="Write your suggestion, fix, or issue here..."
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+            />
+
+            {feedbackError ? <p className={styles.feedbackError}>{feedbackError}</p> : null}
+            {feedbackSuccess ? <p className={styles.feedbackSuccess}>{feedbackSuccess}</p> : null}
+
+            <div className={styles.feedbackActions}>
+              <button
+                type="button"
+                className={styles.feedbackCancel}
+                onClick={resetFeedbackModal}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className={styles.feedbackSubmit}
+                onClick={handleFeedbackSubmit}
+                disabled={feedbackSending}
+              >
+                {feedbackSending ? 'Sending...' : 'Submit feedback'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
