@@ -29,6 +29,20 @@ export default function Home() {
   const [feedbackSuccess, setFeedbackSuccess] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
 
+  const phantomPricing = PRICING.phantom[billingCycle];
+  const spectrePricing = PRICING.spectre[billingCycle];
+
+  function formatPlanPrice(value) {
+    return `$${value.toFixed(2)}`;
+  }
+
+  function getBillingLabel(cycle) {
+    if (cycle === 'monthly') return '/ month';
+    if (cycle === '3m') return '/ 3 months';
+    if (cycle === '6m') return '/ 6 months';
+    return '/ year';
+  }
+
   useEffect(() => {
     let mounted = true;
 
@@ -99,19 +113,7 @@ export default function Home() {
         setPlan('free');
       }
     });
-    const phantomPricing = PRICING.phantom[billingCycle];
-const spectrePricing = PRICING.spectre[billingCycle];
 
-function formatPlanPrice(value) {
-  return `$${value.toFixed(2)}`;
-}
-
-function getBillingLabel(cycle) {
-  if (cycle === 'monthly') return '/ month';
-  if (cycle === '3m') return '/ 3 months';
-  if (cycle === '6m') return '/ 6 months';
-  return '/ year';
-}
     return () => {
       mounted = false;
       subscription.unsubscribe();
@@ -455,32 +457,32 @@ function getBillingLabel(cycle) {
       <section id="pricing" className={styles.pricingSection}>
         <div className={styles.pricingInner}>
           <div className={styles.pricingTop}>
-  <p className={styles.pricingEyebrow}>Plans</p>
-  <h2 className={styles.pricingTitle}>Simple pricing</h2>
-  <p className={styles.pricingSub}>
-    Start free. Upgrade when you need more inboxes and longer lifetimes.
-  </p>
+            <p className={styles.pricingEyebrow}>Plans</p>
+            <h2 className={styles.pricingTitle}>Simple pricing</h2>
+            <p className={styles.pricingSub}>
+              Start free. Upgrade when you need more inboxes and longer lifetimes.
+            </p>
 
-  <div className={styles.billingToggle}>
-    {[
-      { key: 'monthly', label: 'Monthly' },
-      { key: '3m', label: '3 Months' },
-      { key: '6m', label: '6 Months' },
-      { key: 'yearly', label: 'Yearly' },
-    ].map((option) => (
-      <button
-        key={option.key}
-        type="button"
-        className={`${styles.billingToggleBtn} ${
-          billingCycle === option.key ? styles.billingToggleBtnActive : ''
-        }`}
-        onClick={() => setBillingCycle(option.key)}
-      >
-        {option.label}
-      </button>
-    ))}
-  </div>
-</div>
+            <div className={styles.billingToggle}>
+              {[
+                { key: 'monthly', label: 'Monthly' },
+                { key: '3m', label: '3 Months' },
+                { key: '6m', label: '6 Months' },
+                { key: 'yearly', label: 'Yearly' },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`${styles.billingToggleBtn} ${
+                    billingCycle === option.key ? styles.billingToggleBtnActive : ''
+                  }`}
+                  onClick={() => setBillingCycle(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className={styles.pricingGrid}>
             <div className={styles.pricingCard}>
@@ -493,9 +495,9 @@ function getBillingLabel(cycle) {
               </div>
 
               <div className={styles.planPriceRow}>
-  <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
-  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
-</div>
+                <span className={styles.planPrice}>$0</span>
+                <span className={styles.planPeriod}>/ month</span>
+              </div>
 
               <div className={styles.planFeatures}>
                 <p>• 1 private inbox at a time</p>
@@ -527,24 +529,24 @@ function getBillingLabel(cycle) {
               </div>
 
               <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$4.99</span>
-                <span className={styles.planPeriod}>/ month</span>
+                <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
+                <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
               </div>
 
               <div className={styles.planFeatures}>
-  <p>• Up to 5 active inboxes</p>
-  <p>• 24-hour expiry window</p>
-  <p>• Better QA workflow</p>
-  <p>
-    • {billingCycle === 'monthly'
-      ? 'Flexible monthly billing'
-      : billingCycle === '3m'
-      ? '3 months upfront'
-      : billingCycle === '6m'
-      ? '6 months upfront'
-      : 'Best yearly value'}
-  </p>
-</div>
+                <p>• Up to 5 active inboxes</p>
+                <p>• 24-hour expiry window</p>
+                <p>• Better QA workflow</p>
+                <p>
+                  • {billingCycle === 'monthly'
+                    ? 'Flexible monthly billing'
+                    : billingCycle === '3m'
+                    ? '3 months upfront'
+                    : billingCycle === '6m'
+                    ? '6 months upfront'
+                    : 'Best yearly value'}
+                </p>
+              </div>
 
               <a
                 href={getPaidPlanHref('phantom')}
@@ -564,24 +566,24 @@ function getBillingLabel(cycle) {
               </div>
 
               <div className={styles.planPriceRow}>
-  <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
-  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
-</div>
+                <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
+                <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
+              </div>
 
               <div className={styles.planFeatures}>
-  <p>• Unlimited active inboxes</p>
-  <p>• Up to 1-year inbox expiry</p>
-  <p>• High-volume workflows</p>
-  <p>
-    • {billingCycle === 'monthly'
-      ? 'Flexible monthly billing'
-      : billingCycle === '3m'
-      ? '3 months upfront'
-      : billingCycle === '6m'
-      ? '6 months upfront'
-      : 'Best yearly value'}
-  </p>
-</div>
+                <p>• Unlimited active inboxes</p>
+                <p>• Up to 1-year inbox expiry</p>
+                <p>• High-volume workflows</p>
+                <p>
+                  • {billingCycle === 'monthly'
+                    ? 'Flexible monthly billing'
+                    : billingCycle === '3m'
+                    ? '3 months upfront'
+                    : billingCycle === '6m'
+                    ? '6 months upfront'
+                    : 'Best yearly value'}
+                </p>
+              </div>
 
               <a
                 href={getPaidPlanHref('spectre')}
