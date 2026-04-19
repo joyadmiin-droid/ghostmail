@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
@@ -13,26 +13,65 @@ function normalizePlan(plan) {
   return 'ghost';
 }
 
+function getBearerToken(request) {
+  const authHeader =
+    request.headers.get('authorization') ||
+    request.headers.get('Authorization') ||
+    '';
+
+  if (!authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  return token || null;
+}
+
+function getUserClient(accessToken) {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
+}
+
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get('Authorization');
+    const accessToken = getBearerToken(request);
 
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const accessToken = authHeader.replace('Bearer ', '').trim();
+    // Optional light body validation: reject huge bodies / invalid JSON
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType && !contentType.includes('application/json')) {
+      return NextResponse.json({ error: 'Unsupported content type' }, { status: 415 });
+    }
+
+    // We do not need any request body for this route.
+    // If caller sends one, ignore it safely without parsing.
+
+    const supabaseUser = getUserClient(accessToken);
 
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser(accessToken);
+    } = await supabaseUser.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Invalid auth' }, { status: 401 });
     }
 
-    const { data: payments, error: paymentsError } = await supabase
+    const { data: payments, error: paymentsError } = await supabaseAdmin
       .from('payments')
       .select('plan, event, created_at')
       .eq('user_id', user.id)
@@ -45,6 +84,16 @@ export async function POST(request) {
     }
 
     if (!payments || payments.length === 0) {
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ plan: 'ghost' })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Profile sync error:', updateError);
+        return NextResponse.json({ error: 'Failed to sync plan' }, { status: 500 });
+      }
+
       return NextResponse.json({
         ok: true,
         synced: false,
@@ -79,7 +128,7 @@ export async function POST(request) {
       }
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ plan: nextPlan })
       .eq('id', user.id);
@@ -98,4 +147,8 @@ export async function POST(request) {
     console.error('SYNC PLAN ERROR:', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }
