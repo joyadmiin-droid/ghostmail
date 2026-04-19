@@ -1,22 +1,20 @@
 import { NextResponse } from 'next/server';
+import { PRICING } from '@/app/lib/pricing';
 
 export async function POST(req) {
   try {
-    const { plan, userId, email } = await req.json();
+    const { plan, cycle = 'monthly', userId, email } = await req.json();
 
     if (!plan || !userId || !email) {
       return NextResponse.json({ error: 'Missing data' }, { status: 400 });
     }
 
+    const normalizedPlan = String(plan).toLowerCase();
+    const normalizedCycle = String(cycle).toLowerCase();
+
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-
-    const phantomVariantId = process.env.LEMONSQUEEZY_PHANTOM_VARIANT_ID;
-    const spectreVariantId = process.env.LEMONSQUEEZY_SPECTRE_VARIANT_ID;
-
-    // 🔥 NEW
-    const topupVariantId = process.env.LEMONSQUEEZY_TOPUP_100_VARIANT_ID;
 
     if (!storeId || !apiKey || !siteUrl) {
       return NextResponse.json(
@@ -27,15 +25,25 @@ export async function POST(req) {
 
     let variantId = '';
 
-    if (plan === 'phantom') variantId = phantomVariantId || '';
-    if (plan === 'spectre') variantId = spectreVariantId || '';
+    if (normalizedPlan === 'topup_100') {
+      variantId = process.env.LEMONSQUEEZY_TOPUP_100_VARIANT_ID || '';
+    } else {
+      const selectedPlan = PRICING?.[normalizedPlan];
+      const selectedCycle = selectedPlan?.[normalizedCycle];
 
-    // 🔥 NEW PLAN
-    if (plan === 'topup_100') variantId = topupVariantId || '';
+      if (!selectedPlan || !selectedCycle) {
+        return NextResponse.json(
+          { error: `Invalid plan or cycle: ${normalizedPlan} / ${normalizedCycle}` },
+          { status: 400 }
+        );
+      }
+
+      variantId = String(selectedCycle.variantId || '');
+    }
 
     if (!variantId) {
       return NextResponse.json(
-        { error: `Missing variant ID for plan: ${plan}` },
+        { error: `Missing variant ID for plan: ${normalizedPlan} (${normalizedCycle})` },
         { status: 500 }
       );
     }
@@ -55,11 +63,14 @@ export async function POST(req) {
               email,
               custom: {
                 user_id: userId,
-                plan,
+                plan: normalizedPlan,
+                cycle: normalizedCycle,
               },
             },
             product_options: {
-              redirect_url: `${siteUrl}/success?plan=${plan}`,
+              redirect_url: `${siteUrl}/success?plan=${encodeURIComponent(
+                normalizedPlan
+              )}&cycle=${encodeURIComponent(normalizedCycle)}`,
             },
           },
           relationships: {
@@ -94,7 +105,10 @@ export async function POST(req) {
 
     if (!checkoutUrl) {
       console.error('Lemon checkout URL missing:', data);
-      return NextResponse.json({ error: 'Checkout URL missing' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Checkout URL missing' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ url: checkoutUrl });

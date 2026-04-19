@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 function CheckoutInner() {
   const searchParams = useSearchParams();
   const plan = String(searchParams.get('plan') || '').toLowerCase();
+  const cycle = String(searchParams.get('cycle') || 'monthly').toLowerCase();
 
   useEffect(() => {
     const go = async () => {
@@ -24,8 +25,8 @@ function CheckoutInner() {
         const userEmail = session?.user?.email;
 
         if (!userId || !userEmail) {
-          alert('You must be logged in');
-          window.location.href = '/login';
+          const next = `/checkout?plan=${encodeURIComponent(plan)}&cycle=${encodeURIComponent(cycle)}`;
+          window.location.href = `/login?next=${encodeURIComponent(next)}`;
           return;
         }
 
@@ -36,6 +37,7 @@ function CheckoutInner() {
           },
           body: JSON.stringify({
             plan,
+            cycle,
             userId,
             email: userEmail,
           }),
@@ -43,22 +45,23 @@ function CheckoutInner() {
 
         const data = await res.json();
 
-        if (!data.url) {
-          alert('Checkout failed');
+        if (!res.ok || !data.url) {
+          console.error('Checkout failed:', data);
+          alert(data?.error || 'Checkout failed');
           window.location.href = '/dashboard';
           return;
         }
 
         window.location.href = data.url;
       } catch (err) {
-        console.error(err);
+        console.error('Checkout page error:', err);
         alert('Something went wrong');
         window.location.href = '/dashboard';
       }
     };
 
     go();
-  }, [plan]);
+  }, [plan, cycle]);
 
   return (
     <div style={{ textAlign: 'center', marginTop: '100px' }}>

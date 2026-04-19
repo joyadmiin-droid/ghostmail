@@ -10,8 +10,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const LEMON_STORE_URL = 'https://ghostmail.lemonsqueezy.com';
-
 export default function Home() {
   const [plan, setPlan] = useState('free');
   const [theme, setTheme] = useState('dark');
@@ -201,21 +199,13 @@ export default function Home() {
       return '#pricing';
     }
 
-    const baseUrl = `${LEMON_STORE_URL}/checkout/buy/${selectedPricing.variantId}`;
-    const params = new URLSearchParams();
+    const checkoutPath = `/checkout?plan=${encodeURIComponent(
+      targetPlan
+    )}&cycle=${encodeURIComponent(billingCycle)}`;
 
-    if (user?.id) {
-      params.set('checkout[custom][user_id]', user.id);
-    }
+    if (user) return checkoutPath;
 
-    if (user?.email) {
-      params.set('checkout[email]', user.email);
-    }
-
-    params.set('checkout[custom][plan]', targetPlan);
-    params.set('checkout[custom][cycle]', billingCycle);
-
-    return `${baseUrl}?${params.toString()}`;
+    return `/login?next=${encodeURIComponent(checkoutPath)}`;
   }
 
   function getExpiryLabel(expiresAt) {
