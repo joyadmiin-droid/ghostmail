@@ -223,9 +223,10 @@ export async function POST(request) {
     }
 
     const activateEvents = new Set([
-      'subscription_created',
-      'subscription_updated',
-    ]);
+  'subscription_created',
+  'subscription_updated',
+  'order_created', // 🔥 IMPORTANT
+]);
 
     const downgradeEvents = new Set([
       'subscription_expired',
@@ -236,7 +237,7 @@ export async function POST(request) {
       'order_created',
     ]);
 
-    if (activateEvents.has(eventName)) {
+    if (activateEvents.has(eventName) && topUpCredits === 0) {
       const updateData = {
         plan,
       };
