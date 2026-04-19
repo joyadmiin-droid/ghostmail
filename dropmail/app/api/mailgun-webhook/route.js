@@ -8,14 +8,15 @@ const supabase = createClient(
 );
 
 const MAILGUN_WEBHOOK_SIGNING_KEY = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
-const MAX_WEBHOOK_AGE_SECONDS = 15 * 60;
-
-// -------- SECURITY LIMITS --------
+const MAX_WEBHOOK_AGE_SECONDS = 15 * 60; // 15 minutes
 
 const MAX_ATTACHMENTS = 5;
-const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
-const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-const MAX_EMAIL_BODY_BYTES = 2_000_000;
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB each
+const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25 MB total
+const MAX_EMAIL_BODY_BYTES = 2_000_000; // ~2 MB combined HTML + text
+const MAX_SUBJECT_LENGTH = 500;
+const MAX_ADDRESS_LENGTH = 320;
+const MAX_NAME_LENGTH = 255;
 
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   'application/pdf',
@@ -31,13 +32,21 @@ const PLAN_EMAIL_LIMITS = {
   spectre: 600,
 };
 
-// -------- HELPERS --------
+function normalizePlan(plan) {
+  const value = String(plan || 'free').toLowerCase();
+  if (value === 'spectre') return 'spectre';
+  if (value === 'phantom') return 'phantom';
+  return 'free';
+}
 
 function safeEqualHex(a, b) {
   try {
     const aBuf = Buffer.from(String(a || ''), 'hex');
     const bBuf = Buffer.from(String(b || ''), 'hex');
+
+    if (aBuf.length === 0 || bBuf.length === 0) return false;
     if (aBuf.length !== bBuf.length) return false;
+
     return timingSafeEqual(aBuf, bBuf);
   } catch {
     return false;
@@ -45,10 +54,24 @@ function safeEqualHex(a, b) {
 }
 
 function verifyMailgunSignature({ timestamp, token, signature }) {
-  if (!MAILGUN_WEBHOOK_SIGNING_KEY) return false;
+  if (!MAILGUN_WEBHOOK_SIGNING_KEY) {
+    console.error('MAILGUN_WEBHOOK_SIGNING_KEY is missing');
+    return false;
+  }
 
-  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
-  if (!Number.isFinite(age) || age > MAX_WEBHOOK_AGE_SECONDS) return false;
+  if (!timestamp || !token || !signature) return false;
+
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) {
+    console.error('Rejected webhook: invalid timestamp');
+    return false;
+  }
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - ts);
+  if (age > MAX_WEBHOOK_AGE_SECONDS) {
+    console.error('Rejected webhook: timestamp too old');
+    return false;
+  }
 
   const expected = createHmac('sha256', MAILGUN_WEBHOOK_SIGNING_KEY)
     .update(`${timestamp}${token}`)
@@ -57,12 +80,11 @@ function verifyMailgunSignature({ timestamp, token, signature }) {
   return safeEqualHex(expected, signature);
 }
 
-// 🔐 STRONG REPLAY PROTECTION
-async function guardReplay(token, timestamp) {
+async function reserveWebhookToken({ token, timestamp }) {
   const ts = Number(timestamp);
 
   if (!token || !Number.isFinite(ts)) {
-    return { ok: false };
+    return { ok: false, reason: 'invalid_token_or_timestamp' };
   }
 
   const { error } = await supabase
@@ -73,37 +95,203 @@ async function guardReplay(token, timestamp) {
       provider: 'mailgun',
     });
 
-  if (!error) return { ok: true };
-
-  if (error.code === '23505') {
-    return { ok: false, replay: true };
+  if (!error) {
+    return { ok: true };
   }
 
-  return { ok: false };
+  if (error.code === '23505') {
+    return { ok: false, reason: 'replayed_token' };
+  }
+
+  console.error('Replay guard insert error:', error);
+  return { ok: false, reason: 'db_error' };
 }
 
-// 🔐 STRICT HTML SANITIZATION
 function sanitizeEmailHtml(html) {
   return sanitizeHtml(String(html || ''), {
     allowedTags: [
-      'p', 'br', 'b', 'strong', 'i', 'em',
-      'ul', 'ol', 'li', 'a', 'img'
+      'html',
+      'body',
+      'div',
+      'span',
+      'p',
+      'br',
+      'hr',
+      'b',
+      'strong',
+      'i',
+      'em',
+      'u',
+      's',
+      'blockquote',
+      'pre',
+      'code',
+      'ul',
+      'ol',
+      'li',
+      'table',
+      'thead',
+      'tbody',
+      'tr',
+      'th',
+      'td',
+      'a',
+      'img',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
     ],
     allowedAttributes: {
-      a: ['href'],
-      img: ['src'],
+      a: ['href', 'name', 'target', 'rel'],
+      img: ['src', 'alt', 'title', 'width', 'height'],
     },
     allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemesByTag: {
+      img: ['http', 'https', 'data'],
+    },
+    allowProtocolRelative: false,
+    disallowedTagsMode: 'discard',
     transformTags: {
       a: sanitizeHtml.simpleTransform('a', {
         rel: 'nofollow noopener noreferrer',
         target: '_blank',
       }),
     },
+    exclusiveFilter(frame) {
+      const tag = frame.tag;
+      const attrs = frame.attribs || {};
+
+      if (tag === 'img') {
+        const src = String(attrs.src || '').trim().toLowerCase();
+        if (!src) return true;
+        if (
+          src.startsWith('javascript:') ||
+          src.startsWith('file:') ||
+          src.startsWith('vbscript:')
+        ) {
+          return true;
+        }
+      }
+
+      if (tag === 'a') {
+        const href = String(attrs.href || '').trim().toLowerCase();
+        if (
+          href.startsWith('javascript:') ||
+          href.startsWith('file:') ||
+          href.startsWith('vbscript:')
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    },
   });
 }
 
-// -------- MAIN --------
+function normalizePlainText(text) {
+  return String(text || '')
+    .replace(/\u0000/g, '')
+    .trim();
+}
+
+function normalizeEmailAddress(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .slice(0, MAX_ADDRESS_LENGTH);
+}
+
+function normalizeSenderName(from, sender) {
+  const raw = String(from || '').match(/^([^<]+)</)?.[1]?.trim() || String(sender || '');
+  return raw.slice(0, MAX_NAME_LENGTH);
+}
+
+function getMonthStartIso() {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
+  ).toISOString();
+}
+
+async function getMailboxPlanAndCredits(mailbox) {
+  if (!mailbox?.user_id) {
+    return {
+      plan: 'free',
+      extraEmailCredits: 0,
+    };
+  }
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('plan, extra_email_credits')
+    .eq('id', mailbox.user_id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Profile fetch error during webhook:', error);
+    return {
+      plan: 'free',
+      extraEmailCredits: 0,
+    };
+  }
+
+  return {
+    plan: normalizePlan(profile?.plan),
+    extraEmailCredits: Math.max(0, Number(profile?.extra_email_credits || 0)),
+  };
+}
+
+async function getMonthlyUsageCount({ mailbox }) {
+  const monthStartIso = getMonthStartIso();
+
+  if (!mailbox?.user_id) {
+    const { count, error } = await supabase
+      .from('emails')
+      .select('id', { count: 'exact', head: true })
+      .eq('mailbox_id', mailbox.id)
+      .gte('received_at', monthStartIso);
+
+    if (error) {
+      console.error('Monthly mailbox usage count error:', error);
+      throw new Error('Failed to count mailbox monthly usage');
+    }
+
+    return count || 0;
+  }
+
+  const { data: userMailboxes, error: mailboxListError } = await supabase
+    .from('mailboxes')
+    .select('id')
+    .eq('user_id', mailbox.user_id);
+
+  if (mailboxListError) {
+    console.error('User mailbox list error:', mailboxListError);
+    throw new Error('Failed to load user mailboxes');
+  }
+
+  const mailboxIds = (userMailboxes || []).map((item) => item.id);
+
+  if (!mailboxIds.length) {
+    return 0;
+  }
+
+  const { count, error } = await supabase
+    .from('emails')
+    .select('id', { count: 'exact', head: true })
+    .in('mailbox_id', mailboxIds)
+    .gte('received_at', monthStartIso);
+
+  if (error) {
+    console.error('Monthly user usage count error:', error);
+    throw new Error('Failed to count user monthly usage');
+  }
+
+  return count || 0;
+}
 
 export async function POST(request) {
   try {
@@ -113,123 +301,184 @@ export async function POST(request) {
     const token = formData.get('token');
     const signature = formData.get('signature');
 
-    // 🔐 1. VERIFY SIGNATURE
-    if (!verifyMailgunSignature({ timestamp, token, signature })) {
-      return Response.json({ error: 'Invalid signature' }, { status: 401 });
+    const isValid = verifyMailgunSignature({
+      timestamp,
+      token,
+      signature,
+    });
+
+    if (!isValid) {
+      return Response.json(
+        { error: 'Invalid Mailgun signature' },
+        { status: 401 }
+      );
     }
 
-    // 🔐 2. REPLAY PROTECTION
-    const replay = await guardReplay(token, timestamp);
-    if (!replay.ok) {
-      if (replay.replay) {
+    const replayCheck = await reserveWebhookToken({ token, timestamp });
+
+    if (!replayCheck.ok) {
+      if (replayCheck.reason === 'replayed_token') {
         return Response.json({ error: 'Replay detected' }, { status: 409 });
       }
-      return Response.json({ error: 'Replay guard failed' }, { status: 500 });
+
+      return Response.json(
+        { error: 'Webhook replay guard failed' },
+        { status: 500 }
+      );
     }
 
-    const recipient = String(formData.get('recipient') || '')
-      .toLowerCase()
-      .trim();
-
-    const sender = String(formData.get('sender') || '');
+    const recipient = normalizeEmailAddress(formData.get('recipient'));
+    const sender = normalizeEmailAddress(formData.get('sender'));
     const from = String(formData.get('from') || '');
-    const subject = String(formData.get('subject') || '(no subject)').slice(0, 300);
+    const subject = String(formData.get('subject') || '(no subject)')
+      .replace(/\u0000/g, '')
+      .trim()
+      .slice(0, MAX_SUBJECT_LENGTH);
 
-    const rawHtml = formData.get('body-html') || '';
-    const rawText = formData.get('body-plain') || '';
-
-    const combinedSize =
-      Buffer.byteLength(String(rawHtml)) +
-      Buffer.byteLength(String(rawText));
-
-    if (combinedSize > MAX_EMAIL_BODY_BYTES) {
-      return Response.json({ error: 'Body too large' }, { status: 413 });
+    if (!recipient) {
+      return Response.json({ error: 'Missing recipient' }, { status: 400 });
     }
 
-    const bodyHtml = sanitizeEmailHtml(rawHtml);
-    const bodyText = String(rawText || '').trim();
+    const rawBodyHtml = formData.get('body-html') || '';
+    const rawBodyText = formData.get('body-plain') || '';
 
-    // 🔐 MAILBOX VALIDATION
-    const { data: mailbox } = await supabase
+    const combinedBodySize =
+      Buffer.byteLength(String(rawBodyHtml), 'utf8') +
+      Buffer.byteLength(String(rawBodyText), 'utf8');
+
+    if (combinedBodySize > MAX_EMAIL_BODY_BYTES) {
+      return Response.json({ error: 'Email body too large' }, { status: 413 });
+    }
+
+    const bodyHtml = sanitizeEmailHtml(rawBodyHtml);
+    const bodyText = normalizePlainText(rawBodyText);
+    const fromName = normalizeSenderName(from, sender);
+
+    const { data: mailbox, error: mailboxErr } = await supabase
       .from('mailboxes')
       .select('id, user_id, expires_at, is_active')
       .eq('address', recipient)
       .single();
 
-    if (!mailbox) {
+    if (mailboxErr || !mailbox) {
       return Response.json({ error: 'Mailbox not found' }, { status: 404 });
     }
 
     if (!mailbox.is_active || new Date(mailbox.expires_at) <= new Date()) {
-      return Response.json({ success: true, ignored: true });
+      return Response.json({
+        success: true,
+        ignored: true,
+        reason: 'mailbox_inactive_or_expired',
+      });
     }
 
-    // 🔐 SAVE EMAIL
-    const { data: email } = await supabase
+    const { plan, extraEmailCredits } = await getMailboxPlanAndCredits(mailbox);
+    const baseMonthlyLimit = PLAN_EMAIL_LIMITS[plan] ?? PLAN_EMAIL_LIMITS.free;
+    const monthlyLimit = baseMonthlyLimit + extraEmailCredits;
+    const monthlyUsage = await getMonthlyUsageCount({ mailbox });
+
+    if (monthlyUsage >= monthlyLimit) {
+      return Response.json({
+        success: true,
+        ignored: true,
+        reason: 'monthly_limit_reached',
+        plan,
+        monthly_usage: monthlyUsage,
+        monthly_limit: monthlyLimit,
+        base_monthly_limit: baseMonthlyLimit,
+        extra_email_credits: extraEmailCredits,
+      });
+    }
+
+    const { data: insertedEmail, error: insertErr } = await supabase
       .from('emails')
       .insert({
         mailbox_id: mailbox.id,
         from_address: sender,
-        from_name: from,
+        from_name: fromName,
         subject,
         body_html: bodyHtml,
         body_text: bodyText,
         received_at: new Date().toISOString(),
+        is_read: false,
       })
       .select('id')
       .single();
 
-    if (!email) {
-      return Response.json({ error: 'Insert failed' }, { status: 500 });
+    if (insertErr || !insertedEmail) {
+      console.error('Insert email error:', insertErr);
+      return Response.json({ error: 'Failed to save email' }, { status: 500 });
     }
 
-    // 🔐 ATTACHMENTS (STRICT)
-    const attachments = [];
-    let count = 0;
-    let total = 0;
+    const attachmentRows = [];
+    const emailId = insertedEmail.id;
 
-    for (const [, file] of formData.entries()) {
-      if (!(file instanceof File)) continue;
-      if (count >= MAX_ATTACHMENTS) break;
-      if (file.size > MAX_ATTACHMENT_SIZE_BYTES) continue;
-      if (total + file.size > MAX_TOTAL_ATTACHMENT_BYTES) continue;
+    let acceptedAttachments = 0;
+    let totalAttachmentBytes = 0;
 
-      if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(file.type)) continue;
+    for (const [, value] of formData.entries()) {
+      if (!(value instanceof File)) continue;
+      if (!value.name || value.size === 0) continue;
 
-      const safeName = file.name.replace(/[^\w.\-]/g, '_');
-      const path = `${mailbox.id}/${email.id}/${randomUUID()}-${safeName}`;
+      if (acceptedAttachments >= MAX_ATTACHMENTS) continue;
+      if (value.size > MAX_ATTACHMENT_SIZE_BYTES) continue;
+      if (totalAttachmentBytes + value.size > MAX_TOTAL_ATTACHMENT_BYTES) continue;
 
-      const buffer = Buffer.from(await file.arrayBuffer());
+      const mimeType = value.type || 'application/octet-stream';
+      if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType)) continue;
 
-      const { error } = await supabase.storage
+      const safeName = value.name.replace(/[^\w.\-]/g, '_').slice(0, 255);
+      const storagePath = `${mailbox.id}/${emailId}/${randomUUID()}-${safeName}`;
+
+      const arrayBuffer = await value.arrayBuffer();
+      const fileBuffer = Buffer.from(arrayBuffer);
+
+      const { error: uploadErr } = await supabase.storage
         .from('email-attachments-private')
-        .upload(path, buffer, { contentType: file.type });
-
-      if (!error) {
-        attachments.push({
-          email_id: email.id,
-          filename: safeName,
-          mime_type: file.type,
-          size_bytes: file.size,
-          storage_path: path,
+        .upload(storagePath, fileBuffer, {
+          contentType: mimeType,
+          upsert: false,
         });
 
-        count++;
-        total += file.size;
+      if (uploadErr) {
+        console.error('Attachment upload error:', uploadErr);
+        continue;
       }
+
+      attachmentRows.push({
+        email_id: emailId,
+        filename: value.name.slice(0, 255),
+        mime_type: mimeType,
+        size_bytes: value.size || 0,
+        storage_path: storagePath,
+      });
+
+      acceptedAttachments += 1;
+      totalAttachmentBytes += value.size;
     }
 
-    if (attachments.length) {
-      await supabase.from('attachments').insert(attachments);
+    if (attachmentRows.length > 0) {
+      const { error: attachmentInsertErr } = await supabase
+        .from('attachments')
+        .insert(attachmentRows);
+
+      if (attachmentInsertErr) {
+        console.error('Attachment insert error:', attachmentInsertErr);
+      }
     }
 
     return Response.json({
       success: true,
-      email_id: email.id,
-      attachments_saved: attachments.length,
+      email_id: emailId,
+      attachments_saved: attachmentRows.length,
+      plan,
+      monthly_usage_after_save: monthlyUsage + 1,
+      monthly_limit: monthlyLimit,
+      base_monthly_limit: baseMonthlyLimit,
+      extra_email_credits: extraEmailCredits,
     });
-
   } catch (err) {
-    return Response.json({ error: 'Internal error' }, { status: 500 });
+    console.error('Webhook error:', err);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
