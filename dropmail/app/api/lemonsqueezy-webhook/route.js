@@ -182,11 +182,7 @@ async function ensureProfileFields(userId) {
 export async function POST(request) {
   try {
     if (!WEBHOOK_SECRET) {
-      console.error('❌ Missing LEMONSQUEEZY_WEBHOOK_SECRET');
-      return NextResponse.json(
-        { error: 'Missing webhook secret' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Missing webhook secret' }, { status: 500 });
     }
 
     const rawBody = await request.text();
@@ -196,51 +192,52 @@ export async function POST(request) {
       '';
 
     if (!verifySignature(rawBody, signature, WEBHOOK_SECRET)) {
-      console.log('❌ Invalid Lemon signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
     const payload = JSON.parse(rawBody);
 
+    // 🔐 NEW: replay protection
+    const eventId = payload?.meta?.event_id || payload?.data?.id;
+
+    if (eventId) {
+      const { data: existing } = await supabase
+        .from('processed_webhooks')
+        .select('id')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (existing) {
+        return NextResponse.json({ ok: true, duplicate: true });
+      }
+    }
+
     const eventName = payload?.meta?.event_name || '';
-    const attributes = payload?.data?.attributes || {};
     const userId = extractUserId(payload);
     const plan = extractPlan(payload);
     const topUpCredits = extractTopUpCredits(payload);
     const lemonCustomerId = extractCustomerId(payload);
     const lemonSubscriptionId = extractSubscriptionId(payload);
 
-    console.log('📌 Lemon event:', eventName);
-    console.log('📌 userId:', userId);
-    console.log('📌 plan:', plan);
-    console.log('📌 topUpCredits:', topUpCredits);
-    console.log('📌 lemonCustomerId:', lemonCustomerId);
-    console.log('📌 lemonSubscriptionId:', lemonSubscriptionId);
-
     if (!userId) {
-      console.log('⚠️ Missing user_id in webhook payload');
       return NextResponse.json({ ok: true, skipped: 'missing_user_id' });
     }
 
     const activateEvents = new Set([
-  'subscription_created',
-  'subscription_updated',
-  'order_created', // 🔥 IMPORTANT
-]);
+      'subscription_created',
+      'subscription_updated',
+      'order_created',
+    ]);
 
     const downgradeEvents = new Set([
       'subscription_expired',
       'subscription_payment_refunded',
     ]);
 
-    const topUpEvents = new Set([
-      'order_created',
-    ]);
+    const topUpEvents = new Set(['order_created']);
 
     if (activateEvents.has(eventName) && topUpCredits === 0) {
-      const updateData = {
-        plan,
-      };
+      const updateData = { plan };
 
       if (lemonCustomerId) updateData.lemon_customer_id = String(lemonCustomerId);
       if (lemonSubscriptionId)
@@ -252,14 +249,14 @@ export async function POST(request) {
         .eq('id', userId);
 
       if (error) {
-        console.error('❌ Supabase activate error:', error);
-        return NextResponse.json(
-          { error: 'Failed to update profile' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
       }
 
-      console.log(`✅ Updated user ${userId} to ${plan}`);
+      // 🔐 mark processed
+      if (eventId) {
+        await supabase.from('processed_webhooks').insert({ id: eventId });
+      }
+
       return NextResponse.json({ ok: true, action: 'activated', plan });
     }
 
@@ -268,28 +265,21 @@ export async function POST(request) {
       const currentCredits = Number(profile?.extra_email_credits || 0);
       const nextCredits = currentCredits + topUpCredits;
 
-      const updateData = {
-        extra_email_credits: nextCredits,
-      };
-
-      if (lemonCustomerId) updateData.lemon_customer_id = String(lemonCustomerId);
-
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update({
+          extra_email_credits: nextCredits,
+        })
         .eq('id', userId);
 
       if (error) {
-        console.error('❌ Supabase top-up error:', error);
-        return NextResponse.json(
-          { error: 'Failed to apply top-up credits' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to apply top-up credits' }, { status: 500 });
       }
 
-      console.log(
-        `✅ Added ${topUpCredits} extra email credits to user ${userId}. Total extra credits: ${nextCredits}`
-      );
+      // 🔐 mark processed
+      if (eventId) {
+        await supabase.from('processed_webhooks').insert({ id: eventId });
+      }
 
       return NextResponse.json({
         ok: true,
@@ -300,33 +290,25 @@ export async function POST(request) {
     }
 
     if (downgradeEvents.has(eventName)) {
-      const updateData = {
-        plan: 'ghost',
-      };
-
-      if (lemonCustomerId) updateData.lemon_customer_id = String(lemonCustomerId);
-
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update({ plan: 'ghost' })
         .eq('id', userId);
 
       if (error) {
-        console.error('❌ Supabase downgrade error:', error);
-        return NextResponse.json(
-          { error: 'Failed to downgrade profile' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to downgrade profile' }, { status: 500 });
       }
 
-      console.log(`✅ Downgraded user ${userId} to ghost`);
+      // 🔐 mark processed
+      if (eventId) {
+        await supabase.from('processed_webhooks').insert({ id: eventId });
+      }
+
       return NextResponse.json({ ok: true, action: 'downgraded' });
     }
 
-    console.log(`ℹ️ Ignored event: ${eventName}`);
     return NextResponse.json({ ok: true, ignored: eventName });
   } catch (err) {
-    console.error('🔥 Lemon webhook crash:', err);
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }
