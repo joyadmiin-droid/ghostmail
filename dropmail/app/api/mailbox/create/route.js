@@ -11,6 +11,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
 const ADJECTIVES = [
   'swift',
   'quiet',
@@ -129,6 +132,57 @@ function getUserClient(accessToken) {
 
 function isUniqueViolation(error) {
   return error?.code === '23505';
+}
+
+async function verifyTurnstileToken({ token, ip }) {
+  if (!TURNSTILE_SECRET_KEY) {
+    console.error('Missing TURNSTILE_SECRET_KEY');
+    return { ok: false, reason: 'turnstile_not_configured' };
+  }
+
+  if (!token || typeof token !== 'string') {
+    return { ok: false, reason: 'missing_turnstile_token' };
+  }
+
+  const body = new URLSearchParams({
+    secret: TURNSTILE_SECRET_KEY,
+    response: token,
+  });
+
+  if (ip && ip !== 'unknown') {
+    body.set('remoteip', ip);
+  }
+
+  let response;
+  let data;
+
+  try {
+    response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+      cache: 'no-store',
+    });
+
+    data = await response.json();
+  } catch (error) {
+    console.error('Turnstile verification request failed:', error);
+    return { ok: false, reason: 'turnstile_request_failed' };
+  }
+
+  if (!response.ok) {
+    console.error('Turnstile verification HTTP error:', response.status, data);
+    return { ok: false, reason: 'turnstile_http_error' };
+  }
+
+  if (!data?.success) {
+    console.error('Turnstile verification failed:', data);
+    return { ok: false, reason: 'turnstile_invalid' };
+  }
+
+  return { ok: true };
 }
 
 async function enforceRateLimit({ request, userId }) {
@@ -310,6 +364,29 @@ export async function POST(request) {
 
     if (!success) {
       return Response.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return Response.json(
+        { error: 'Invalid request format' },
+        { status: 400 }
+      );
+    }
+
+    const formData = await request.formData();
+    const turnstileToken = formData.get('turnstileToken');
+
+    const turnstileCheck = await verifyTurnstileToken({
+      token: turnstileToken,
+      ip,
+    });
+
+    if (!turnstileCheck.ok) {
+      return Response.json(
+        { error: 'Security verification failed. Please try again.' },
+        { status: 403 }
+      );
     }
 
     let userId = null;
