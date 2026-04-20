@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Script from 'next/script';
 import { createClient } from '@supabase/supabase-js';
 import styles from './page.module.css';
 import { PRICING } from './lib/pricing';
@@ -29,8 +30,12 @@ export default function Home() {
   const [feedbackSuccess, setFeedbackSuccess] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
 
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileReady, setTurnstileReady] = useState(false);
+
   const phantomPricing = PRICING.phantom[billingCycle];
   const spectrePricing = PRICING.spectre[billingCycle];
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   function formatPlanPrice(value) {
     return `$${value.toFixed(2)}`;
@@ -41,6 +46,21 @@ export default function Home() {
     if (cycle === '3m') return '/ 3 months';
     if (cycle === '6m') return '/ 6 months';
     return '/ year';
+  }
+
+  function resetTurnstileWidget() {
+    try {
+      if (typeof window !== 'undefined' && window.turnstile) {
+        const container = document.querySelector('.cf-turnstile');
+        if (container) {
+          window.turnstile.reset(container);
+        }
+      }
+    } catch (err) {
+      console.error('Turnstile reset error:', err);
+    } finally {
+      setTurnstileToken('');
+    }
   }
 
   useEffect(() => {
@@ -120,6 +140,30 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.onTurnstileSuccess = (token) => {
+      setTurnstileToken(token);
+      setError(null);
+    };
+
+    window.onTurnstileExpired = () => {
+      setTurnstileToken('');
+    };
+
+    window.onTurnstileError = () => {
+      setTurnstileToken('');
+      setError('Security check failed. Please refresh and try again.');
+    };
+
+    return () => {
+      delete window.onTurnstileSuccess;
+      delete window.onTurnstileExpired;
+      delete window.onTurnstileError;
+    };
+  }, []);
+
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
@@ -132,21 +176,35 @@ export default function Home() {
     setError(null);
 
     try {
+      if (!turnstileSiteKey) {
+        throw new Error('Security check is not configured.');
+      }
+
+      if (!turnstileReady) {
+        throw new Error('Security check is still loading. Please wait a second.');
+      }
+
+      if (!turnstileToken) {
+        throw new Error('Please complete the security check first.');
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      const headers = {
-        'Content-Type': 'application/json',
-      };
+      const headers = {};
 
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`;
       }
 
+      const formData = new FormData();
+      formData.append('turnstileToken', turnstileToken);
+
       const res = await fetch('/api/mailbox/create', {
         method: 'POST',
         headers,
+        body: formData,
       });
 
       const text = await res.text();
@@ -163,9 +221,11 @@ export default function Home() {
       }
 
       setMailbox(data);
+      resetTurnstileWidget();
     } catch (err) {
       console.error('Generate mailbox error:', err);
       setError(err.message || 'Something went wrong');
+      resetTurnstileWidget();
     } finally {
       setLoading(false);
     }
@@ -249,14 +309,23 @@ export default function Home() {
       formData.append('message', feedbackText.trim() || 'Screenshot feedback');
       formData.append('email', user?.email || '');
       formData.append('page', '/');
-      formData.append('userId', user?.id || '');
 
       if (feedbackImage) {
         formData.append('screenshot', feedbackImage);
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/feedback', {
         method: 'POST',
+        headers,
         body: formData,
       });
 
@@ -283,435 +352,458 @@ export default function Home() {
   }
 
   return (
-    <main className={styles.main}>
-      <div className={styles.bg} />
+    <>
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        async
+        defer
+        onLoad={() => setTurnstileReady(true)}
+      />
 
-      <header className={styles.header}>
-        <div className={styles.logoWrap}>
-          <div className={styles.logo}>
-            <span className={styles.logoIcon}>&#10022;</span>
-            <span className={styles.logoText}>GhostMail</span>
+      <main className={styles.main}>
+        <div className={styles.bg} />
+
+        <header className={styles.header}>
+          <div className={styles.logoWrap}>
+            <div className={styles.logo}>
+              <span className={styles.logoIcon}>&#10022;</span>
+              <span className={styles.logoText}>GhostMail</span>
+            </div>
+
+            <button
+              type="button"
+              className={styles.feedbackBtn}
+              onClick={() => {
+                setFeedbackError('');
+                setFeedbackSuccess('');
+                setShowFeedback(true);
+              }}
+            >
+              Feedback
+            </button>
           </div>
 
-          <button
-            type="button"
-            className={styles.feedbackBtn}
-            onClick={() => {
-              setFeedbackError('');
-              setFeedbackSuccess('');
-              setShowFeedback(true);
-            }}
-          >
-            Feedback
-          </button>
-        </div>
+          <div className={styles.navLinks}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={styles.themeToggleIcon}
+              aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
 
-        <div className={styles.navLinks}>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={styles.themeToggleIcon}
-            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
+            <a href="/about">About</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
 
-          <a href="/about">About</a>
-          <a href="/terms">Terms</a>
-          <a href="/privacy">Privacy</a>
+            {user?.email?.toLowerCase() === 'joyadmiin@gmail.com' ? (
+              <a href="/admin/feedback">Admin</a>
+            ) : null}
 
-          {user?.email?.toLowerCase() === 'joyadmiin@gmail.com' ? (
-            <a href="/admin/feedback">Admin</a>
-          ) : null}
+            <a
+              href={user ? '/dashboard' : '/login'}
+              className={styles.navCta}
+            >
+              {user ? 'Dashboard' : 'Sign in'}
+            </a>
+          </div>
+        </header>
 
-          <a
-            href={user ? '/dashboard' : '/login'}
-            className={styles.navCta}
-          >
-            {user ? 'Dashboard' : 'Sign in'}
-          </a>
-        </div>
-      </header>
+        <section className={styles.hero}>
+          <div className={styles.tagline}>
+            PRIVATE EMAIL FOR TESTING
+          </div>
 
-      <section className={styles.hero}>
-        <div className={styles.tagline}>
-          PRIVATE EMAIL FOR TESTING
-        </div>
+          <h1 className={styles.headline}>
+            Private inboxes for
+            <br />
+            <span className={styles.accentLine}>developers & QA.</span>
+          </h1>
 
-        <h1 className={styles.headline}>
-          Private inboxes for
-          <br />
-          <span className={styles.accentLine}>developers & QA.</span>
-        </h1>
-
-        <p className={styles.sub}>
-          Generate short-lived email inboxes fast. Test flows, receive emails, protect your real inbox.
-        </p>
-
-        {totalEmails !== null && (
-          <p className={styles.liveStat}>
-            {formatCount(totalEmails)} emails received today
+          <p className={styles.sub}>
+            Generate short-lived email inboxes fast. Test flows, receive emails, protect your real inbox.
           </p>
-        )}
 
-        <div className={styles.card}>
-          {!mailbox ? (
-            <div className={styles.cardInner}>
-              <button
-                className={styles.btnPrimary}
-                onClick={generateMailbox}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className={styles.spinner}></span>
-                    Generating...
-                  </>
+          {totalEmails !== null && (
+            <p className={styles.liveStat}>
+              {formatCount(totalEmails)} emails received today
+            </p>
+          )}
+
+          <div className={styles.card}>
+            {!mailbox ? (
+              <div className={styles.cardInner}>
+                {turnstileSiteKey ? (
+                  <div
+                    className="cf-turnstile"
+                    data-sitekey={turnstileSiteKey}
+                    data-callback="onTurnstileSuccess"
+                    data-expired-callback="onTurnstileExpired"
+                    data-error-callback="onTurnstileError"
+                  />
                 ) : (
-                  'Generate My Address'
+                  <p className={styles.errorMsg}>
+                    Security check is not configured.
+                  </p>
                 )}
-              </button>
 
-              {error && <p className={styles.errorMsg}>{error}</p>}
+                <button
+                  className={styles.btnPrimary}
+                  onClick={generateMailbox}
+                  disabled={loading || !turnstileSiteKey}
+                >
+                  {loading ? (
+                    <>
+                      <span className={styles.spinner}></span>
+                      Generating...
+                    </>
+                  ) : (
+                    'Generate My Address'
+                  )}
+                </button>
 
-              <p className={styles.tokenNote}>
-                Generate first. Login only when you want to open and manage inboxes.
-              </p>
-            </div>
-          ) : (
-            <div className={styles.cardInner}>
-              <div className={styles.addressRow}>
-                <span className={styles.addressLabel}>Your temporary inbox</span>
+                {error && <p className={styles.errorMsg}>{error}</p>}
 
-                <div className={styles.addressBox}>
-                  <span className={styles.addressText}>{mailbox.address}</span>
+                <p className={styles.tokenNote}>
+                  Generate first. Login only when you want to open and manage inboxes.
+                </p>
+              </div>
+            ) : (
+              <div className={styles.cardInner}>
+                <div className={styles.addressRow}>
+                  <span className={styles.addressLabel}>Your temporary inbox</span>
 
+                  <div className={styles.addressBox}>
+                    <span className={styles.addressText}>{mailbox.address}</span>
+
+                    <button
+                      onClick={() => copyAddress(mailbox.address)}
+                      className={`${styles.copyBtn} ${copied === mailbox.address ? styles.copied : ''}`}
+                      type="button"
+                    >
+                      {copied === mailbox.address ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.metaRow}>
+                  <span className={styles.activePill}>● Active</span>
+                  <span className={styles.expiryText}>
+                    {getExpiryLabel(mailbox.expires_at)}
+                  </span>
+                </div>
+
+                <div className={styles.actionRow}>
                   <button
-                    onClick={() => copyAddress(mailbox.address)}
-                    className={`${styles.copyBtn} ${copied === mailbox.address ? styles.copied : ''}`}
+                    onClick={handleOpenInbox}
+                    className={`${styles.btnSecondary} ${styles.linkButton}`}
                     type="button"
                   >
-                    {copied === mailbox.address ? 'Copied' : 'Copy'}
+                    Open Inbox
+                  </button>
+
+                  <button
+                    onClick={generateMailbox}
+                    className={styles.btnSecondary}
+                    type="button"
+                  >
+                    New Address
                   </button>
                 </div>
+
+                {error && <p className={styles.errorMsg}>{error}</p>}
+
+                <p className={styles.tokenNote}>
+                  Fast for testing. Login only when needed.
+                </p>
               </div>
+            )}
+          </div>
 
-              <div className={styles.metaRow}>
-                <span className={styles.activePill}>● Active</span>
-                <span className={styles.expiryText}>
-                  {getExpiryLabel(mailbox.expires_at)}
-                </span>
-              </div>
-
-              <div className={styles.actionRow}>
-                <button
-                  onClick={handleOpenInbox}
-                  className={`${styles.btnSecondary} ${styles.linkButton}`}
-                  type="button"
-                >
-                  Open Inbox
-                </button>
-
-                <button
-                  onClick={generateMailbox}
-                  className={styles.btnSecondary}
-                  type="button"
-                >
-                  New Address
-                </button>
-              </div>
-
-              {error && <p className={styles.errorMsg}>{error}</p>}
-
-              <p className={styles.tokenNote}>
-                Fast for testing. Login only when needed.
+          <section className={styles.infoGrid}>
+            <div className={styles.infoCard}>
+              <p className={styles.infoEyebrow}>What is GhostMail</p>
+              <h3 className={styles.infoTitle}>A private inbox tool for testing.</h3>
+              <p className={styles.infoText}>
+                Generate temporary inboxes, receive emails, and keep your primary email out of test flows.
               </p>
             </div>
-          )}
-        </div>
 
-        <section className={styles.infoGrid}>
-          <div className={styles.infoCard}>
-            <p className={styles.infoEyebrow}>What is GhostMail</p>
-            <h3 className={styles.infoTitle}>A private inbox tool for testing.</h3>
-            <p className={styles.infoText}>
-              Generate temporary inboxes, receive emails, and keep your primary email out of test flows.
-            </p>
-          </div>
+            <div className={styles.infoCard}>
+              <p className={styles.infoEyebrow}>Problems it solves</p>
+              <ul className={styles.infoList}>
+                <li>Testing signup and password reset emails</li>
+                <li>Protecting your real inbox from noise</li>
+                <li>Checking integrations and transactional emails</li>
+                <li>Running QA flows with fast disposable inboxes</li>
+              </ul>
+            </div>
 
-          <div className={styles.infoCard}>
-            <p className={styles.infoEyebrow}>Problems it solves</p>
-            <ul className={styles.infoList}>
-              <li>Testing signup and password reset emails</li>
-              <li>Protecting your real inbox from noise</li>
-              <li>Checking integrations and transactional emails</li>
-              <li>Running QA flows with fast disposable inboxes</li>
-            </ul>
-          </div>
+            <div className={styles.infoCard}>
+              <p className={styles.infoEyebrow}>Why it feels better</p>
+              <ul className={styles.infoList}>
+                <li>Generate inboxes from homepage</li>
+                <li>Login only when needed</li>
+                <li>Short-lived by default</li>
+                <li>Built for dev and QA workflows</li>
+              </ul>
+            </div>
+          </section>
+        </section>
 
-          <div className={styles.infoCard}>
-            <p className={styles.infoEyebrow}>Why it feels better</p>
-            <ul className={styles.infoList}>
-              <li>Generate inboxes from homepage</li>
-              <li>Login only when needed</li>
-              <li>Short-lived by default</li>
-              <li>Built for dev and QA workflows</li>
-            </ul>
+        <section id="pricing" className={styles.pricingSection}>
+          <div className={styles.pricingInner}>
+            <div className={styles.pricingTop}>
+              <p className={styles.pricingEyebrow}>Plans</p>
+              <h2 className={styles.pricingTitle}>Simple pricing</h2>
+              <p className={styles.pricingSub}>
+                Start free. Upgrade when you need more inboxes and longer lifetimes.
+              </p>
+
+              <div className={styles.billingToggle}>
+                {[
+                  { key: 'monthly', label: 'Monthly' },
+                  { key: '3m', label: '3 Months' },
+                  { key: '6m', label: '6 Months' },
+                  { key: 'yearly', label: 'Yearly' },
+                ].map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`${styles.billingToggleBtn} ${
+                      billingCycle === option.key ? styles.billingToggleBtnActive : ''
+                    }`}
+                    onClick={() => setBillingCycle(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.pricingGrid}>
+              <div className={styles.pricingCard}>
+                <div className={styles.planHeader}>
+                  <span className={styles.planIcon}>👻</span>
+                  <div>
+                    <h3 className={styles.planName}>Ghost</h3>
+                    <p className={styles.planDesc}>Free forever</p>
+                  </div>
+                </div>
+
+                <div className={styles.planPriceRow}>
+                  <span className={styles.planPrice}>$0</span>
+                  <span className={styles.planPeriod}>/ month</span>
+                </div>
+
+                <div className={styles.planFeatures}>
+                  <p>• 1 private inbox at a time</p>
+                  <p>• 10-minute expiry</p>
+                  <p>• Fast generation</p>
+                  <p>• Login only when opening inbox</p>
+                </div>
+
+                <button
+                  className={styles.planButton}
+                  onClick={() => {
+                    window.location.href = '/login';
+                  }}
+                  type="button"
+                >
+                  Start free
+                </button>
+              </div>
+
+              <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
+                <div className={styles.pricingBadge}>Most popular</div>
+
+                <div className={styles.planHeader}>
+                  <span className={styles.planIcon}>⚡</span>
+                  <div>
+                    <h3 className={styles.planName}>Phantom</h3>
+                    <p className={styles.planDesc}>For heavier testing</p>
+                  </div>
+                </div>
+
+                <div className={styles.planPriceRow}>
+                  <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
+                  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
+                </div>
+
+                <div className={styles.planFeatures}>
+                  <p>• Up to 5 active inboxes</p>
+                  <p>• 24-hour expiry window</p>
+                  <p>• Better QA workflow</p>
+                  <p>
+                    • {billingCycle === 'monthly'
+                      ? 'Flexible monthly billing'
+                      : billingCycle === '3m'
+                      ? '3 months upfront'
+                      : billingCycle === '6m'
+                      ? '6 months upfront'
+                      : 'Best yearly value'}
+                  </p>
+                </div>
+
+                <a
+                  href={getPaidPlanHref('phantom')}
+                  className={`${styles.planButton} ${styles.planButtonLink}`}
+                >
+                  Get Phantom
+                </a>
+              </div>
+
+              <div className={styles.pricingCard}>
+                <div className={styles.planHeader}>
+                  <span className={styles.planIcon}>🚀</span>
+                  <div>
+                    <h3 className={styles.planName}>Spectre</h3>
+                    <p className={styles.planDesc}>For power users</p>
+                  </div>
+                </div>
+
+                <div className={styles.planPriceRow}>
+                  <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
+                  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
+                </div>
+
+                <div className={styles.planFeatures}>
+                  <p>• Unlimited active inboxes</p>
+                  <p>• Up to 1-year inbox expiry</p>
+                  <p>• High-volume workflows</p>
+                  <p>
+                    • {billingCycle === 'monthly'
+                      ? 'Flexible monthly billing'
+                      : billingCycle === '3m'
+                      ? '3 months upfront'
+                      : billingCycle === '6m'
+                      ? '6 months upfront'
+                      : 'Best yearly value'}
+                  </p>
+                </div>
+
+                <a
+                  href={getPaidPlanHref('spectre')}
+                  className={`${styles.planButton} ${styles.planButtonLink}`}
+                >
+                  Get Spectre
+                </a>
+              </div>
+            </div>
           </div>
         </section>
-      </section>
 
-      <section id="pricing" className={styles.pricingSection}>
-        <div className={styles.pricingInner}>
-          <div className={styles.pricingTop}>
-            <p className={styles.pricingEyebrow}>Plans</p>
-            <h2 className={styles.pricingTitle}>Simple pricing</h2>
-            <p className={styles.pricingSub}>
-              Start free. Upgrade when you need more inboxes and longer lifetimes.
-            </p>
-
-            <div className={styles.billingToggle}>
-              {[
-                { key: 'monthly', label: 'Monthly' },
-                { key: '3m', label: '3 Months' },
-                { key: '6m', label: '6 Months' },
-                { key: 'yearly', label: 'Yearly' },
-              ].map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  className={`${styles.billingToggleBtn} ${
-                    billingCycle === option.key ? styles.billingToggleBtnActive : ''
-                  }`}
-                  onClick={() => setBillingCycle(option.key)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+        <footer className={styles.footer}>
+          <div className={styles.footerLinks}>
+            <a href="/about">About</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <button
+              type="button"
+              className={styles.footerFeedbackLink}
+              onClick={() => {
+                setFeedbackError('');
+                setFeedbackSuccess('');
+                setShowFeedback(true);
+              }}
+            >
+              Feedback
+            </button>
           </div>
 
-          <div className={styles.pricingGrid}>
-            <div className={styles.pricingCard}>
-              <div className={styles.planHeader}>
-                <span className={styles.planIcon}>👻</span>
-                <div>
-                  <h3 className={styles.planName}>Ghost</h3>
-                  <p className={styles.planDesc}>Free forever</p>
-                </div>
-              </div>
+          <p>© 2026 GhostMail — Built for developers, QA, and email testing workflows.</p>
+        </footer>
 
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>$0</span>
-                <span className={styles.planPeriod}>/ month</span>
-              </div>
-
-              <div className={styles.planFeatures}>
-                <p>• 1 private inbox at a time</p>
-                <p>• 10-minute expiry</p>
-                <p>• Fast generation</p>
-                <p>• Login only when opening inbox</p>
-              </div>
-
-              <button
-                className={styles.planButton}
-                onClick={() => {
-                  window.location.href = '/login';
-                }}
-                type="button"
-              >
-                Start free
-              </button>
-            </div>
-
-            <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
-              <div className={styles.pricingBadge}>Most popular</div>
-
-              <div className={styles.planHeader}>
-                <span className={styles.planIcon}>⚡</span>
-                <div>
-                  <h3 className={styles.planName}>Phantom</h3>
-                  <p className={styles.planDesc}>For heavier testing</p>
-                </div>
-              </div>
-
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
-                <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
-              </div>
-
-              <div className={styles.planFeatures}>
-                <p>• Up to 5 active inboxes</p>
-                <p>• 24-hour expiry window</p>
-                <p>• Better QA workflow</p>
-                <p>
-                  • {billingCycle === 'monthly'
-                    ? 'Flexible monthly billing'
-                    : billingCycle === '3m'
-                    ? '3 months upfront'
-                    : billingCycle === '6m'
-                    ? '6 months upfront'
-                    : 'Best yearly value'}
-                </p>
-              </div>
-
-              <a
-                href={getPaidPlanHref('phantom')}
-                className={`${styles.planButton} ${styles.planButtonLink}`}
-              >
-                Get Phantom
-              </a>
-            </div>
-
-            <div className={styles.pricingCard}>
-              <div className={styles.planHeader}>
-                <span className={styles.planIcon}>🚀</span>
-                <div>
-                  <h3 className={styles.planName}>Spectre</h3>
-                  <p className={styles.planDesc}>For power users</p>
-                </div>
-              </div>
-
-              <div className={styles.planPriceRow}>
-                <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
-                <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
-              </div>
-
-              <div className={styles.planFeatures}>
-                <p>• Unlimited active inboxes</p>
-                <p>• Up to 1-year inbox expiry</p>
-                <p>• High-volume workflows</p>
-                <p>
-                  • {billingCycle === 'monthly'
-                    ? 'Flexible monthly billing'
-                    : billingCycle === '3m'
-                    ? '3 months upfront'
-                    : billingCycle === '6m'
-                    ? '6 months upfront'
-                    : 'Best yearly value'}
-                </p>
-              </div>
-
-              <a
-                href={getPaidPlanHref('spectre')}
-                className={`${styles.planButton} ${styles.planButtonLink}`}
-              >
-                Get Spectre
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer className={styles.footer}>
-        <div className={styles.footerLinks}>
-          <a href="/about">About</a>
-          <a href="/terms">Terms</a>
-          <a href="/privacy">Privacy</a>
-          <button
-            type="button"
-            className={styles.footerFeedbackLink}
-            onClick={() => {
-              setFeedbackError('');
-              setFeedbackSuccess('');
-              setShowFeedback(true);
-            }}
-          >
-            Feedback
-          </button>
-        </div>
-
-        <p>© 2026 GhostMail — Built for developers, QA, and email testing workflows.</p>
-      </footer>
-
-      {showFeedback && (
-        <div
-          className={styles.feedbackOverlay}
-          onClick={resetFeedbackModal}
-        >
+        {showFeedback && (
           <div
-            className={styles.feedbackModal}
-            onClick={(e) => e.stopPropagation()}
+            className={styles.feedbackOverlay}
+            onClick={resetFeedbackModal}
           >
-            <div className={styles.feedbackHeader}>
-              <div>
-                <p className={styles.feedbackEyebrow}>Feedback</p>
-                <h3 className={styles.feedbackTitle}>What should we improve?</h3>
+            <div
+              className={styles.feedbackModal}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.feedbackHeader}>
+                <div>
+                  <p className={styles.feedbackEyebrow}>Feedback</p>
+                  <h3 className={styles.feedbackTitle}>What should we improve?</h3>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.feedbackClose}
+                  onClick={resetFeedbackModal}
+                >
+                  ×
+                </button>
               </div>
 
-              <button
-                type="button"
-                className={styles.feedbackClose}
-                onClick={resetFeedbackModal}
-              >
-                ×
-              </button>
-            </div>
+              <p className={styles.feedbackHint}>
+                Upload a screenshot if needed, then write what should be fixed, changed, or improved.
+              </p>
 
-            <p className={styles.feedbackHint}>
-              Upload a screenshot if needed, then write what should be fixed, changed, or improved.
-            </p>
+              <label className={styles.feedbackUpload}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className={styles.feedbackFileInput}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setFeedbackImage(file);
+                    setFeedbackImageName(file ? file.name : '');
+                    setFeedbackError('');
+                    setFeedbackSuccess('');
+                  }}
+                />
+                <span className={styles.feedbackUploadText}>
+                  {feedbackImageName ? feedbackImageName : 'Upload screenshot'}
+                </span>
+              </label>
 
-            <label className={styles.feedbackUpload}>
-              <input
-                type="file"
-                accept="image/*"
-                className={styles.feedbackFileInput}
+              {feedbackSuccess ? (
+                <div className={styles.feedbackSuccess}>
+                  {feedbackSuccess}
+                </div>
+              ) : null}
+
+              <textarea
+                className={styles.feedbackTextarea}
+                placeholder="Write your suggestion, fix, or issue here..."
+                value={feedbackText}
                 onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setFeedbackImage(file);
-                  setFeedbackImageName(file ? file.name : '');
+                  setFeedbackText(e.target.value);
                   setFeedbackError('');
                   setFeedbackSuccess('');
                 }}
               />
-              <span className={styles.feedbackUploadText}>
-                {feedbackImageName ? feedbackImageName : 'Upload screenshot'}
-              </span>
-            </label>
 
-            {feedbackSuccess ? (
-              <div className={styles.feedbackSuccess}>
-                {feedbackSuccess}
+              {feedbackError ? <p className={styles.feedbackError}>{feedbackError}</p> : null}
+
+              <div className={styles.feedbackActions}>
+                <button
+                  type="button"
+                  className={styles.feedbackCancel}
+                  onClick={resetFeedbackModal}
+                  disabled={feedbackSending}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.feedbackSubmit}
+                  onClick={handleFeedbackSubmit}
+                  disabled={feedbackSending}
+                >
+                  {feedbackSending ? 'Sending...' : 'Submit feedback'}
+                </button>
               </div>
-            ) : null}
-
-            <textarea
-              className={styles.feedbackTextarea}
-              placeholder="Write your suggestion, fix, or issue here..."
-              value={feedbackText}
-              onChange={(e) => {
-                setFeedbackText(e.target.value);
-                setFeedbackError('');
-                setFeedbackSuccess('');
-              }}
-            />
-
-            {feedbackError ? <p className={styles.feedbackError}>{feedbackError}</p> : null}
-
-            <div className={styles.feedbackActions}>
-              <button
-                type="button"
-                className={styles.feedbackCancel}
-                onClick={resetFeedbackModal}
-                disabled={feedbackSending}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className={styles.feedbackSubmit}
-                onClick={handleFeedbackSubmit}
-                disabled={feedbackSending}
-              >
-                {feedbackSending ? 'Sending...' : 'Submit feedback'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </main>
+        )}
+      </main>
+    </>
   );
 }
