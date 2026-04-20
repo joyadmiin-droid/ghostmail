@@ -4,7 +4,7 @@ import { rateLimit } from '@/app/lib/rate-limit';
 
 const limiter = rateLimit({ limit: 60, windowMs: 60 * 1000 });
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
@@ -50,7 +50,36 @@ function hashIp(ip) {
   return crypto.createHash('sha256').update(String(ip)).digest('hex');
 }
 
-// 🔥 IMPROVED RATE LIMIT
+function getBearerToken(request) {
+  const authHeader =
+    request.headers.get('authorization') ||
+    request.headers.get('Authorization') ||
+    '';
+
+  if (!authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  return token || null;
+}
+
+function getUserClient(accessToken) {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
+}
+
 async function enforceRateLimit(request, userId) {
   const ipHash = hashIp(getClientIp(request));
   const now = Date.now();
@@ -58,88 +87,117 @@ async function enforceRateLimit(request, userId) {
   const minuteAgo = new Date(now - 60 * 1000).toISOString();
   const hourAgo = new Date(now - 60 * 60 * 1000).toISOString();
 
-  const [{ count: minute }, { count: hour }] = await Promise.all([
-    supabase.from('api_rate_limits')
-      .select('*', { count: 'exact', head: true })
+  const [minuteResult, hourResult] = await Promise.all([
+    supabaseAdmin
+      .from('api_rate_limits')
+      .select('id', { count: 'exact', head: true })
       .eq('route', ROUTE_NAME)
       .eq('ip_hash', ipHash)
       .gte('created_at', minuteAgo),
 
-    supabase.from('api_rate_limits')
-      .select('*', { count: 'exact', head: true })
+    supabaseAdmin
+      .from('api_rate_limits')
+      .select('id', { count: 'exact', head: true })
       .eq('route', ROUTE_NAME)
       .eq('ip_hash', ipHash)
       .gte('created_at', hourAgo),
   ]);
 
-  if ((minute || 0) >= LIMITS.perMinute) {
+  if (minuteResult.error || hourResult.error) {
+    console.error('Inbox rate limit lookup error:', minuteResult.error || hourResult.error);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to verify rate limit' },
+    };
+  }
+
+  const minute = minuteResult.count || 0;
+  const hour = hourResult.count || 0;
+
+  if (minute >= LIMITS.perMinute) {
     return { ok: false, status: 429, body: { error: 'Too many requests (1m)' } };
   }
 
-  if ((hour || 0) >= LIMITS.perHour) {
+  if (hour >= LIMITS.perHour) {
     return { ok: false, status: 429, body: { error: 'Too many requests (1h)' } };
   }
 
-  await supabase.from('api_rate_limits').insert({
+  const { error: insertError } = await supabaseAdmin.from('api_rate_limits').insert({
     route: ROUTE_NAME,
     ip_hash: ipHash,
     user_id: userId,
   });
+
+  if (insertError) {
+    console.error('Inbox rate limit insert error:', insertError);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to record rate limit' },
+    };
+  }
 
   return { ok: true };
 }
 
 export async function GET(request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-const { success } = limiter(ip);
+    const ip = getClientIp(request);
+    const { success } = limiter(ip);
 
-if (!success) {
-  return Response.json({ error: 'Too many requests' }, { status: 429 });
-}
-    const token = new URL(request.url).searchParams.get('token');
+    if (!success) {
+      return Response.json({ error: 'Too many requests' }, { status: 429 });
+    }
 
-    if (!token) {
+    const mailboxToken = new URL(request.url).searchParams.get('token');
+
+    if (!mailboxToken) {
       return Response.json({ error: 'Token required' }, { status: 400 });
     }
 
-    const authHeader = request.headers.get('Authorization');
+    const accessToken = getBearerToken(request);
 
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!accessToken) {
       return Response.json({ error: 'Auth required' }, { status: 401 });
     }
 
-    const accessToken = authHeader.replace('Bearer ', '').trim();
+    const supabaseUser = getUserClient(accessToken);
 
     const {
       data: { user },
-    } = await supabase.auth.getUser(accessToken);
+      error: authError,
+    } = await supabaseUser.auth.getUser();
 
-    if (!user) {
+    if (authError || !user) {
       return Response.json({ error: 'Invalid auth' }, { status: 401 });
     }
 
-    // 🔒 RATE LIMIT
     const rate = await enforceRateLimit(request, user.id);
     if (!rate.ok) return Response.json(rate.body, { status: rate.status });
 
-    // 🔥 ALWAYS GET FRESH PLAN
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('plan')
       .eq('id', user.id)
       .maybeSingle();
 
+    if (profileError) {
+      console.error('Inbox profile load error:', profileError);
+      return Response.json({ error: 'Failed to load profile' }, { status: 500 });
+    }
+
     const plan = normalizePlan(profile?.plan);
     const rules = getPlanRules(plan);
 
-    const { data: mailbox } = await supabase
+    const { data: mailbox, error: mailboxError } = await supabaseAdmin
       .from('mailboxes')
-      .select('id, address, expires_at, is_active, user_id')
-      .eq('token', token)
+      .select('id, address, expires_at, is_active, user_id, created_at')
+      .eq('token', mailboxToken)
+      .eq('user_id', user.id)
       .single();
 
-    if (!mailbox) {
+    if (mailboxError || !mailbox) {
       return Response.json({ error: 'Inbox not found' }, { status: 404 });
     }
 
@@ -147,30 +205,41 @@ if (!success) {
       return Response.json({ error: 'Inbox expired' }, { status: 404 });
     }
 
-    if (mailbox.user_id !== user.id) {
-      return Response.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    const { data: emails } = await supabase
+    const { data: emails, error: emailsError } = await supabaseAdmin
       .from('emails')
       .select('id, from_address, from_name, subject, body_html, body_text, received_at, is_read')
       .eq('mailbox_id', mailbox.id)
-      .order('received_at', { ascending: false });
+      .order('received_at', { ascending: false })
+      .limit(rules.maxEmails);
+
+    if (emailsError) {
+      console.error('Inbox emails load error:', emailsError);
+      return Response.json({ error: 'Failed to load emails' }, { status: 500 });
+    }
 
     const emailIds = (emails || []).map((e) => e.id);
 
     let attachmentsMap = {};
 
-    if (emailIds.length) {
-      const { data: attachments } = await supabase
+    if (emailIds.length > 0) {
+      const { data: attachments, error: attachmentsError } = await supabaseAdmin
         .from('attachments')
         .select('id, email_id, filename, mime_type, size_bytes, storage_path')
         .in('email_id', emailIds);
 
+      if (attachmentsError) {
+        console.error('Inbox attachments load error:', attachmentsError);
+        return Response.json({ error: 'Failed to load attachments' }, { status: 500 });
+      }
+
       attachmentsMap = (attachments || []).reduce((acc, a) => {
         if (!acc[a.email_id]) acc[a.email_id] = [];
         acc[a.email_id].push({
-          ...a,
+          id: a.id,
+          email_id: a.email_id,
+          filename: a.filename,
+          mime_type: a.mime_type,
+          size_bytes: a.size_bytes,
           public_url: formatAttachmentUrl(a.storage_path),
         });
         return acc;
@@ -182,13 +251,14 @@ if (!success) {
       attachments: attachmentsMap[e.id] || [],
     }));
 
-    // 🔥 LOG FOR DEBUG / SCALE
-    console.log(
-      `📥 Inbox fetch: user=${user.id} plan=${plan} emails=${enriched.length}`
-    );
-
     return Response.json({
-      mailbox,
+      mailbox: {
+        id: mailbox.id,
+        address: mailbox.address,
+        expires_at: mailbox.expires_at,
+        is_active: mailbox.is_active,
+        created_at: mailbox.created_at,
+      },
       emails: enriched,
       plan,
       limits: {
@@ -199,9 +269,12 @@ if (!success) {
         mailbox_email_count: enriched.length,
       },
     });
-
   } catch (err) {
     console.error('INBOX ERROR:', err);
     return Response.json({ error: 'Internal error' }, { status: 500 });
   }
+}
+
+export async function POST() {
+  return Response.json({ error: 'Method not allowed' }, { status: 405 });
 }
