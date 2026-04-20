@@ -6,7 +6,7 @@ import { rateLimit } from '@/app/lib/rate-limit';
 
 const limiter = rateLimit({ limit: 20, windowMs: 60 * 1000 });
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
@@ -38,6 +38,7 @@ const NOUNS = [
 ];
 
 const ROUTE_NAME = 'mailbox_create';
+const ADDRESS_ATTEMPTS = 12;
 
 const LIMITS = {
   guest: { perMinute: 5, perHour: 20 },
@@ -96,6 +97,40 @@ function hashIp(ip) {
   return crypto.createHash('sha256').update(String(ip)).digest('hex');
 }
 
+function getBearerToken(request) {
+  const authHeader =
+    request.headers.get('authorization') ||
+    request.headers.get('Authorization') ||
+    '';
+
+  if (!authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  return token || null;
+}
+
+function getUserClient(accessToken) {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
+}
+
+function isUniqueViolation(error) {
+  return error?.code === '23505';
+}
+
 async function enforceRateLimit({ request, userId }) {
   const ipHash = hashIp(getClientIp(request));
   const now = Date.now();
@@ -106,23 +141,35 @@ async function enforceRateLimit({ request, userId }) {
   const tier = userId ? 'user' : 'guest';
   const limits = LIMITS[tier];
 
-  const [{ count: minute }, { count: hour }] = await Promise.all([
-    supabase
+  const [minuteResult, hourResult] = await Promise.all([
+    supabaseAdmin
       .from('api_rate_limits')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('route', ROUTE_NAME)
       .eq('ip_hash', ipHash)
       .gte('created_at', minuteAgo),
 
-    supabase
+    supabaseAdmin
       .from('api_rate_limits')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('route', ROUTE_NAME)
       .eq('ip_hash', ipHash)
       .gte('created_at', hourAgo),
   ]);
 
-  if ((minute || 0) >= limits.perMinute) {
+  if (minuteResult.error || hourResult.error) {
+    console.error('Rate limit lookup error:', minuteResult.error || hourResult.error);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to verify rate limit' },
+    };
+  }
+
+  const minute = minuteResult.count || 0;
+  const hour = hourResult.count || 0;
+
+  if (minute >= limits.perMinute) {
     return {
       ok: false,
       status: 429,
@@ -130,7 +177,7 @@ async function enforceRateLimit({ request, userId }) {
     };
   }
 
-  if ((hour || 0) >= limits.perHour) {
+  if (hour >= limits.perHour) {
     return {
       ok: false,
       status: 429,
@@ -138,11 +185,20 @@ async function enforceRateLimit({ request, userId }) {
     };
   }
 
-  await supabase.from('api_rate_limits').insert({
+  const { error: insertError } = await supabaseAdmin.from('api_rate_limits').insert({
     route: ROUTE_NAME,
     ip_hash: ipHash,
     user_id: userId,
   });
+
+  if (insertError) {
+    console.error('Rate limit insert error:', insertError);
+    return {
+      ok: false,
+      status: 500,
+      body: { error: 'Failed to record rate limit' },
+    };
+  }
 
   return { ok: true };
 }
@@ -152,14 +208,15 @@ async function enforcePlanInboxLimit({ userId, plan }) {
 
   const rules = getPlanRules(plan);
 
-  const { count, error } = await supabase
+  const { count, error } = await supabaseAdmin
     .from('mailboxes')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('is_active', true)
     .gt('expires_at', new Date().toISOString());
 
   if (error) {
+    console.error('Inbox limit check error:', error);
     return {
       ok: false,
       status: 500,
@@ -186,13 +243,14 @@ async function preventBurstCreation(userId) {
 
   const recent = new Date(Date.now() - 10 * 1000).toISOString();
 
-  const { count, error } = await supabase
+  const { count, error } = await supabaseAdmin
     .from('mailboxes')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .gte('created_at', recent);
 
   if (error) {
+    console.error('Burst creation check error:', error);
     return {
       ok: false,
       status: 500,
@@ -211,24 +269,35 @@ async function preventBurstCreation(userId) {
   return { ok: true };
 }
 
-async function generateUniqueAddress(domain, attempts = 10) {
-  for (let i = 0; i < attempts; i += 1) {
+async function createMailboxWithRetries({ domain, userId, expiresAt }) {
+  for (let i = 0; i < ADDRESS_ATTEMPTS; i += 1) {
     const username = generateUsername();
-    const address = `${username}@${domain}`;
+    const address = `${username}@${domain.name}`;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('mailboxes')
-      .select('id')
-      .eq('address', address)
-      .limit(1);
+      .insert({
+        username,
+        address,
+        domain_id: domain.id,
+        token: crypto.randomBytes(24).toString('hex'),
+        user_id: userId,
+        expires_at: expiresAt.toISOString(),
+        is_active: true,
+      })
+      .select('id, username, address, token, expires_at, is_active, created_at')
+      .single();
 
-    if (error) {
-      throw new Error('Failed to verify unique mailbox address');
+    if (!error && data) {
+      return data;
     }
 
-    if (!data || data.length === 0) {
-      return { username, address };
+    if (isUniqueViolation(error)) {
+      continue;
     }
+
+    console.error('Mailbox insert error:', error);
+    throw new Error('Failed to create mailbox');
   }
 
   throw new Error('Failed to generate unique address');
@@ -247,25 +316,32 @@ export async function POST(request) {
     let plan = 'ghost';
     let extraEmailCredits = 0;
 
-    const auth = request.headers.get('Authorization');
+    const accessToken = getBearerToken(request);
 
-    if (auth?.startsWith('Bearer ')) {
-      const token = auth.replace('Bearer ', '').trim();
+    if (accessToken) {
+      const supabaseUser = getUserClient(accessToken);
 
       const {
         data: { user },
-      } = await supabase.auth.getUser(token);
+        error: authError,
+      } = await supabaseUser.auth.getUser();
+
+      if (authError) {
+        console.error('Mailbox create auth error:', authError);
+        return Response.json({ error: 'Invalid auth' }, { status: 401 });
+      }
 
       if (user) {
         userId = user.id;
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await supabaseAdmin
           .from('profiles')
           .select('plan, extra_email_credits')
           .eq('id', user.id)
           .maybeSingle();
 
         if (profileError) {
+          console.error('Mailbox create profile load error:', profileError);
           return Response.json(
             { error: 'Failed to load profile' },
             { status: 500 }
@@ -273,7 +349,7 @@ export async function POST(request) {
         }
 
         plan = normalizePlan(profile?.plan);
-        extraEmailCredits = Number(profile?.extra_email_credits || 0);
+        extraEmailCredits = Math.max(0, Number(profile?.extra_email_credits || 0));
       }
     }
 
@@ -286,13 +362,14 @@ export async function POST(request) {
     const limit = await enforcePlanInboxLimit({ userId, plan });
     if (!limit.ok) return Response.json(limit.body, { status: limit.status });
 
-    const { data: domains, error: domainsError } = await supabase
+    const { data: domains, error: domainsError } = await supabaseAdmin
       .from('domains')
       .select('id, name')
       .eq('is_active', true)
       .limit(1);
 
     if (domainsError) {
+      console.error('Domain load error:', domainsError);
       return Response.json({ error: 'Failed to load domain' }, { status: 500 });
     }
 
@@ -301,31 +378,23 @@ export async function POST(request) {
     }
 
     const domain = domains[0];
-    const { username, address } = await generateUniqueAddress(domain.name);
-
     const rules = getPlanRules(plan);
     const expiresAt = new Date(Date.now() + rules.lifetimeMs);
 
-    const { data, error } = await supabase
-      .from('mailboxes')
-      .insert({
-        username,
-        address,
-        domain_id: domain.id,
-        token: crypto.randomBytes(24).toString('hex'),
-        user_id: userId,
-        expires_at: expiresAt.toISOString(),
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
+    const mailbox = await createMailboxWithRetries({
+      domain,
+      userId,
+      expiresAt,
+    });
 
     return Response.json({
-      ...data,
+      id: mailbox.id,
+      username: mailbox.username,
+      address: mailbox.address,
+      token: mailbox.token,
+      expires_at: mailbox.expires_at,
+      is_active: mailbox.is_active,
+      created_at: mailbox.created_at,
       plan,
       extra_email_credits: extraEmailCredits,
     });
@@ -333,4 +402,8 @@ export async function POST(request) {
     console.error('CREATE ERROR:', err);
     return Response.json({ error: 'Internal error' }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return Response.json({ error: 'Method not allowed' }, { status: 405 });
 }
