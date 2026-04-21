@@ -367,15 +367,14 @@ export async function POST(request) {
     }
 
     const contentType = request.headers.get('content-type') || '';
-    if (!contentType.includes('multipart/form-data')) {
-      return Response.json(
-        { error: 'Invalid request format' },
-        { status: 400 }
-      );
-    }
 
-    const formData = await request.formData();
-    const turnstileToken = formData.get('turnstileToken');
+let turnstileToken = null;
+
+if (contentType.includes('multipart/form-data')) {
+  const formData = await request.formData();
+  turnstileToken = formData.get('turnstileToken');
+}
+
 
     const turnstileCheck = await verifyTurnstileToken({
       token: turnstileToken,
