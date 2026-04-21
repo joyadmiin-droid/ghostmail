@@ -1,4 +1,3 @@
-// force redeploy
 'use client';
 
 import { useState, useEffect, useCallback, Suspense, useMemo, useRef } from 'react';
@@ -20,6 +19,7 @@ function InboxContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null); // 'expired' | 'rate_limit' | 'auth' | 'not_found' | 'generic'
   const [selected, setSelected] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [copied, setCopied] = useState(false);
@@ -307,10 +307,41 @@ function InboxContent() {
           headers,
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        const message = data?.error || 'Failed to load inbox';
 
         if (!res.ok) {
-          throw new Error(data.error || 'Failed to load inbox');
+          if (res.status === 404 && message.toLowerCase().includes('expired')) {
+            setMailboxExpired(true);
+            setErrorType('expired');
+            setError('This inbox has expired.');
+            if (mailbox?.id) {
+              await cleanupExpiredMailbox(mailbox.id);
+            }
+            return;
+          }
+
+          if (res.status === 429) {
+            setErrorType('rate_limit');
+            setError(message);
+            return;
+          }
+
+          if (res.status === 401) {
+            setErrorType('auth');
+            setError(message);
+            return;
+          }
+
+          if (res.status === 404) {
+            setErrorType('not_found');
+            setError(message);
+            return;
+          }
+
+          setErrorType('generic');
+          setError(message);
+          return;
         }
 
         const nextMailbox = data.mailbox || null;
@@ -320,6 +351,7 @@ function InboxContent() {
           setMailbox(nextMailbox);
           setEmails([]);
           setMailboxExpired(true);
+          setErrorType('expired');
           await cleanupExpiredMailbox(nextMailbox.id);
           setError('This inbox has expired.');
           setLoading(false);
@@ -332,6 +364,7 @@ function InboxContent() {
         setMailboxExpired(false);
         hasCleanedExpiredMailbox.current = false;
         setError(null);
+        setErrorType(null);
 
         setSelected((prev) => {
           if (!nextEmails.length) return null;
@@ -340,13 +373,14 @@ function InboxContent() {
           return stillExists || nextEmails[0];
         });
       } catch (err) {
+        setErrorType('generic');
         setError(err.message || 'Failed to load inbox');
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [token, isLoggedIn, cleanupExpiredMailbox]
+    [token, isLoggedIn, cleanupExpiredMailbox, mailbox?.id]
   );
 
   useEffect(() => {
@@ -373,6 +407,8 @@ function InboxContent() {
       if (diff <= 0) {
         setTimeLeft('Expired');
         setMailboxExpired(true);
+        setErrorType('expired');
+        setError('This inbox has expired.');
         await cleanupExpiredMailbox(mailbox.id);
         return;
       }
@@ -425,29 +461,29 @@ function InboxContent() {
   }
 
   async function markRead(emailId) {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    const headers = {};
-    if (session?.access_token) {
-      headers.Authorization = `Bearer ${session.access_token}`;
+      const headers = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      await fetch('/api/mailbox/read?id=' + emailId, {
+        method: 'POST',
+        headers,
+      });
+
+      setEmails((prev) =>
+        prev.map((e) => (e.id === emailId ? { ...e, is_read: true } : e))
+      );
+      setSelected((prev) => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
+    } catch (err) {
+      console.error('Mark read failed:', err);
     }
-
-    await fetch('/api/mailbox/read?id=' + emailId, {
-      method: 'POST',
-      headers,
-    });
-
-    setEmails((prev) =>
-      prev.map((e) => (e.id === emailId ? { ...e, is_read: true } : e))
-    );
-    setSelected((prev) => (prev?.id === emailId ? { ...prev, is_read: true } : prev));
-  } catch (err) {
-    console.error('Mark read failed:', err);
   }
-}
 
   function openEmail(email) {
     setSelected(email);
@@ -540,7 +576,7 @@ function InboxContent() {
     );
   }
 
-  if (error || mailboxExpired) {
+  if (mailboxExpired || errorType === 'expired') {
     return (
       <main style={centerWrap}>
         <div style={emptyCard}>
@@ -553,6 +589,47 @@ function InboxContent() {
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="/dashboard" style={primaryLink}>Back to dashboard</a>
             <a href="/" style={secondaryLink}>Go home</a>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error && errorType) {
+    return (
+      <main style={centerWrap}>
+        <div style={emptyCard}>
+          <div style={emptyIcon}>
+            {errorType === 'rate_limit' ? '⏳' : errorType === 'auth' ? '🔐' : '⚠️'}
+          </div>
+          <h2 style={emptyTitle}>
+            {errorType === 'rate_limit'
+              ? 'Too many requests'
+              : errorType === 'auth'
+              ? 'Authentication required'
+              : errorType === 'not_found'
+              ? 'Inbox not found'
+              : 'Could not open inbox'}
+          </h2>
+          <p style={emptyText}>
+            {errorType === 'rate_limit'
+              ? 'Please wait a bit, then try again.'
+              : errorType === 'auth'
+              ? 'Please sign in again to continue.'
+              : errorType === 'not_found'
+              ? 'This inbox could not be found.'
+              : 'Something went wrong while loading this inbox.'}
+          </p>
+          <p style={errorText}>{error}</p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => fetchEmails(true)}
+              style={{ ...primaryLink, border: 'none', cursor: 'pointer' }}
+            >
+              Try again
+            </button>
+            <a href="/dashboard" style={secondaryLink}>Back to dashboard</a>
           </div>
         </div>
       </main>
@@ -668,7 +745,7 @@ function InboxContent() {
                 type="button"
                 onClick={async () => {
                   await fetchEmails(true);
-                  showToast('Inbox updated');
+                  if (!error) showToast('Inbox updated');
                 }}
                 disabled={refreshing}
                 className="action-btn"
