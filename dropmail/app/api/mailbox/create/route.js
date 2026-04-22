@@ -376,58 +376,61 @@ if (contentType.includes('multipart/form-data')) {
 }
 
 
-    const turnstileCheck = await verifyTurnstileToken({
-      token: turnstileToken,
-      ip,
-    });
+    let userId = null;
+let plan = 'ghost';
+let extraEmailCredits = 0;
 
-    if (!turnstileCheck.ok) {
+const accessToken = getBearerToken(request);
+
+if (accessToken) {
+  const supabaseUser = getUserClient(accessToken);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseUser.auth.getUser();
+
+  if (authError) {
+    console.error('Mailbox create auth error:', authError);
+    return Response.json({ error: 'Invalid auth' }, { status: 401 });
+  }
+
+  if (user) {
+    userId = user.id;
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('plan, extra_email_credits')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Mailbox create profile load error:', profileError);
       return Response.json(
-        { error: 'Security verification failed. Please try again.' },
-        { status: 403 }
+        { error: 'Failed to load profile' },
+        { status: 500 }
       );
     }
 
-    let userId = null;
-    let plan = 'ghost';
-    let extraEmailCredits = 0;
+    plan = normalizePlan(profile?.plan);
+    extraEmailCredits = Math.max(0, Number(profile?.extra_email_credits || 0));
+  }
+}
 
-    const accessToken = getBearerToken(request);
+// Require Turnstile only for non-authenticated requests
+if (!userId) {
+  const turnstileCheck = await verifyTurnstileToken({
+    token: turnstileToken,
+    ip,
+  });
 
-    if (accessToken) {
-      const supabaseUser = getUserClient(accessToken);
-
-      const {
-        data: { user },
-        error: authError,
-      } = await supabaseUser.auth.getUser();
-
-      if (authError) {
-        console.error('Mailbox create auth error:', authError);
-        return Response.json({ error: 'Invalid auth' }, { status: 401 });
-      }
-
-      if (user) {
-        userId = user.id;
-
-        const { data: profile, error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .select('plan, extra_email_credits')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('Mailbox create profile load error:', profileError);
-          return Response.json(
-            { error: 'Failed to load profile' },
-            { status: 500 }
-          );
-        }
-
-        plan = normalizePlan(profile?.plan);
-        extraEmailCredits = Math.max(0, Number(profile?.extra_email_credits || 0));
-      }
-    }
+  if (!turnstileCheck.ok) {
+    return Response.json(
+      { error: 'Security verification failed. Please try again.' },
+      { status: 403 }
+    );
+  }
+}
 
     const rate = await enforceRateLimit({ request, userId });
     if (!rate.ok) return Response.json(rate.body, { status: rate.status });
