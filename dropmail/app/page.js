@@ -548,8 +548,18 @@ export default function Home() {
           </div>
 
           <div className={styles.heroRight}>
-            <div className={styles.floatIconLeft}>✉️</div>
-            <div className={styles.floatIconRight}>🛡️</div>
+            <div className={styles.floatIconLeft}>
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+    <path d="M4 6L12 12L20 6" stroke="#6d49ff" strokeWidth="2"/>
+    <rect x="4" y="6" width="16" height="12" rx="3" stroke="#6d49ff" strokeWidth="2"/>
+  </svg>
+</div>
+            <div className={styles.floatIconRight}>
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+    <path d="M12 3L20 6V12C20 17 16.5 20.5 12 22C7.5 20.5 4 17 4 12V6L12 3Z"
+      stroke="#6d49ff" strokeWidth="2"/>
+  </svg>
+</div>
 
             <div className={styles.previewCard}>
               <div className={styles.ghostFloatWrap}>
@@ -591,8 +601,10 @@ export default function Home() {
                 ).map((item) => (
                   <div key={`${item.brand}-${item.subject}`} className={styles.previewItem}>
                     <div className={styles.previewBrandMark}>
-                      {item.brand[0]}
-                    </div>
+  {item.brand === 'Google' && <img src="/logos/google.svg" />}
+  {item.brand === 'Slack' && <img src="/logos/slack.svg" />}
+  {item.brand === 'GitHub' && <img src="/logos/github.svg" />}
+</div>
 
                     <div className={styles.previewItemText}>
                       <div className={styles.previewItemBrand}>{item.brand}</div>
