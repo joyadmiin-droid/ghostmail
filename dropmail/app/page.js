@@ -11,9 +11,52 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+const heroPreviewEmails = [
+  { brand: 'Google', subject: 'Verify your Google account', time: '10:24 AM' },
+  { brand: 'Slack', subject: 'Your code is 984321', time: '10:21 AM' },
+  { brand: 'GitHub', subject: 'Please verify your email address', time: '10:15 AM' },
+];
+
+const featureCards = [
+  {
+    icon: '📭',
+    title: 'Keep your real inbox clean',
+    desc: 'Stop spam before it reaches your primary email.',
+  },
+  {
+    icon: '</>',
+    title: 'Test without limits',
+    desc: 'Create inboxes fast for signups, OTP flows, and QA checks.',
+  },
+  {
+    icon: '🛡️',
+    title: 'Protect your privacy',
+    desc: 'Use temporary inboxes without exposing your real identity.',
+  },
+  {
+    icon: '⚡',
+    title: 'Instant & simple',
+    desc: 'Generate a working inbox in one click with no friction.',
+  },
+  {
+    icon: '🕒',
+    title: 'Save time',
+    desc: 'Skip fake accounts and test email flows faster.',
+  },
+];
+
+const useCasePills = ['Developers', 'QA Testers', 'Marketers', 'Students', 'Everyone'];
+
+const stats = [
+  { value: '50K+', label: 'Happy Users' },
+  { value: '2M+', label: 'Emails Created' },
+  { value: '99.9%', label: 'Uptime' },
+  { value: '100%', label: 'Private & Secure' },
+];
+
 export default function Home() {
   const [plan, setPlan] = useState('free');
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [mailbox, setMailbox] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -110,7 +153,7 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
 
-    const savedTheme = localStorage.getItem('ghostmail-theme') || 'dark';
+    const savedTheme = localStorage.getItem('ghostmail-theme') || 'light';
     setTheme(savedTheme);
     document.documentElement.classList.toggle('light', savedTheme === 'light');
 
@@ -202,9 +245,7 @@ export default function Home() {
         size: 'invisible',
         callback: async (token) => {
           try {
-            if (!pendingMailboxRequestRef.current) {
-              return;
-            }
+            if (!pendingMailboxRequestRef.current) return;
             await requestMailbox(token);
           } catch (err) {
             console.error('Generate mailbox error:', err);
@@ -313,7 +354,7 @@ export default function Home() {
 
   function formatCount(n) {
     if (n === null) return '...';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
     return n.toString();
   }
 
@@ -370,14 +411,13 @@ export default function Home() {
       }
 
       setFeedbackSuccess('✅ Feedback submitted successfully.');
-
       setFeedbackText('');
       setFeedbackImage(null);
       setFeedbackImageName('');
 
       setTimeout(() => {
         resetFeedbackModal();
-      }, 2500);
+      }, 2200);
     } catch (err) {
       setFeedbackError(err?.message || 'Could not send feedback.');
     } finally {
@@ -398,11 +438,11 @@ export default function Home() {
         <div className={styles.bg} />
 
         <header className={styles.header}>
-          <div className={styles.logoWrap}>
-            <div className={styles.logo}>
-              <span className={styles.logoIcon}>&#10022;</span>
-              <span className={styles.logoText}>GhostMail</span>
-            </div>
+          <div className={styles.brandSide}>
+            <a href="/" className={styles.brand}>
+              <GhostLogo className={styles.brandLogo} />
+              <span className={styles.brandText}>GhostMail</span>
+            </a>
 
             <button
               type="button"
@@ -417,306 +457,444 @@ export default function Home() {
             </button>
           </div>
 
-          <div className={styles.navLinks}>
+          <nav className={styles.nav}>
+            <a href="#features">Features</a>
+            <a href="#how">How it works</a>
+            <a href="#use-cases">Use cases</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+
+            {user?.email?.toLowerCase() === 'joyadmiin@gmail.com' ? (
+              <a href="/admin/feedback">Admin</a>
+            ) : null}
+
             <button
               type="button"
               onClick={toggleTheme}
-              className={styles.themeToggleIcon}
+              className={styles.themeToggle}
               aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
               title={theme === 'light' ? 'Dark mode' : 'Light mode'}
             >
               {theme === 'light' ? '🌙' : '☀️'}
             </button>
 
-            <a href="/about">About</a>
-            <a href="/terms">Terms</a>
-            <a href="/privacy">Privacy</a>
-
-            {user?.email?.toLowerCase() === 'joyadmiin@gmail.com' ? (
-              <a href="/admin/feedback">Admin</a>
-            ) : null}
-
-            <a
-              href={user ? '/dashboard' : '/login'}
-              className={styles.navCta}
-            >
-              {user ? 'Dashboard' : 'Sign in'}
+            <a href={user ? '/dashboard' : '/login'} className={styles.navGhostBtn}>
+              {user ? 'Dashboard' : 'Log in'}
             </a>
-          </div>
+
+            <a href={user ? '/dashboard' : '/login'} className={styles.navPrimaryBtn}>
+              {user ? 'Open Dashboard' : 'Get Started Free'}
+            </a>
+          </nav>
         </header>
 
         <section className={styles.hero}>
-          <div className={styles.tagline}>
-            PRIVATE EMAIL FOR TESTING
+          <div className={styles.heroLeft}>
+            <div className={styles.heroBadge}>
+              Trusted by developers & privacy-focused users
+            </div>
+
+            <h1 className={styles.heroTitle}>
+              Disposable Email.
+              <span> Real Privacy.</span>
+            </h1>
+
+            <p className={styles.heroSub}>
+              Create private inboxes in one click. No sign-ups. No spam. No tracking.
+            </p>
+
+            <div className={styles.heroActions}>
+              <div
+                ref={turnstileContainerRef}
+                style={{ display: 'none' }}
+                aria-hidden="true"
+              />
+
+              <button
+                className={styles.primaryCta}
+                onClick={generateMailbox}
+                disabled={loading || !turnstileSiteKey}
+              >
+                {loading ? (
+                  <>
+                    <span className={styles.spinner}></span>
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Email Now →'
+                )}
+              </button>
+
+              <a href="#how" className={styles.secondaryCta}>
+                How it Works
+              </a>
+            </div>
+
+            {error ? <p className={styles.errorMsg}>{error}</p> : null}
+
+            <div className={styles.trustRow}>
+              <span>No registration</span>
+              <span>Auto-delete</span>
+              <span>100% private</span>
+              <span>Instant inbox</span>
+            </div>
+
+            <div className={styles.liveRow}>
+              <p className={styles.tokenNote}>
+                Generate first. Login only when you want to open and manage inboxes.
+              </p>
+
+              {totalEmails !== null && (
+                <p className={styles.liveStat}>
+                  {formatCount(totalEmails)} emails received today
+                </p>
+              )}
+            </div>
           </div>
 
-          <h1 className={styles.headline}>
-            Private inboxes for
-            <br />
-            <span className={styles.accentLine}>developers & QA.</span>
-          </h1>
+          <div className={styles.heroRight}>
+            <div className={styles.floatIconLeft}>✉️</div>
+            <div className={styles.floatIconRight}>🛡️</div>
 
-          <p className={styles.sub}>
-            Generate short-lived email inboxes fast. Test flows, receive emails, protect your real inbox.
-          </p>
-
-          {totalEmails !== null && (
-            <p className={styles.liveStat}>
-              {formatCount(totalEmails)} emails received today
-            </p>
-          )}
-
-          <div className={styles.card}>
-            {!mailbox ? (
-              <div className={styles.cardInner}>
-                <div
-                  ref={turnstileContainerRef}
-                  style={{ display: 'none' }}
-                  aria-hidden="true"
-                />
-
-                <button
-                  className={styles.btnPrimary}
-                  onClick={generateMailbox}
-                  disabled={loading || !turnstileSiteKey}
-                >
-                  {loading ? (
-                    <>
-                      <span className={styles.spinner}></span>
-                      Generating...
-                    </>
-                  ) : (
-                    'Generate My Address'
-                  )}
-                </button>
-
-                {error && <p className={styles.errorMsg}>{error}</p>}
-
-                <p className={styles.tokenNote}>
-                  Generate first. Login only when you want to open and manage inboxes.
-                </p>
+            <div className={styles.previewCard}>
+              <div className={styles.ghostFloatWrap}>
+                <GhostLogo className={styles.heroGhost} />
               </div>
-            ) : (
-              <div className={styles.cardInner}>
-                <div className={styles.addressRow}>
-                  <span className={styles.addressLabel}>Your temporary inbox</span>
 
-                  <div className={styles.addressBox}>
-                    <span className={styles.addressText}>{mailbox.address}</span>
+              <div className={styles.previewTop}>
+                <div>
+                  <h3 className={styles.previewTitle}>Your inbox</h3>
+
+                  <div className={styles.previewAddressRow}>
+                    <span className={styles.previewAddress}>
+                      {mailbox?.address || 'brave.panda@ghostmail.io'}
+                    </span>
 
                     <button
-                      onClick={() => copyAddress(mailbox.address)}
-                      className={`${styles.copyBtn} ${copied === mailbox.address ? styles.copied : ''}`}
                       type="button"
+                      className={styles.copyMiniBtn}
+                      onClick={() =>
+                        copyAddress(mailbox?.address || 'brave.panda@ghostmail.io')
+                      }
                     >
-                      {copied === mailbox.address ? 'Copied' : 'Copy'}
+                      {copied === (mailbox?.address || 'brave.panda@ghostmail.io') ? '✓' : '⧉'}
                     </button>
                   </div>
                 </div>
 
-                <div className={styles.metaRow}>
-                  <span className={styles.activePill}>● Active</span>
-                  <span className={styles.expiryText}>
-                    {getExpiryLabel(mailbox.expires_at)}
-                  </span>
-                </div>
-
-                <div className={styles.actionRow}>
-                  <button
-                    onClick={handleOpenInbox}
-                    className={`${styles.btnSecondary} ${styles.linkButton}`}
-                    type="button"
-                  >
-                    Open Inbox
-                  </button>
-
-                  <button
-                    onClick={generateMailbox}
-                    className={styles.btnSecondary}
-                    type="button"
-                  >
-                    New Address
-                  </button>
-                </div>
-
-                {error && <p className={styles.errorMsg}>{error}</p>}
-
-                <p className={styles.tokenNote}>
-                  Fast for testing. Login only when needed.
-                </p>
+                <span className={styles.livePill}>Live</span>
               </div>
-            )}
+
+              <div className={styles.previewList}>
+                {(mailbox
+                  ? [
+                      { brand: 'GhostMail', subject: 'Inbox ready to use', time: getExpiryLabel(mailbox.expires_at) },
+                      { brand: 'Copy', subject: 'Use this inbox in any signup flow', time: 'Now' },
+                      { brand: 'Open', subject: 'Open inbox to view incoming emails', time: 'Ready' },
+                    ]
+                  : heroPreviewEmails
+                ).map((item) => (
+                  <div key={`${item.brand}-${item.subject}`} className={styles.previewItem}>
+                    <div className={styles.previewBrandMark}>
+                      {item.brand[0]}
+                    </div>
+
+                    <div className={styles.previewItemText}>
+                      <div className={styles.previewItemBrand}>{item.brand}</div>
+                      <div className={styles.previewItemSubject}>{item.subject}</div>
+                    </div>
+
+                    <div className={styles.previewItemMeta}>
+                      <span>{item.time}</span>
+                      <i />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.previewBottom}>
+                {mailbox ? (
+                  <div className={styles.previewActionRow}>
+                    <button
+                      type="button"
+                      className={styles.previewPrimaryBtn}
+                      onClick={handleOpenInbox}
+                    >
+                      Open Inbox
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.previewSecondaryBtn}
+                      onClick={generateMailbox}
+                    >
+                      New Address
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.viewAllBtn}
+                    onClick={generateMailbox}
+                  >
+                    View all emails →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.logoStrip}>
+          <p>Used by developers, testers & privacy-focused people</p>
+          <div className={styles.logoRow}>
+            <span>Google</span>
+            <span>Microsoft</span>
+            <span>GitHub</span>
+            <span>Airbnb</span>
+            <span>Amazon</span>
+            <span>Stripe</span>
+          </div>
+        </section>
+
+        <section id="features" className={styles.featuresSection}>
+          <div className={styles.sectionHeading}>
+            <h2>
+              Why developers & testers love <span>GhostMail</span>
+            </h2>
           </div>
 
-          <section className={styles.infoGrid}>
-            <div className={styles.infoCard}>
-              <p className={styles.infoEyebrow}>What is GhostMail</p>
-              <h3 className={styles.infoTitle}>A private inbox tool for testing.</h3>
-              <p className={styles.infoText}>
-                Generate temporary inboxes, receive emails, and keep your primary email out of test flows.
-              </p>
+          <div className={styles.featureGrid}>
+            {featureCards.map((card) => (
+              <div key={card.title} className={styles.featureCard}>
+                <div className={styles.featureIcon}>{card.icon}</div>
+                <h3>{card.title}</h3>
+                <p>{card.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="use-cases" className={styles.useCasesSection}>
+          <div className={styles.useCasesLeft}>
+            <h2>
+              Built for <span>developers.</span>
+              <br />
+              Useful for <span>everyone.</span>
+            </h2>
+
+            <p>
+              Whether you’re testing, signing up, or just protecting your inbox,
+              GhostMail helps you stay fast and private.
+            </p>
+
+            <div className={styles.useCasePills}>
+              {useCasePills.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.statsGrid}>
+            {stats.map((stat) => (
+              <div key={stat.label} className={styles.statCard}>
+                <strong>{stat.value}</strong>
+                <span>{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="how" className={styles.howSection}>
+          <div className={styles.sectionHeading}>
+            <p className={styles.sectionEyebrow}>How it works</p>
+            <h2>Fast flow. Zero friction.</h2>
+          </div>
+
+          <div className={styles.howGrid}>
+            <div className={styles.howCard}>
+              <span>01</span>
+              <h3>Generate an inbox</h3>
+              <p>Create a new temporary address from the homepage in one click.</p>
             </div>
 
-            <div className={styles.infoCard}>
-              <p className={styles.infoEyebrow}>Problems it solves</p>
-              <ul className={styles.infoList}>
-                <li>Testing signup and password reset emails</li>
-                <li>Protecting your real inbox from noise</li>
-                <li>Checking integrations and transactional emails</li>
-                <li>Running QA flows with fast disposable inboxes</li>
-              </ul>
+            <div className={styles.howCard}>
+              <span>02</span>
+              <h3>Use it anywhere</h3>
+              <p>Sign up, test OTPs, receive password resets, and protect your real email.</p>
             </div>
 
-            <div className={styles.infoCard}>
-              <p className={styles.infoEyebrow}>Why it feels better</p>
-              <ul className={styles.infoList}>
-                <li>Generate inboxes from homepage</li>
-                <li>Login only when needed</li>
-                <li>Short-lived by default</li>
-                <li>Built for dev and QA workflows</li>
-              </ul>
+            <div className={styles.howCard}>
+              <span>03</span>
+              <h3>Open only when needed</h3>
+              <p>Login when you want to manage or open inboxes. Keep the flow fast.</p>
             </div>
-          </section>
+          </div>
         </section>
 
         <section id="pricing" className={styles.pricingSection}>
-          <div className={styles.pricingInner}>
-            <div className={styles.pricingTop}>
-              <p className={styles.pricingEyebrow}>Plans</p>
-              <h2 className={styles.pricingTitle}>Simple pricing</h2>
-              <p className={styles.pricingSub}>
-                Start free. Upgrade when you need more inboxes and longer lifetimes.
-              </p>
+          <div className={styles.pricingTop}>
+            <p className={styles.sectionEyebrow}>Plans</p>
+            <h2>Simple pricing</h2>
+            <p>Start free. Upgrade when you need more inboxes and longer lifetimes.</p>
 
-              <div className={styles.billingToggle}>
-                {[
-                  { key: 'monthly', label: 'Monthly' },
-                  { key: '3m', label: '3 Months' },
-                  { key: '6m', label: '6 Months' },
-                  { key: 'yearly', label: 'Yearly' },
-                ].map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className={`${styles.billingToggleBtn} ${
-                      billingCycle === option.key ? styles.billingToggleBtnActive : ''
-                    }`}
-                    onClick={() => setBillingCycle(option.key)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+            <div className={styles.billingToggle}>
+              {[
+                { key: 'monthly', label: 'Monthly' },
+                { key: '3m', label: '3 Months' },
+                { key: '6m', label: '6 Months' },
+                { key: 'yearly', label: 'Yearly' },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`${styles.billingToggleBtn} ${
+                    billingCycle === option.key ? styles.billingToggleBtnActive : ''
+                  }`}
+                  onClick={() => setBillingCycle(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.pricingGrid}>
+            <div className={styles.pricingCard}>
+              <div className={styles.planHeader}>
+                <span className={styles.planIcon}>👻</span>
+                <div>
+                  <h3>Ghost</h3>
+                  <p>Free forever</p>
+                </div>
               </div>
+
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPrice}>$0</span>
+                <span className={styles.planPeriod}>/ month</span>
+              </div>
+
+              <div className={styles.planFeatures}>
+                <p>• 1 private inbox at a time</p>
+                <p>• 10-minute expiry</p>
+                <p>• Fast generation</p>
+                <p>• Login only when opening inbox</p>
+              </div>
+
+              <button
+                className={styles.planButton}
+                onClick={() => {
+                  window.location.href = '/login';
+                }}
+                type="button"
+              >
+                Start free
+              </button>
             </div>
 
-            <div className={styles.pricingGrid}>
-              <div className={styles.pricingCard}>
-                <div className={styles.planHeader}>
-                  <span className={styles.planIcon}>👻</span>
-                  <div>
-                    <h3 className={styles.planName}>Ghost</h3>
-                    <p className={styles.planDesc}>Free forever</p>
-                  </div>
-                </div>
+            <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
+              <div className={styles.pricingBadge}>Most popular</div>
 
-                <div className={styles.planPriceRow}>
-                  <span className={styles.planPrice}>$0</span>
-                  <span className={styles.planPeriod}>/ month</span>
+              <div className={styles.planHeader}>
+                <span className={styles.planIcon}>⚡</span>
+                <div>
+                  <h3>Phantom</h3>
+                  <p>For heavier testing</p>
                 </div>
-
-                <div className={styles.planFeatures}>
-                  <p>• 1 private inbox at a time</p>
-                  <p>• 10-minute expiry</p>
-                  <p>• Fast generation</p>
-                  <p>• Login only when opening inbox</p>
-                </div>
-
-                <button
-                  className={styles.planButton}
-                  onClick={() => {
-                    window.location.href = '/login';
-                  }}
-                  type="button"
-                >
-                  Start free
-                </button>
               </div>
 
-              <div className={`${styles.pricingCard} ${styles.pricingFeatured}`}>
-                <div className={styles.pricingBadge}>Most popular</div>
-
-                <div className={styles.planHeader}>
-                  <span className={styles.planIcon}>⚡</span>
-                  <div>
-                    <h3 className={styles.planName}>Phantom</h3>
-                    <p className={styles.planDesc}>For heavier testing</p>
-                  </div>
-                </div>
-
-                <div className={styles.planPriceRow}>
-                  <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
-                  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
-                </div>
-
-                <div className={styles.planFeatures}>
-                  <p>• Up to 5 active inboxes</p>
-                  <p>• 24-hour expiry window</p>
-                  <p>• Better QA workflow</p>
-                  <p>
-                    • {billingCycle === 'monthly'
-                      ? 'Flexible monthly billing'
-                      : billingCycle === '3m'
-                      ? '3 months upfront'
-                      : billingCycle === '6m'
-                      ? '6 months upfront'
-                      : 'Best yearly value'}
-                  </p>
-                </div>
-
-                <a
-                  href={getPaidPlanHref('phantom')}
-                  className={`${styles.planButton} ${styles.planButtonLink}`}
-                >
-                  Get Phantom
-                </a>
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPrice}>{formatPlanPrice(phantomPricing.price)}</span>
+                <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
               </div>
 
-              <div className={styles.pricingCard}>
-                <div className={styles.planHeader}>
-                  <span className={styles.planIcon}>🚀</span>
-                  <div>
-                    <h3 className={styles.planName}>Spectre</h3>
-                    <p className={styles.planDesc}>For power users</p>
-                  </div>
-                </div>
-
-                <div className={styles.planPriceRow}>
-                  <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
-                  <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
-                </div>
-
-                <div className={styles.planFeatures}>
-                  <p>• Unlimited active inboxes</p>
-                  <p>• Up to 1-year inbox expiry</p>
-                  <p>• High-volume workflows</p>
-                  <p>
-                    • {billingCycle === 'monthly'
-                      ? 'Flexible monthly billing'
-                      : billingCycle === '3m'
-                      ? '3 months upfront'
-                      : billingCycle === '6m'
-                      ? '6 months upfront'
-                      : 'Best yearly value'}
-                  </p>
-                </div>
-
-                <a
-                  href={getPaidPlanHref('spectre')}
-                  className={`${styles.planButton} ${styles.planButtonLink}`}
-                >
-                  Get Spectre
-                </a>
+              <div className={styles.planFeatures}>
+                <p>• Up to 5 active inboxes</p>
+                <p>• 24-hour expiry window</p>
+                <p>• Better QA workflow</p>
+                <p>
+                  • {billingCycle === 'monthly'
+                    ? 'Flexible monthly billing'
+                    : billingCycle === '3m'
+                    ? '3 months upfront'
+                    : billingCycle === '6m'
+                    ? '6 months upfront'
+                    : 'Best yearly value'}
+                </p>
               </div>
+
+              <a
+                href={getPaidPlanHref('phantom')}
+                className={styles.planButton}
+              >
+                Get Phantom
+              </a>
+            </div>
+
+            <div className={styles.pricingCard}>
+              <div className={styles.planHeader}>
+                <span className={styles.planIcon}>🚀</span>
+                <div>
+                  <h3>Spectre</h3>
+                  <p>For power users</p>
+                </div>
+              </div>
+
+              <div className={styles.planPriceRow}>
+                <span className={styles.planPrice}>{formatPlanPrice(spectrePricing.price)}</span>
+                <span className={styles.planPeriod}>{getBillingLabel(billingCycle)}</span>
+              </div>
+
+              <div className={styles.planFeatures}>
+                <p>• Unlimited active inboxes</p>
+                <p>• Up to 1-year inbox expiry</p>
+                <p>• High-volume workflows</p>
+                <p>
+                  • {billingCycle === 'monthly'
+                    ? 'Flexible monthly billing'
+                    : billingCycle === '3m'
+                    ? '3 months upfront'
+                    : billingCycle === '6m'
+                    ? '6 months upfront'
+                    : 'Best yearly value'}
+                </p>
+              </div>
+
+              <a
+                href={getPaidPlanHref('spectre')}
+                className={styles.planButton}
+              >
+                Get Spectre
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className={styles.faqSection}>
+          <div className={styles.sectionHeading}>
+            <p className={styles.sectionEyebrow}>FAQ</p>
+            <h2>Questions people ask first</h2>
+          </div>
+
+          <div className={styles.faqGrid}>
+            <div className={styles.faqCard}>
+              <h3>Do I need an account to generate an inbox?</h3>
+              <p>No. Generate first. Login only when you want to open and manage inboxes.</p>
+            </div>
+
+            <div className={styles.faqCard}>
+              <h3>Is GhostMail for real users or testing?</h3>
+              <p>It’s built mainly for developers, QA workflows, and privacy-conscious signups.</p>
+            </div>
+
+            <div className={styles.faqCard}>
+              <h3>How long do inboxes live?</h3>
+              <p>That depends on your plan. Free is short-lived, paid plans unlock longer expiry windows.</p>
+            </div>
+
+            <div className={styles.faqCard}>
+              <h3>Can I use it to protect my main inbox?</h3>
+              <p>Yes. That’s one of the main reasons people use GhostMail.</p>
             </div>
           </div>
         </section>
@@ -743,14 +921,8 @@ export default function Home() {
         </footer>
 
         {showFeedback && (
-          <div
-            className={styles.feedbackOverlay}
-            onClick={resetFeedbackModal}
-          >
-            <div
-              className={styles.feedbackModal}
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className={styles.feedbackOverlay} onClick={resetFeedbackModal}>
+            <div className={styles.feedbackModal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.feedbackHeader}>
                 <div>
                   <p className={styles.feedbackEyebrow}>Feedback</p>
@@ -789,9 +961,7 @@ export default function Home() {
               </label>
 
               {feedbackSuccess ? (
-                <div className={styles.feedbackSuccess}>
-                  {feedbackSuccess}
-                </div>
+                <div className={styles.feedbackSuccess}>{feedbackSuccess}</div>
               ) : null}
 
               <textarea
@@ -831,5 +1001,35 @@ export default function Home() {
         )}
       </main>
     </>
+  );
+}
+
+function GhostLogo({ className = '' }) {
+  return (
+    <svg
+      viewBox="0 0 128 128"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M64 12C41.356 12 23 30.356 23 53V88.5C23 95.956 29.044 102 36.5 102C42.419 102 47.447 98.183 49.289 92.875C50.867 98.365 55.93 102.375 62 102.375C68.07 102.375 73.133 98.365 74.711 92.875C76.553 98.183 81.581 102 87.5 102C94.956 102 101 95.956 101 88.5V53C101 30.356 82.644 12 60 12H64Z"
+        fill="currentColor"
+      />
+      <path
+        d="M64 12C86.644 12 105 30.356 105 53V88.5C105 95.956 98.956 102 91.5 102C85.581 102 80.553 98.183 78.711 92.875C77.133 98.365 72.07 102.375 66 102.375C59.93 102.375 54.867 98.365 53.289 92.875C51.447 98.183 46.419 102 40.5 102C33.044 102 27 95.956 27 88.5V53C27 30.356 45.356 12 68 12H64Z"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinejoin="round"
+      />
+      <circle cx="49" cy="50" r="6" fill="#1e153a" />
+      <circle cx="79" cy="50" r="6" fill="#1e153a" />
+      <path
+        d="M50 70C57 77 71 77 78 70"
+        stroke="#1e153a"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
