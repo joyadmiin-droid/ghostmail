@@ -440,10 +440,9 @@ export default function Home() {
         <header className={styles.header}>
           <div className={styles.brandSide}>
             <a href="/" className={styles.brand}>
-  <img
-    src="/brand/ghostmail-logo.png"
-    alt="GhostMail"
-    className={styles.brandImage}
+              <GhostLogo className={styles.brandLogo} />
+              <span className={styles.brandText}>GhostMail</span>
+            </a>
 
             <button
               type="button"
@@ -459,29 +458,29 @@ export default function Home() {
           </div>
 
           <nav className={styles.navCenter}>
-  <a href="#features">Features</a>
-  <a href="#how">How it works</a>
-  <a href="#pricing">Pricing</a>
-  <a href="#faq">FAQ</a>
-</nav>
+            <a href="#features">Features</a>
+            <a href="#how">How it works</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+          </nav>
 
-<div className={styles.navRight}>
-  <button
-    type="button"
-    onClick={toggleTheme}
-    className={styles.themeToggle}
-  >
-    {theme === 'light' ? '🌙' : '☀️'}
-  </button>
+          <div className={styles.navRight}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={styles.themeToggle}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
 
-  <a href={user ? '/dashboard' : '/login'} className={styles.navGhostBtn}>
-    {user ? 'Dashboard' : 'Log in'}
-  </a>
+            <a href={user ? '/dashboard' : '/login'} className={styles.navGhostBtn}>
+              {user ? 'Dashboard' : 'Log in'}
+            </a>
 
-  <a href={user ? '/dashboard' : '/login'} className={styles.navPrimaryBtn}>
-    {user ? 'Open Dashboard' : 'Get Started Free'}
-  </a>
-</div>
+            <a href={user ? '/dashboard' : '/login'} className={styles.navPrimaryBtn}>
+              {user ? 'Open Dashboard' : 'Get Started Free'}
+            </a>
+          </div>
         </header>
 
         <section className={styles.hero}>
@@ -493,7 +492,7 @@ export default function Home() {
             <h1 className={styles.heroTitle}>
               <span className={styles.heroLine1}>Disposable Email.</span>
               <span className={styles.heroLine2}>Real Privacy.</span>
-           </h1>
+            </h1>
 
             <p className={styles.heroSub}>
               Create private inboxes in one click. No sign-ups. No spam. No tracking.
@@ -550,17 +549,21 @@ export default function Home() {
 
           <div className={styles.heroRight}>
             <div className={styles.floatIconLeft}>
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-    <path d="M4 6L12 12L20 6" stroke="#6d49ff" strokeWidth="2"/>
-    <rect x="4" y="6" width="16" height="12" rx="3" stroke="#6d49ff" strokeWidth="2"/>
-  </svg>
-</div>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6L12 12L20 6" stroke="#6d49ff" strokeWidth="2" />
+                <rect x="4" y="6" width="16" height="12" rx="3" stroke="#6d49ff" strokeWidth="2" />
+              </svg>
+            </div>
+
             <div className={styles.floatIconRight}>
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-    <path d="M12 3L20 6V12C20 17 16.5 20.5 12 22C7.5 20.5 4 17 4 12V6L12 3Z"
-      stroke="#6d49ff" strokeWidth="2"/>
-  </svg>
-</div>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 3L20 6V12C20 17 16.5 20.5 12 22C7.5 20.5 4 17 4 12V6L12 3Z"
+                  stroke="#6d49ff"
+                  strokeWidth="2"
+                />
+              </svg>
+            </div>
 
             <div className={styles.previewCard}>
               <div className={styles.ghostFloatWrap}>
@@ -594,16 +597,26 @@ export default function Home() {
               <div className={styles.previewList}>
                 {(mailbox
                   ? [
-                      { brand: 'GhostMail', subject: 'Inbox ready to use', time: getExpiryLabel(mailbox.expires_at) },
-                      { brand: 'Copy', subject: 'Use this inbox in any signup flow', time: 'Now' },
-                      { brand: 'Open', subject: 'Open inbox to view incoming emails', time: 'Ready' },
+                      {
+                        brand: 'GhostMail',
+                        subject: 'Inbox ready to use',
+                        time: getExpiryLabel(mailbox.expires_at),
+                      },
+                      {
+                        brand: 'Copy',
+                        subject: 'Use this inbox in any signup flow',
+                        time: 'Now',
+                      },
+                      {
+                        brand: 'Open',
+                        subject: 'Open inbox to view incoming emails',
+                        time: 'Ready',
+                      },
                     ]
                   : heroPreviewEmails
                 ).map((item) => (
                   <div key={`${item.brand}-${item.subject}`} className={styles.previewItem}>
-                    <div className={styles.previewBrandMark}>
-  {item.brand[0]}
-</div>
+                    <div className={styles.previewBrandMark}>{item.brand[0]}</div>
 
                     <div className={styles.previewItemText}>
                       <div className={styles.previewItemBrand}>{item.brand}</div>
@@ -799,10 +812,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <a
-                href={getPaidPlanHref('phantom')}
-                className={styles.planButton}
-              >
+              <a href={getPaidPlanHref('phantom')} className={styles.planButton}>
                 Get Phantom
               </a>
             </div>
@@ -836,10 +846,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <a
-                href={getPaidPlanHref('spectre')}
-                className={styles.planButton}
-              >
+              <a href={getPaidPlanHref('spectre')} className={styles.planButton}>
                 Get Spectre
               </a>
             </div>
