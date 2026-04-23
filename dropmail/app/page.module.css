@@ -1630,20 +1630,22 @@
   gap: 6px;
   line-height: 0.94;
   letter-spacing: -0.06em;
-  max-width: 760px;
+  max-width: 900px;
+}
+
+.heroLine1,
+.heroLine2 {
+  display: block;
+  white-space: nowrap;
+  font-size: clamp(64px, 7vw, 96px);
+  font-weight: 900;
 }
 
 .heroLine1 {
-  font-size: clamp(64px, 7vw, 96px);
-  font-weight: 900;
   color: #0f1230;
-  display: block;
 }
 
 .heroLine2 {
-  font-size: clamp(64px, 7vw, 96px);
-  font-weight: 900;
-  display: block;
   background: linear-gradient(90deg, #7c5cff 0%, #5b31ea 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1704,7 +1706,7 @@
   }
 
   .heroTitle {
-    max-width: 700px;
+    max-width: 900px;
   }
 }
 
@@ -1713,6 +1715,7 @@
   .heroLine1,
   .heroLine2 {
     font-size: clamp(42px, 12vw, 68px);
+    white-space: nowrap;
   }
 
   .floatIconLeft,
@@ -1815,7 +1818,7 @@
 
   .heroLine1,
   .heroLine2 {
-    white-space: normal !important;
+    white-space: nowrap !important;
     font-size: clamp(38px, 12vw, 58px) !important;
     letter-spacing: -0.05em;
   }

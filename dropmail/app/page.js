@@ -440,9 +440,10 @@ export default function Home() {
         <header className={styles.header}>
           <div className={styles.brandSide}>
             <a href="/" className={styles.brand}>
-              <GhostLogo className={styles.brandLogo} />
-              <span className={styles.brandText}>GhostMail</span>
-            </a>
+  <img
+    src="/brand/ghostmail-logo.png"
+    alt="GhostMail"
+    className={styles.brandImage}
 
             <button
               type="button"
