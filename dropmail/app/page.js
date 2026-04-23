@@ -460,7 +460,6 @@ export default function Home() {
           <nav className={styles.navCenter}>
   <a href="#features">Features</a>
   <a href="#how">How it works</a>
-  <a href="#use-cases">Use cases</a>
   <a href="#pricing">Pricing</a>
   <a href="#faq">FAQ</a>
 </nav>
