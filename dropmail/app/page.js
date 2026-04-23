@@ -457,35 +457,31 @@ export default function Home() {
             </button>
           </div>
 
-          <nav className={styles.nav}>
-            <a href="#features">Features</a>
-            <a href="#how">How it works</a>
-            <a href="#use-cases">Use cases</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
+          <nav className={styles.navCenter}>
+  <a href="#features">Features</a>
+  <a href="#how">How it works</a>
+  <a href="#use-cases">Use cases</a>
+  <a href="#pricing">Pricing</a>
+  <a href="#faq">FAQ</a>
+</nav>
 
-            {user?.email?.toLowerCase() === 'joyadmiin@gmail.com' ? (
-              <a href="/admin/feedback">Admin</a>
-            ) : null}
+<div className={styles.navRight}>
+  <button
+    type="button"
+    onClick={toggleTheme}
+    className={styles.themeToggle}
+  >
+    {theme === 'light' ? '🌙' : '☀️'}
+  </button>
 
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={styles.themeToggle}
-              aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-              title={theme === 'light' ? 'Dark mode' : 'Light mode'}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+  <a href={user ? '/dashboard' : '/login'} className={styles.navGhostBtn}>
+    {user ? 'Dashboard' : 'Log in'}
+  </a>
 
-            <a href={user ? '/dashboard' : '/login'} className={styles.navGhostBtn}>
-              {user ? 'Dashboard' : 'Log in'}
-            </a>
-
-            <a href={user ? '/dashboard' : '/login'} className={styles.navPrimaryBtn}>
-              {user ? 'Open Dashboard' : 'Get Started Free'}
-            </a>
-          </nav>
+  <a href={user ? '/dashboard' : '/login'} className={styles.navPrimaryBtn}>
+    {user ? 'Open Dashboard' : 'Get Started Free'}
+  </a>
+</div>
         </header>
 
         <section className={styles.hero}>
@@ -495,9 +491,9 @@ export default function Home() {
             </div>
 
             <h1 className={styles.heroTitle}>
-              Disposable Email.
-              <span> Real Privacy.</span>
-            </h1>
+  <span className={styles.line1}>Disposable Email.</span>
+  <span className={styles.line2}>Real Privacy.</span>
+</h1>
 
             <p className={styles.heroSub}>
               Create private inboxes in one click. No sign-ups. No spam. No tracking.
@@ -670,36 +666,6 @@ export default function Home() {
                 <div className={styles.featureIcon}>{card.icon}</div>
                 <h3>{card.title}</h3>
                 <p>{card.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="use-cases" className={styles.useCasesSection}>
-          <div className={styles.useCasesLeft}>
-            <h2>
-              Built for <span>developers.</span>
-              <br />
-              Useful for <span>everyone.</span>
-            </h2>
-
-            <p>
-              Whether you’re testing, signing up, or just protecting your inbox,
-              GhostMail helps you stay fast and private.
-            </p>
-
-            <div className={styles.useCasePills}>
-              {useCasePills.map((item) => (
-                <span key={item}>{item}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.statsGrid}>
-            {stats.map((stat) => (
-              <div key={stat.label} className={styles.statCard}>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
               </div>
             ))}
           </div>
@@ -1014,7 +980,7 @@ function GhostLogo({ className = '' }) {
     >
       <path
         d="M64 12C41.356 12 23 30.356 23 53V88.5C23 95.956 29.044 102 36.5 102C42.419 102 47.447 98.183 49.289 92.875C50.867 98.365 55.93 102.375 62 102.375C68.07 102.375 73.133 98.365 74.711 92.875C76.553 98.183 81.581 102 87.5 102C94.956 102 101 95.956 101 88.5V53C101 30.356 82.644 12 60 12H64Z"
-        fill="currentColor"
+        fill="none"
       />
       <path
         d="M64 12C86.644 12 105 30.356 105 53V88.5C105 95.956 98.956 102 91.5 102C85.581 102 80.553 98.183 78.711 92.875C77.133 98.365 72.07 102.375 66 102.375C59.93 102.375 54.867 98.365 53.289 92.875C51.447 98.183 46.419 102 40.5 102C33.044 102 27 95.956 27 88.5V53C27 30.356 45.356 12 68 12H64Z"

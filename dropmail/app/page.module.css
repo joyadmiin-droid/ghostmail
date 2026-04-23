@@ -1363,3 +1363,53 @@
     height: 84px;
   }
 }
+/* NAV CENTER FIX */
+.navCenter {
+  display: flex;
+  gap: 28px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* HERO TITLE FIX */
+.heroTitle {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.line1 {
+  font-size: 64px;
+  font-weight: 800;
+}
+
+.line2 {
+  font-size: 64px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #7c5cff, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* LOGO STYLE (outline look) */
+.brandLogo {
+  color: #7c5cff;
+}
+
+/* GHOST FLOAT FIX */
+.heroGhost {
+  color: #7c5cff;
+  opacity: 0.9;
+}
+
+/* REMOVE EXTRA SPACING AFTER DELETE */
+.useCasesSection {
+  display: none;
+}
