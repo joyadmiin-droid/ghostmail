@@ -9,6 +9,36 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+function GhostLogo({ style = {} }) {
+  return (
+    <svg
+      viewBox="0 0 128 128"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={style}
+    >
+      <path
+        d="M64 14C42.46 14 25 31.46 25 53V89.5C25 96.404 30.596 102 37.5 102C42.984 102 47.642 98.465 49.349 93.55C50.811 98.634 55.499 102.35 61.12 102.35C66.77 102.35 71.477 98.595 72.912 93.469C74.603 98.425 79.278 102 84.8 102C91.711 102 97.314 96.397 97.314 89.486V53C97.314 31.46 79.854 14 58.314 14H64Z"
+        fill="white"
+      />
+      <path
+        d="M64 14C42.46 14 25 31.46 25 53V89.5C25 96.404 30.596 102 37.5 102C42.984 102 47.642 98.465 49.349 93.55C50.811 98.634 55.499 102.35 61.12 102.35C66.77 102.35 71.477 98.595 72.912 93.469C74.603 98.425 79.278 102 84.8 102C91.711 102 97.314 96.397 97.314 89.486V53C97.314 31.46 79.854 14 58.314 14H64Z"
+        stroke="currentColor"
+        strokeWidth="4.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="49.5" cy="50.5" r="5.8" fill="#1F1840" />
+      <circle cx="77.5" cy="50.5" r="5.8" fill="#1F1840" />
+      <path
+        d="M52 69C58 75 69 75 75 69"
+        stroke="#1F1840"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function InboxContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -19,7 +49,7 @@ function InboxContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [errorType, setErrorType] = useState(null); // 'expired' | 'rate_limit' | 'auth' | 'not_found' | 'generic'
+  const [errorType, setErrorType] = useState(null);
   const [selected, setSelected] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [copied, setCopied] = useState(false);
@@ -145,9 +175,7 @@ function InboxContent() {
     }
 
     const existing = attachmentBlobUrlsRef.current[file.id];
-    if (existing?.objectUrl) {
-      return existing.objectUrl;
-    }
+    if (existing?.objectUrl) return existing.objectUrl;
 
     setAttachmentBlobUrls((prev) => {
       const next = {
@@ -257,7 +285,6 @@ function InboxContent() {
           await fetchAttachmentBlob(file);
         } catch (err) {
           if (cancelled) return;
-          console.error('Preview preload failed:', err);
 
           setAttachmentBlobUrls((prev) => {
             const next = {
@@ -289,9 +316,7 @@ function InboxContent() {
         return;
       }
 
-      if (showRefreshState) {
-        setRefreshing(true);
-      }
+      if (showRefreshState) setRefreshing(true);
 
       try {
         const {
@@ -299,9 +324,7 @@ function InboxContent() {
         } = await supabase.auth.getSession();
 
         const headers = {};
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
-        }
+        if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
 
         const res = await fetch('/api/mailbox/inbox?token=' + encodeURIComponent(token), {
           headers,
@@ -315,9 +338,7 @@ function InboxContent() {
             setMailboxExpired(true);
             setErrorType('expired');
             setError('This inbox has expired.');
-            if (mailbox?.id) {
-              await cleanupExpiredMailbox(mailbox.id);
-            }
+            if (mailbox?.id) await cleanupExpiredMailbox(mailbox.id);
             return;
           }
 
@@ -467,9 +488,7 @@ function InboxContent() {
       } = await supabase.auth.getSession();
 
       const headers = {};
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
 
       await fetch('/api/mailbox/read?id=' + emailId, {
         method: 'POST',
@@ -488,9 +507,7 @@ function InboxContent() {
   function openEmail(email) {
     setSelected(email);
     setCopiedCode(false);
-    if (!email.is_read) {
-      markRead(email.id);
-    }
+    if (!email.is_read) markRead(email.id);
   }
 
   function formatTime(ts) {
@@ -654,9 +671,9 @@ function InboxContent() {
 
         .mail-card:hover {
           transform: translateY(-1px);
-          background: #f8fafc !important;
-          border-color: rgba(15,23,42,0.22) !important;
-          box-shadow: 0 10px 24px rgba(15,23,42,0.08) !important;
+          background: #faf9ff !important;
+          border-color: rgba(109,73,255,0.18) !important;
+          box-shadow: 0 10px 24px rgba(109,73,255,0.08) !important;
         }
 
         .action-btn {
@@ -665,7 +682,7 @@ function InboxContent() {
 
         .action-btn:hover {
           transform: translateY(-1px);
-          border-color: rgba(15,23,42,0.18) !important;
+          border-color: rgba(109,73,255,0.18) !important;
           box-shadow: 0 8px 18px rgba(15,23,42,0.08);
           background: #ffffff !important;
         }
@@ -701,7 +718,7 @@ function InboxContent() {
           }}
         >
           <a href="/" style={brandLink}>
-            <span style={brandIcon}>✦</span>
+            <GhostLogo style={{ width: 28, height: 28, color: '#6d49ff', flexShrink: 0 }} />
             <span style={brandText}>GhostMail</span>
           </a>
 
@@ -718,19 +735,16 @@ function InboxContent() {
                   ...timeBadge,
                   background: isExpiringSoon
                     ? 'rgba(248,113,113,0.10)'
-                    : 'rgba(167,139,250,0.08)',
+                    : 'rgba(109,73,255,0.08)',
                   borderColor: isExpiringSoon
                     ? 'rgba(248,113,113,0.28)'
-                    : 'rgba(167,139,250,0.25)',
-                  boxShadow: isExpiringSoon
-                    ? '0 4px 12px rgba(248,113,113,0.10)'
-                    : '0 4px 12px rgba(167,139,250,0.08)',
+                    : 'rgba(109,73,255,0.20)',
                 }}
               >
                 <span style={{ animation: isExpiringSoon ? 'pulse 1s infinite' : 'none' }}>⏳</span>
                 <span
                   style={{
-                    color: isExpiringSoon ? '#dc2626' : '#0f172a',
+                    color: isExpiringSoon ? '#dc2626' : '#1a1531',
                     fontFamily: 'monospace',
                     fontWeight: 800,
                   }}
@@ -834,10 +848,8 @@ function InboxContent() {
               className="action-btn"
               style={{
                 ...copyButtonStrong,
-                borderColor: copied
-                  ? 'rgba(34,197,94,0.28)'
-                  : 'rgba(15,23,42,0.14)',
-                color: copied ? '#16a34a' : '#0f172a',
+                borderColor: copied ? 'rgba(34,197,94,0.24)' : 'rgba(15,23,42,0.10)',
+                color: copied ? '#16a34a' : '#1a1531',
                 background: copied ? 'rgba(34,197,94,0.08)' : '#ffffff',
               }}
             >
@@ -868,9 +880,7 @@ function InboxContent() {
                 </div>
               </div>
 
-              {emails.length > 0 && (
-                <div style={pillNeutral}>{unreadCount} unread</div>
-              )}
+              {emails.length > 0 && <div style={pillNeutral}>{unreadCount} unread</div>}
             </div>
 
             {emails.length === 0 ? (
@@ -878,9 +888,7 @@ function InboxContent() {
                 <div style={emptyIconSmall}>📭</div>
                 <p style={waitingTitle}>Waiting for emails...</p>
                 <p style={waitingText}>
-                  Send something to{' '}
-                  <span style={waitingAddress}>{mailbox?.address}</span>{' '}
-                  then press refresh.
+                  Send something to <span style={waitingAddress}>{mailbox?.address}</span> then press refresh.
                 </p>
               </div>
             ) : (
@@ -897,10 +905,10 @@ function InboxContent() {
                       style={{
                         ...emailRow,
                         padding: isMobile ? '14px' : '16px',
-                        background: active ? '#eef2ff' : '#ffffff',
-                        borderColor: active ? '#c7d2fe' : 'rgba(15,23,42,0.12)',
+                        background: active ? '#f3efff' : '#ffffff',
+                        borderColor: active ? 'rgba(109,73,255,0.24)' : 'rgba(15,23,42,0.10)',
                         boxShadow: active
-                          ? '0 0 0 1px rgba(99,102,241,0.06) inset, 0 10px 22px rgba(99,102,241,0.10)'
+                          ? '0 0 0 1px rgba(109,73,255,0.05) inset, 0 10px 22px rgba(109,73,255,0.10)'
                           : '0 6px 16px rgba(15,23,42,0.05)',
                       }}
                     >
@@ -911,7 +919,7 @@ function InboxContent() {
                           <span
                             style={{
                               ...senderText,
-                              color: email.is_read ? '#475569' : '#0f172a',
+                              color: email.is_read ? '#475569' : '#1a1531',
                               fontWeight: email.is_read ? 700 : 800,
                             }}
                           >
@@ -921,14 +929,7 @@ function InboxContent() {
                           <span style={emailDate}>{formatTime(email.received_at)}</span>
                         </div>
 
-                        <div
-                          style={{
-                            ...emailSubject,
-                            color: '#0f172a',
-                          }}
-                        >
-                          {getDisplaySubject(email)}
-                        </div>
+                        <div style={emailSubject}>{getDisplaySubject(email)}</div>
 
                         <div style={emailPreviewRow}>
                           <span style={previewText}>
@@ -987,12 +988,8 @@ function InboxContent() {
                     <div
                       style={{
                         ...messageStatusBadge,
-                        background: selected.is_read
-                          ? '#f8fafc'
-                          : 'rgba(34,197,94,0.10)',
-                        borderColor: selected.is_read
-                          ? 'rgba(15,23,42,0.12)'
-                          : 'rgba(34,197,94,0.22)',
+                        background: selected.is_read ? '#f8fafc' : 'rgba(34,197,94,0.10)',
+                        borderColor: selected.is_read ? 'rgba(15,23,42,0.10)' : 'rgba(34,197,94,0.22)',
                         color: selected.is_read ? '#475569' : '#16a34a',
                       }}
                     >
@@ -1024,11 +1021,9 @@ function InboxContent() {
                     <div
                       style={{
                         ...metaCard,
-                        borderColor: detectedCode
-                          ? 'rgba(34,197,94,0.24)'
-                          : 'rgba(15,23,42,0.12)',
+                        borderColor: detectedCode ? 'rgba(34,197,94,0.24)' : 'rgba(15,23,42,0.10)',
                         boxShadow: detectedCode
-                          ? '0 10px 24px rgba(15,23,42,0.06), 0 0 0 1px rgba(34,197,94,0.05)'
+                          ? '0 10px 24px rgba(15,23,42,0.05), 0 0 0 1px rgba(34,197,94,0.04)'
                           : '0 8px 20px rgba(15,23,42,0.05)',
                       }}
                     >
@@ -1036,7 +1031,14 @@ function InboxContent() {
 
                       {detectedCode ? (
                         <>
-                          <div style={{ ...metaValue, fontFamily: 'monospace', fontSize: '20px', color: '#16a34a' }}>
+                          <div
+                            style={{
+                              ...metaValue,
+                              fontFamily: 'monospace',
+                              fontSize: '20px',
+                              color: '#16a34a',
+                            }}
+                          >
                             {detectedCode}
                           </div>
                           <button
@@ -1045,13 +1047,9 @@ function InboxContent() {
                             className="action-btn"
                             style={{
                               ...codeCopyBtn,
-                              color: copiedCode ? '#16a34a' : '#0f172a',
-                              borderColor: copiedCode
-                                ? 'rgba(34,197,94,0.28)'
-                                : 'rgba(15,23,42,0.14)',
-                              background: copiedCode
-                                ? 'rgba(34,197,94,0.08)'
-                                : '#ffffff',
+                              color: copiedCode ? '#16a34a' : '#1a1531',
+                              borderColor: copiedCode ? 'rgba(34,197,94,0.24)' : 'rgba(15,23,42,0.10)',
+                              background: copiedCode ? 'rgba(34,197,94,0.08)' : '#ffffff',
                             }}
                           >
                             {copiedCode ? '✓ Copied code' : 'Copy code'}
@@ -1065,16 +1063,7 @@ function InboxContent() {
                 </div>
 
                 {selected.attachments && selected.attachments.length > 0 && (
-                  <div
-                    style={{
-                      marginBottom: '18px',
-                      padding: '16px',
-                      borderRadius: '18px',
-                      background: '#ffffff',
-                      border: '1px solid rgba(15,23,42,0.12)',
-                      boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
-                    }}
-                  >
+                  <div style={attachmentsWrap}>
                     <div style={{ ...sectionLabel, marginBottom: '12px' }}>
                       Attachments ({selected.attachments.length})
                     </div>
@@ -1089,29 +1078,9 @@ function InboxContent() {
                         const previewError = fileState.error;
 
                         return (
-                          <div
-                            key={file.id}
-                            style={{
-                              border: '1px solid rgba(15,23,42,0.12)',
-                              borderRadius: '14px',
-                              padding: '12px',
-                              background: '#f8fafc',
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '10px',
-                                marginBottom: '8px',
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <span style={{ fontWeight: 700, fontSize: '13px', wordBreak: 'break-word' }}>
-                                📎 {file.filename}
-                              </span>
+                          <div key={file.id} style={attachmentCard}>
+                            <div style={attachmentHeader}>
+                              <span style={attachmentFileName}>📎 {file.filename}</span>
 
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <button
@@ -1148,35 +1117,19 @@ function InboxContent() {
                               <img
                                 src={previewUrl}
                                 alt={file.filename}
-                                style={{
-                                  width: '100%',
-                                  borderRadius: '10px',
-                                  maxHeight: '420px',
-                                  objectFit: 'contain',
-                                  background: '#f1f5f9',
-                                }}
+                                style={attachmentImage}
                               />
                             )}
 
                             {isPDF && previewUrl && (
                               <iframe
                                 src={previewUrl}
-                                style={{
-                                  width: '100%',
-                                  height: '300px',
-                                  border: 'none',
-                                  borderRadius: '10px',
-                                }}
+                                style={attachmentPdf}
                               />
                             )}
 
                             {!isImage && !isPDF && (
-                              <div
-                                style={{
-                                  fontSize: '12px',
-                                  color: '#64748b',
-                                }}
-                              >
+                              <div style={attachmentInfoText}>
                                 {(file.size_bytes / 1024).toFixed(1)} KB
                               </div>
                             )}
@@ -1241,11 +1194,11 @@ function InboxContent() {
         blockquote {
           margin: 0 !important;
           padding-left: 14px !important;
-          border-left: 3px solid rgba(167,139,250,0.45) !important;
+          border-left: 3px solid rgba(109,73,255,0.35) !important;
           color: #4b5563 !important;
         }
         a {
-          color: #7c3aed !important;
+          color: #6d49ff !important;
           word-break: break-all !important;
         }
       </style>
@@ -1318,12 +1271,12 @@ export default function InboxPage() {
 
 const pageWrap = {
   minHeight: '100vh',
-  background: 'radial-gradient(circle at top, rgba(91,33,182,0.08), transparent 24%), var(--bg)',
+  background: 'linear-gradient(180deg, rgba(109,73,255,0.04) 0%, rgba(109,73,255,0.015) 20%, transparent 46%), #f6f4ff',
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   display: 'flex',
   flexDirection: 'column',
-  color: '#0f172a',
+  color: '#1a1531',
 };
 
 const shell = {
@@ -1335,7 +1288,7 @@ const shell = {
 
 const fallbackMain = {
   minHeight: '100vh',
-  background: 'var(--bg)',
+  background: '#f6f4ff',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -1346,7 +1299,7 @@ const fallbackMain = {
 
 const centerWrap = {
   minHeight: '100vh',
-  background: 'radial-gradient(circle at top, rgba(91,33,182,0.08), transparent 24%), var(--bg)',
+  background: 'linear-gradient(180deg, rgba(109,73,255,0.04) 0%, rgba(109,73,255,0.015) 20%, transparent 46%), #f6f4ff',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -1359,9 +1312,9 @@ const emptyCard = {
   textAlign: 'center',
   maxWidth: '480px',
   background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  borderRadius: '24px',
-  padding: '32px 28px',
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '28px',
+  padding: '34px 28px',
   boxShadow: '0 18px 40px rgba(15,23,42,0.08)',
 };
 
@@ -1376,14 +1329,14 @@ const emptyIconSmall = {
 };
 
 const emptyTitle = {
-  color: '#0f172a',
+  color: '#14122b',
   margin: '0 0 10px',
   fontSize: '28px',
   fontWeight: 800,
 };
 
 const emptyText = {
-  color: '#64748b',
+  color: '#5d647a',
   marginBottom: '18px',
   lineHeight: 1.7,
   fontSize: '14px',
@@ -1396,45 +1349,45 @@ const errorText = {
 };
 
 const primaryLink = {
-  background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
+  background: 'linear-gradient(135deg, #6d49ff, #d946b2)',
   color: '#fff',
-  padding: '11px 24px',
-  borderRadius: '999px',
+  padding: '12px 24px',
+  borderRadius: '14px',
   textDecoration: 'none',
   fontWeight: 800,
   display: 'inline-block',
-  boxShadow: '0 10px 24px rgba(139,92,246,0.18)',
+  boxShadow: '0 12px 26px rgba(109,73,255,0.18)',
 };
 
 const secondaryLink = {
   background: '#ffffff',
-  color: '#0f172a',
-  padding: '11px 24px',
-  borderRadius: '999px',
+  color: '#14122b',
+  padding: '12px 24px',
+  borderRadius: '14px',
   textDecoration: 'none',
   fontWeight: 800,
   display: 'inline-block',
-  border: '1px solid rgba(15,23,42,0.14)',
+  border: '1px solid rgba(15,23,42,0.10)',
 };
 
 const spinner = {
   width: '34px',
   height: '34px',
-  border: '3px solid rgba(167,139,250,0.18)',
-  borderTop: '3px solid #a78bfa',
+  border: '3px solid rgba(109,73,255,0.18)',
+  borderTop: '3px solid #6d49ff',
   borderRadius: '50%',
   animation: 'spin 0.8s linear infinite',
   margin: '0 auto',
 };
 
 const loadingText = {
-  color: '#64748b',
+  color: '#5d647a',
   marginTop: '14px',
   fontSize: '14px',
 };
 
 const topHeader = {
-  borderBottom: '1px solid rgba(15,23,42,0.12)',
+  borderBottom: '1px solid rgba(15,23,42,0.08)',
   background: 'rgba(255,255,255,0.82)',
   backdropFilter: 'blur(12px)',
   position: 'sticky',
@@ -1461,16 +1414,11 @@ const brandLink = {
   textDecoration: 'none',
 };
 
-const brandIcon = {
-  color: '#8b5cf6',
-  fontSize: '18px',
-};
-
 const brandText = {
-  color: '#0f172a',
-  fontSize: '16px',
+  color: '#14122b',
+  fontSize: '18px',
   fontWeight: 800,
-  letterSpacing: '-0.02em',
+  letterSpacing: '-0.03em',
 };
 
 const headerActions = {
@@ -1486,16 +1434,16 @@ const timeBadge = {
   gap: '6px',
   border: '1px solid',
   borderRadius: '999px',
-  padding: '6px 12px',
+  padding: '7px 12px',
   fontSize: '13px',
 };
 
 const ghostButton = {
-  padding: '8px 14px',
-  borderRadius: '10px',
-  border: '1px solid rgba(15,23,42,0.14)',
+  padding: '10px 14px',
+  borderRadius: '12px',
+  border: '1px solid rgba(15,23,42,0.10)',
   background: '#ffffff',
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: '13px',
   fontWeight: 700,
 };
@@ -1508,34 +1456,34 @@ const topInfoGrid = {
 };
 
 const topInfoCardWide = {
-  background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  borderRadius: '20px',
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '22px',
   padding: '18px',
-  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
 };
 
 const topInfoCard = {
-  background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  borderRadius: '20px',
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '22px',
   padding: '18px',
-  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
 };
 
 const topActionsCard = {
-  background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  borderRadius: '20px',
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '22px',
   padding: '18px',
-  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
 const topInfoValue = {
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: '24px',
   fontWeight: 900,
   marginTop: '8px',
@@ -1546,9 +1494,9 @@ const autoRefreshSelect = {
   marginTop: '10px',
   padding: '11px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(15,23,42,0.14)',
+  border: '1px solid rgba(15,23,42,0.10)',
   background: '#ffffff',
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: '14px',
   fontWeight: 700,
   outline: 'none',
@@ -1558,10 +1506,10 @@ const autoRefreshSelect = {
 const copyButtonStrong = {
   width: '100%',
   padding: '12px 14px',
-  borderRadius: '12px',
-  border: '1px solid rgba(15,23,42,0.14)',
+  borderRadius: '14px',
+  border: '1px solid rgba(15,23,42,0.10)',
   background: '#ffffff',
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: '14px',
   fontWeight: 800,
   cursor: 'pointer',
@@ -1572,7 +1520,7 @@ const codeCopyBtn = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: '12px',
-  border: '1px solid rgba(15,23,42,0.14)',
+  border: '1px solid rgba(15,23,42,0.10)',
   background: '#ffffff',
   fontSize: '13px',
   fontWeight: 800,
@@ -1582,7 +1530,7 @@ const codeCopyBtn = {
 const attachmentActionBtn = {
   padding: '8px 12px',
   borderRadius: '10px',
-  border: '1px solid rgba(15,23,42,0.14)',
+  border: '1px solid rgba(15,23,42,0.10)',
   background: '#ffffff',
   color: '#4f46e5',
   fontSize: '12px',
@@ -1608,7 +1556,7 @@ const addressText = {
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
   fontSize: '15px',
-  color: '#0f172a',
+  color: '#14122b',
   fontWeight: 800,
   wordBreak: 'break-all',
   marginTop: '8px',
@@ -1622,33 +1570,33 @@ const contentWrap = {
 };
 
 const sidebarPanel = {
-  background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  borderRadius: '24px',
+  background: 'rgba(255,255,255,0.94)',
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '26px',
   overflow: 'hidden',
-  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
   display: 'flex',
   flexDirection: 'column',
 };
 
 const viewerPanel = {
   flex: 1,
-  background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  borderRadius: '24px',
+  background: 'rgba(255,255,255,0.94)',
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '26px',
   overflow: 'hidden',
-  boxShadow: '0 10px 25px rgba(15,23,42,0.06)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
   minHeight: 'calc(100vh - 290px)',
 };
 
 const sidebarHeader = {
   padding: '18px',
-  borderBottom: '1px solid rgba(15,23,42,0.12)',
+  borderBottom: '1px solid rgba(15,23,42,0.10)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '12px',
-  background: '#f8fafc',
+  background: '#faf9ff',
 };
 
 const sidebarSubtext = {
@@ -1659,9 +1607,9 @@ const sidebarSubtext = {
 
 const pillNeutral = {
   fontSize: '12px',
-  color: '#0f172a',
+  color: '#14122b',
   background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
+  border: '1px solid rgba(15,23,42,0.10)',
   borderRadius: '999px',
   padding: '7px 10px',
   whiteSpace: 'nowrap',
@@ -1673,7 +1621,7 @@ const waitingWrap = {
 };
 
 const waitingTitle = {
-  color: '#0f172a',
+  color: '#14122b',
   fontWeight: 800,
   margin: '0 0 8px',
   fontSize: '15px',
@@ -1687,7 +1635,7 @@ const waitingText = {
 };
 
 const waitingAddress = {
-  color: '#7c3aed',
+  color: '#6d49ff',
   wordBreak: 'break-all',
 };
 
@@ -1705,7 +1653,7 @@ const emailRow = {
   cursor: 'pointer',
   textAlign: 'left',
   borderRadius: '18px',
-  border: '1px solid rgba(15,23,42,0.12)',
+  border: '1px solid rgba(15,23,42,0.10)',
   display: 'flex',
   gap: '12px',
 };
@@ -1714,8 +1662,8 @@ const avatarCircle = {
   width: '42px',
   height: '42px',
   borderRadius: '50%',
-  background: 'linear-gradient(135deg, rgba(167,139,250,0.22), rgba(139,92,246,0.10))',
-  border: '1px solid rgba(167,139,250,0.18)',
+  background: 'linear-gradient(135deg, rgba(109,73,255,0.14), rgba(217,70,178,0.08))',
+  border: '1px solid rgba(109,73,255,0.16)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -1748,6 +1696,7 @@ const emailSubject = {
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
   marginBottom: '7px',
+  color: '#14122b',
 };
 
 const emailPreviewRow = {
@@ -1769,8 +1718,8 @@ const unreadDot = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
-  background: '#8b5cf6',
-  boxShadow: '0 0 10px rgba(139,92,246,0.35)',
+  background: '#6d49ff',
+  boxShadow: '0 0 10px rgba(109,73,255,0.25)',
   flexShrink: 0,
 };
 
@@ -1788,9 +1737,9 @@ const messageHeaderCard = {
   marginBottom: '20px',
   padding: '20px',
   borderRadius: '22px',
-  background: '#f8fafc',
-  border: '1px solid rgba(15,23,42,0.12)',
-  boxShadow: '0 10px 25px rgba(15,23,42,0.05)',
+  background: '#faf9ff',
+  border: '1px solid rgba(15,23,42,0.10)',
+  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
 };
 
 const messageHeaderTop = {
@@ -1803,7 +1752,7 @@ const messageHeaderTop = {
 };
 
 const messageTitle = {
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: 'clamp(24px, 3vw, 32px)',
   fontWeight: 900,
   margin: '0 0 18px',
@@ -1843,7 +1792,7 @@ const messageMetaGrid = {
 
 const metaCard = {
   background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.12)',
+  border: '1px solid rgba(15,23,42,0.10)',
   borderRadius: '18px',
   padding: '16px',
   boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
@@ -1851,7 +1800,7 @@ const metaCard = {
 
 const metaValue = {
   fontSize: '14px',
-  color: '#0f172a',
+  color: '#14122b',
   marginTop: '6px',
   wordBreak: 'break-word',
   fontWeight: 700,
@@ -1865,12 +1814,58 @@ const metaSubValue = {
   wordBreak: 'break-word',
 };
 
+const attachmentsWrap = {
+  marginBottom: '18px',
+  padding: '16px',
+  borderRadius: '20px',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.10)',
+  boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
+};
+
+const attachmentCard = {
+  border: '1px solid rgba(15,23,42,0.10)',
+  borderRadius: '14px',
+  padding: '12px',
+  background: '#fafbff',
+};
+
+const attachmentHeader = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '10px',
+  marginBottom: '8px',
+  flexWrap: 'wrap',
+};
+
+const attachmentFileName = {
+  fontWeight: 700,
+  fontSize: '13px',
+  wordBreak: 'break-word',
+};
+
+const attachmentImage = {
+  width: '100%',
+  borderRadius: '10px',
+  maxHeight: '420px',
+  objectFit: 'contain',
+  background: '#f1f5f9',
+};
+
+const attachmentPdf = {
+  width: '100%',
+  height: '300px',
+  border: 'none',
+  borderRadius: '10px',
+};
+
 const messageBodyWrap = {
   background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.12)',
+  border: '1px solid rgba(15,23,42,0.10)',
   borderRadius: '22px',
   overflow: 'hidden',
-  boxShadow: '0 12px 28px rgba(15,23,42,0.06)',
+  boxShadow: '0 12px 28px rgba(15,23,42,0.05)',
 };
 
 const bodyTopBar = {
@@ -1878,12 +1873,12 @@ const bodyTopBar = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '14px 18px',
-  borderBottom: '1px solid rgba(15,23,42,0.12)',
-  background: '#f8fafc',
+  borderBottom: '1px solid rgba(15,23,42,0.10)',
+  background: '#faf9ff',
 };
 
 const bodyTopBarTitle = {
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: '13px',
   fontWeight: 800,
   letterSpacing: '0.01em',
@@ -1899,7 +1894,7 @@ const messageIframe = {
 };
 
 const messagePre = {
-  color: '#0f172a',
+  color: '#14122b',
   fontSize: '14px',
   lineHeight: 1.9,
   whiteSpace: 'pre-wrap',
@@ -1927,7 +1922,7 @@ const noSelectionIcon = {
 };
 
 const noSelectionTitle = {
-  color: '#0f172a',
+  color: '#14122b',
   fontWeight: 800,
   margin: '0 0 8px',
   fontSize: '16px',
@@ -1958,8 +1953,8 @@ const toastStyle = {
   left: '50%',
   transform: 'translateX(-50%)',
   background: '#ffffff',
-  border: '1px solid rgba(15,23,42,0.14)',
-  color: '#0f172a',
+  border: '1px solid rgba(109,73,255,0.14)',
+  color: '#14122b',
   padding: '12px 18px',
   borderRadius: '12px',
   fontSize: '14px',
