@@ -1550,3 +1550,73 @@
   50% { transform: translateY(-8px) translateX(6px); }
   100% { transform: translateY(0px) translateX(0px); }
 }
+
+/* ===== NEW HERO FIX (override old styles) ===== */
+
+.heroTitle {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  line-height: 0.94;
+  letter-spacing: -0.06em;
+  max-width: 760px;
+}
+
+.line1 {
+  font-size: clamp(64px, 7.2vw, 98px);
+  font-weight: 900;
+  color: #0f1230;
+}
+
+.line2 {
+  font-size: clamp(64px, 7.2vw, 98px);
+  font-weight: 900;
+  color: #6438f1;
+}
+
+.brandLogo {
+  width: 36px;
+  height: 36px;
+  color: #5b31ea;
+  flex-shrink: 0;
+}
+
+.heroGhost {
+  width: 102px;
+  height: 102px;
+  color: #5b31ea;
+  filter: drop-shadow(0 10px 24px rgba(91, 49, 234, 0.12));
+}
+
+.ghostFloatWrap {
+  position: absolute;
+  top: -56px;
+  right: 18px;
+  animation: ghostFloat 5.8s ease-in-out infinite;
+}
+
+.floatIconLeft,
+.floatIconRight {
+  position: absolute;
+  color: rgba(109, 73, 255, 0.40);
+  font-size: 34px;
+  animation: sideFloat 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.floatIconLeft {
+  left: -22px;
+  top: 38%;
+}
+
+.floatIconRight {
+  right: -24px;
+  bottom: 18%;
+  animation-delay: 1s;
+}
+
+@keyframes sideFloat {
+  0% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-8px) translateX(6px); }
+  100% { transform: translateY(0px) translateX(0px); }
+}
