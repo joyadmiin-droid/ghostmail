@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
   function showToast(message) {
     setToast(message);
-    setTimeout(() => setToast(null), 2000);
+    setTimeout(() => setToast(null), 2200);
   }
 
   function openUpgradeModal(targetPlan, title, text) {
@@ -152,9 +152,7 @@ export default function DashboardPage() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
-      if (raw) {
-        setFavorites(JSON.parse(raw));
-      }
+      if (raw) setFavorites(JSON.parse(raw));
     } catch (err) {
       console.error('Failed to load favorites:', err);
     }
@@ -314,9 +312,7 @@ export default function DashboardPage() {
 
         if (!usageError && emailsData) {
           const usageMap = {};
-          for (const mailbox of mailboxList) {
-            usageMap[mailbox.id] = 0;
-          }
+          for (const mailbox of mailboxList) usageMap[mailbox.id] = 0;
           for (const email of emailsData) {
             if (email.mailbox_id) {
               usageMap[email.mailbox_id] = (usageMap[email.mailbox_id] || 0) + 1;
@@ -480,10 +476,8 @@ export default function DashboardPage() {
     if (diff <= 0) return 'Expired';
 
     const mins = Math.round(diff / 60000);
-
     if (mins > 1440) return Math.round(mins / 1440) + 'd left';
     if (mins > 60) return Math.round(mins / 60) + 'h left';
-
     return mins + 'm left';
   }
 
@@ -688,8 +682,8 @@ export default function DashboardPage() {
 
         .dashboard-email-card:hover {
           transform: translateY(-4px);
-          border-color: rgba(167,139,250,0.30) !important;
-          box-shadow: 0 0 24px rgba(167,139,250,0.08), 0 18px 44px rgba(15,23,42,0.10) !important;
+          border-color: rgba(109,73,255,0.28) !important;
+          box-shadow: 0 0 22px rgba(109,73,255,0.06), 0 18px 44px rgba(15,23,42,0.10) !important;
         }
 
         .dashboard-filter-btn {
@@ -698,7 +692,7 @@ export default function DashboardPage() {
 
         .dashboard-filter-btn:hover {
           transform: translateY(-1px);
-          border-color: rgba(167,139,250,0.30) !important;
+          border-color: rgba(109,73,255,0.30) !important;
         }
 
         .dashboard-fav-btn {
@@ -707,6 +701,16 @@ export default function DashboardPage() {
 
         .dashboard-fav-btn:hover {
           transform: scale(1.05);
+        }
+
+        .dashboard-action-btn {
+          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .dashboard-action-btn:hover {
+          transform: translateY(-1px);
+          border-color: rgba(109,73,255,0.26) !important;
+          background: rgba(109,73,255,0.04) !important;
         }
 
         .dashboard-delete-secondary:hover {
@@ -719,17 +723,7 @@ export default function DashboardPage() {
           filter: brightness(1.03);
         }
 
-        .dashboard-action-btn {
-          transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-        }
-
-        .dashboard-action-btn:hover {
-          transform: translateY(-1px);
-          border-color: rgba(167,139,250,0.26) !important;
-          background: rgba(124,58,237,0.04) !important;
-        }
-
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
           .dashboard-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
@@ -739,7 +733,7 @@ export default function DashboardPage() {
           }
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 720px) {
           .dashboard-summary-grid {
             grid-template-columns: 1fr !important;
           }
@@ -752,24 +746,38 @@ export default function DashboardPage() {
             grid-template-columns: 1fr !important;
           }
 
+          .dashboard-topbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
           .dashboard-page-title {
-            font-size: 2.3rem !important;
+            font-size: 2.4rem !important;
+          }
+
+          .dashboard-top-actions {
+            width: 100%;
+          }
+
+          .dashboard-top-actions > * {
+            flex: 1;
           }
         }
       `}</style>
 
       <div style={container}>
-        <div style={header}>
+        <div style={topbar} className="dashboard-topbar">
           <div style={{ minWidth: 0 }}>
+            <div style={eyebrow}>GhostMail</div>
             <h1 style={pageTitle} className="dashboard-page-title">Dashboard</h1>
             <p style={pageSubtitle}>{user?.email}</p>
           </div>
 
-          <div style={headerActions}>
+          <div style={headerActions} className="dashboard-top-actions">
             <button
               style={{
                 ...primaryBtn,
-                opacity: hasHitInboxLimit ? 0.65 : 1,
+                opacity: hasHitInboxLimit ? 0.7 : 1,
                 cursor: hasHitInboxLimit ? 'not-allowed' : 'pointer',
               }}
               onClick={() => {
@@ -803,7 +811,7 @@ export default function DashboardPage() {
                 : 'New Address'}
             </button>
 
-            <button style={dangerBtn} onClick={handleSignOut}>
+            <button style={ghostBtn} onClick={handleSignOut}>
               Sign out
             </button>
           </div>
@@ -812,55 +820,30 @@ export default function DashboardPage() {
         {(isNearEmailLimit || hasHitInboxLimit) && (
           <div
             style={{
-              marginBottom: 18,
-              padding: '16px 18px',
-              borderRadius: 18,
+              ...warningCard,
               border:
                 hasHitEmailLimit || hasHitInboxLimit
-                  ? '1px solid rgba(239,68,68,0.22)'
-                  : '1px solid rgba(245,158,11,0.24)',
+                  ? '1px solid rgba(239,68,68,0.18)'
+                  : '1px solid rgba(245,158,11,0.20)',
               background:
                 hasHitEmailLimit || hasHitInboxLimit
-                  ? 'rgba(239,68,68,0.06)'
-                  : 'rgba(245,158,11,0.08)',
-              boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
+                  ? 'rgba(239,68,68,0.05)'
+                  : 'rgba(245,158,11,0.07)',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
+            <div style={warningWrap}>
               <div>
                 <div
                   style={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
+                    ...warningEyebrow,
                     color:
-                      hasHitEmailLimit || hasHitInboxLimit
-                        ? '#dc2626'
-                        : '#b45309',
-                    marginBottom: 8,
+                      hasHitEmailLimit || hasHitInboxLimit ? '#dc2626' : '#b45309',
                   }}
                 >
-                  {hasHitEmailLimit || hasHitInboxLimit
-                    ? 'Limit reached'
-                    : 'Usage warning'}
+                  {hasHitEmailLimit || hasHitInboxLimit ? 'Limit reached' : 'Usage warning'}
                 </div>
 
-                <div
-                  style={{
-                    color: 'var(--text)',
-                    fontSize: 16,
-                    fontWeight: 800,
-                    marginBottom: 6,
-                  }}
-                >
+                <div style={warningTitle}>
                   {hasHitEmailLimit
                     ? `You have used all ${totalAvailableEmails} available emails in your ${getPlanDisplayName(plan)} account.`
                     : hasHitInboxLimit
@@ -868,13 +851,7 @@ export default function DashboardPage() {
                     : `You have used ${emailCount} of ${totalAvailableEmails} available emails in your ${getPlanDisplayName(plan)} account.`}
                 </div>
 
-                <div
-                  style={{
-                    color: 'var(--muted)',
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                  }}
-                >
+                <div style={warningText}>
                   {plan === 'ghost'
                     ? 'Upgrade to Phantom to unlock 5 inboxes and 200 monthly emails.'
                     : plan === 'phantom'
@@ -883,14 +860,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                }}
-              >
+              <div style={warningActions}>
                 {plan !== 'spectre' && (
                   <button style={upgradeBtn} onClick={handleUpgradeFromWarning}>
                     Upgrade now
@@ -898,19 +868,7 @@ export default function DashboardPage() {
                 )}
 
                 {hasHitEmailLimit && (
-                  <a
-                    href="/checkout?plan=topup_100"
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: 12,
-                      background: '#22c55e',
-                      color: '#fff',
-                      fontWeight: 700,
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                      boxShadow: '0 10px 24px rgba(34,197,94,0.16)',
-                    }}
-                  >
+                  <a href="/checkout?plan=topup_100" style={topUpLink}>
                     Buy +100 emails
                   </a>
                 )}
@@ -920,35 +878,14 @@ export default function DashboardPage() {
         )}
 
         <div style={summaryGrid} className="dashboard-summary-grid">
-          <div
-            style={{ ...summaryCard, ...summaryCardWide }}
-            className="dashboard-summary-wide"
-          >
+          <div style={{ ...summaryCard, ...summaryCardWide }} className="dashboard-summary-wide">
             <div style={planCardHeader}>
               <div>
-                <p style={planEyebrow}>Current plan</p>
+                <div style={planEyebrow}>Current plan</div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    flexWrap: 'wrap',
-                  }}
-                >
+                <div style={planNameRow}>
                   <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
-
-                  <span
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      border: '1px solid rgba(167,139,250,0.24)',
-                      background: 'rgba(167,139,250,0.10)',
-                      color: 'var(--text)',
-                    }}
-                  >
+                  <span style={planBadge}>
                     {plan === 'ghost' ? 'Free Tier' : 'Premium'}
                   </span>
                 </div>
@@ -959,29 +896,16 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={planActionWrap}>
                 {plan === 'ghost' ? (
-                  <>
-                    <a href="/#pricing" style={upgradeBtn}>
-                      Upgrade plan
-                    </a>
-
-                    <p
-                      style={{
-                        marginTop: 8,
-                        fontSize: 12,
-                        color: 'var(--muted)',
-                      }}
-                    >
-                      Compare Phantom and Spectre on the pricing page
-                    </p>
-                  </>
+                  <a href="/#pricing" style={upgradeBtn}>
+                    Upgrade plan
+                  </a>
                 ) : plan === 'phantom' ? (
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <>
                     <a href="/checkout?plan=spectre" style={upgradeBtn}>
                       Upgrade to Spectre
                     </a>
-
                     <button
                       type="button"
                       onClick={handleManageBilling}
@@ -994,7 +918,7 @@ export default function DashboardPage() {
                     >
                       {loadingBilling ? 'Opening...' : 'Manage billing'}
                     </button>
-                  </div>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -1037,18 +961,11 @@ export default function DashboardPage() {
 
             <div style={usageCardSubtext}>
               {emailCount} used this month from your {getPlanDisplayName(plan)} plan
-              {extraCredits > 0
-                ? ` with ${extraCredits} extra credits available`
-                : ''}
+              {extraCredits > 0 ? ` with ${extraCredits} extra credits available` : ''}
             </div>
 
             <div style={usageTrack}>
-              <div
-                style={{
-                  ...usageFill,
-                  width: `${usagePercent}%`,
-                }}
-              />
+              <div style={{ ...usageFill, width: `${usagePercent}%` }} />
             </div>
           </div>
 
@@ -1064,12 +981,7 @@ export default function DashboardPage() {
             </div>
 
             <div style={usageTrack}>
-              <div
-                style={{
-                  ...usageFill,
-                  width: `${inboxUsagePercent}%`,
-                }}
-              />
+              <div style={{ ...usageFill, width: `${inboxUsagePercent}%` }} />
             </div>
           </div>
         </div>
@@ -1088,16 +1000,10 @@ export default function DashboardPage() {
                     onClick={() => setActiveFilter(filter.key)}
                     style={{
                       ...filterBtn,
-                      background: active
-                        ? 'rgba(167,139,250,0.14)'
-                        : 'var(--surface, rgba(255,255,255,0.94))',
-                      color: active ? 'var(--text)' : 'var(--muted)',
-                      borderColor: active
-                        ? 'rgba(167,139,250,0.30)'
-                        : 'var(--border-soft, rgba(15,23,42,0.10))',
-                      boxShadow: active
-                        ? '0 0 18px rgba(167,139,250,0.08)'
-                        : 'none',
+                      background: active ? 'rgba(109,73,255,0.10)' : '#ffffff',
+                      color: active ? '#1a1531' : '#5d647a',
+                      borderColor: active ? 'rgba(109,73,255,0.24)' : 'rgba(15,23,42,0.08)',
+                      boxShadow: active ? '0 10px 24px rgba(109,73,255,0.06)' : 'none',
                     }}
                   >
                     {filter.label}
@@ -1115,33 +1021,23 @@ export default function DashboardPage() {
         {addresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>📭</div>
-            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>
+            <h3 style={{ margin: '0 0 8px', color: '#1a1531' }}>
               No addresses yet
             </h3>
-            <p
-              style={{
-                margin: '0 0 18px',
-                color: 'var(--muted)',
-                lineHeight: 1.6,
-              }}
-            >
+            <p style={{ margin: '0 0 18px', color: '#5d647a', lineHeight: 1.6 }}>
               Generate your first address to start receiving emails.
             </p>
-            <button
-              style={primaryBtn}
-              onClick={generateMailbox}
-              disabled={loadingCreate}
-            >
+            <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
               {loadingCreate ? 'Generating...' : 'Create First Address'}
             </button>
           </div>
         ) : filteredAddresses.length === 0 ? (
           <div style={emptyCard}>
             <div style={{ fontSize: '2rem', marginBottom: 10 }}>🗂️</div>
-            <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>
+            <h3 style={{ margin: '0 0 8px', color: '#1a1531' }}>
               No inboxes in this filter
             </h3>
-            <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.6 }}>
+            <p style={{ margin: 0, color: '#5d647a', lineHeight: 1.6 }}>
               Try another filter or create a new address.
             </p>
           </div>
@@ -1157,12 +1053,10 @@ export default function DashboardPage() {
                   key={addr.id}
                   style={{
                     ...emailCard,
-                    borderColor: favorite
-                      ? 'rgba(250,204,21,0.24)'
-                      : 'var(--border-soft, rgba(15,23,42,0.10))',
+                    borderColor: favorite ? 'rgba(250,204,21,0.24)' : 'rgba(15,23,42,0.08)',
                     boxShadow: favorite
-                      ? '0 14px 40px rgba(15,23,42,0.08), 0 0 24px rgba(250,204,21,0.06)'
-                      : '0 14px 40px rgba(15,23,42,0.08)',
+                      ? '0 16px 40px rgba(15,23,42,0.06), 0 0 24px rgba(250,204,21,0.05)'
+                      : '0 14px 36px rgba(15,23,42,0.06)',
                   }}
                   className="dashboard-email-card"
                 >
@@ -1170,29 +1064,19 @@ export default function DashboardPage() {
                     <div style={cardTopRow}>
                       <div style={cardAddressWrap}>
                         <div style={addrText}>{addr.address}</div>
-                        <div style={createdText}>
-                          Created {formatCreatedDate(addr.created_at)}
-                        </div>
+                        <div style={createdText}>Created {formatCreatedDate(addr.created_at)}</div>
                       </div>
 
                       <button
                         type="button"
-                        aria-label={
-                          favorite
-                            ? 'Remove from favorites'
-                            : 'Add to favorites'
-                        }
+                        aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
                         className="dashboard-fav-btn"
                         onClick={() => toggleFavorite(addr.id)}
                         style={{
                           ...favoriteBtn,
-                          color: favorite ? '#f59e0b' : 'var(--muted)',
-                          borderColor: favorite
-                            ? 'rgba(245,158,11,0.26)'
-                            : 'var(--border-soft, rgba(15,23,42,0.10))',
-                          background: favorite
-                            ? 'rgba(245,158,11,0.10)'
-                            : 'var(--surface-soft, rgba(15,23,42,0.03))',
+                          color: favorite ? '#f59e0b' : '#5d647a',
+                          borderColor: favorite ? 'rgba(245,158,11,0.24)' : 'rgba(15,23,42,0.08)',
+                          background: favorite ? 'rgba(245,158,11,0.10)' : 'rgba(15,23,42,0.025)',
                         }}
                       >
                         {favorite ? '★' : '☆'}
@@ -1211,9 +1095,7 @@ export default function DashboardPage() {
                         ● {badge.label}
                       </span>
 
-                      {favorite && (
-                        <span style={favoriteMiniBadge}>Favorite</span>
-                      )}
+                      {favorite && <span style={favoriteMiniBadge}>Favorite</span>}
                     </div>
                   </div>
 
@@ -1226,19 +1108,14 @@ export default function DashboardPage() {
                     <div style={statBoxColumn}>
                       <div style={statTopRow}>
                         <span style={statLabel}>Expires</span>
-                        <span style={statValueMuted}>
-                          {getExpiryLabel(addr.expires_at)}
-                        </span>
+                        <span style={statValueMuted}>{getExpiryLabel(addr.expires_at)}</span>
                       </div>
 
                       <div style={progressTrack}>
                         <div
                           style={{
                             ...progressFill,
-                            width: `${getProgress(
-                              addr.expires_at,
-                              addr.created_at
-                            )}%`,
+                            width: `${getProgress(addr.expires_at, addr.created_at)}%`,
                           }}
                         />
                       </div>
@@ -1285,9 +1162,7 @@ export default function DashboardPage() {
         <div style={modalOverlay}>
           <div style={modalBox}>
             <div style={modalBadge}>Upgrade recommended</div>
-
             <h2 style={modalTitle}>{upgradeContext.title}</h2>
-
             <p style={modalText}>{upgradeContext.text}</p>
 
             <div style={modalPlans}>
@@ -1296,11 +1171,7 @@ export default function DashboardPage() {
                   <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
                     Upgrade to Phantom
                   </a>
-
-                  <a
-                    href="/checkout?plan=spectre"
-                    style={modalGhostSecondaryLink}
-                  >
+                  <a href="/checkout?plan=spectre" style={modalGhostSecondaryLink}>
                     Upgrade to Spectre
                   </a>
                 </>
@@ -1311,11 +1182,7 @@ export default function DashboardPage() {
                   <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
                     Upgrade to Spectre
                   </a>
-
-                  <a
-                    href="/checkout?plan=topup_100"
-                    style={modalGhostSecondaryLink}
-                  >
+                  <a href="/checkout?plan=topup_100" style={modalGhostSecondaryLink}>
                     Buy +100 emails
                   </a>
                 </>
@@ -1327,10 +1194,7 @@ export default function DashboardPage() {
                 </a>
               )}
 
-              <button
-                style={modalSecondaryBtn}
-                onClick={() => setShowUpgrade(false)}
-              >
+              <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
                 Maybe later
               </button>
             </div>
@@ -1342,13 +1206,11 @@ export default function DashboardPage() {
         <div style={deleteOverlay} onClick={closeDeleteModal}>
           <div style={deleteBox} onClick={(e) => e.stopPropagation()}>
             <div style={deleteIconWrap}>🗑️</div>
-
             <div style={deleteEyebrow}>Delete inbox</div>
             <h2 style={deleteTitle}>Are you sure?</h2>
 
             <p style={deleteText}>
-              This inbox will be removed from your dashboard. This action cannot
-              be undone.
+              This inbox will be removed from your dashboard. This action cannot be undone.
             </p>
 
             <div style={deleteEmailBox}>{selectedInbox?.address}</div>
@@ -1388,38 +1250,48 @@ export default function DashboardPage() {
 const pageStyle = {
   minHeight: '100vh',
   background:
-    'linear-gradient(180deg, rgba(124,58,237,0.04) 0%, rgba(124,58,237,0.01) 22%, transparent 44%), var(--bg)',
-  color: 'var(--text)',
-  padding: '32px 20px 48px',
+    'linear-gradient(180deg, rgba(109,73,255,0.04) 0%, rgba(109,73,255,0.015) 20%, transparent 46%), #f6f4ff',
+  color: '#1a1531',
+  padding: '34px 20px 54px',
   fontFamily:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const container = {
-  maxWidth: 1180,
+  maxWidth: 1200,
   margin: '0 auto',
 };
 
-const header = {
+const topbar = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
-  marginBottom: 28,
+  marginBottom: 24,
   flexWrap: 'wrap',
-  gap: 20,
+  gap: 18,
+};
+
+const eyebrow = {
+  margin: 0,
+  color: '#6d49ff',
+  fontSize: 12,
+  textTransform: 'uppercase',
+  letterSpacing: '0.1em',
+  fontWeight: 800,
 };
 
 const pageTitle = {
-  margin: 0,
-  fontSize: '3rem',
-  lineHeight: 1,
-  letterSpacing: '-0.04em',
-  color: 'var(--text)',
+  margin: '8px 0 0',
+  fontSize: '3.3rem',
+  lineHeight: 0.98,
+  letterSpacing: '-0.05em',
+  color: '#14122b',
+  fontWeight: 900,
 };
 
 const pageSubtitle = {
-  color: 'var(--muted)',
-  margin: '10px 0 0',
+  color: '#5d647a',
+  margin: '12px 0 0',
   wordBreak: 'break-word',
   fontSize: 16,
 };
@@ -1430,28 +1302,69 @@ const headerActions = {
   flexWrap: 'wrap',
 };
 
+const warningCard = {
+  marginBottom: 18,
+  padding: '16px 18px',
+  borderRadius: 20,
+  boxShadow: '0 14px 34px rgba(15,23,42,0.05)',
+};
+
+const warningWrap = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 16,
+  flexWrap: 'wrap',
+};
+
+const warningEyebrow = {
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  marginBottom: 8,
+};
+
+const warningTitle = {
+  color: '#1a1531',
+  fontSize: 16,
+  fontWeight: 800,
+  marginBottom: 6,
+};
+
+const warningText = {
+  color: '#5d647a',
+  fontSize: 14,
+  lineHeight: 1.6,
+};
+
+const warningActions = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  flexWrap: 'wrap',
+};
+
 const summaryGrid = {
   display: 'grid',
   gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
   gap: 16,
-  marginBottom: 22,
+  marginBottom: 24,
 };
 
 const summaryCard = {
   padding: 22,
-  borderRadius: 20,
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
-  minHeight: 132,
+  borderRadius: 24,
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid rgba(15,23,42,0.08)',
+  boxShadow: '0 12px 30px rgba(15,23,42,0.05)',
+  minHeight: 138,
 };
 
 const summaryCardWide = {
   gridColumn: 'span 4',
-  background:
-    'linear-gradient(180deg, rgba(167,139,250,0.10), rgba(167,139,250,0.06))',
-  border: '1px solid rgba(167,139,250,0.22)',
-  boxShadow: '0 14px 36px rgba(124,58,237,0.06)',
+  background: 'linear-gradient(180deg, rgba(109,73,255,0.07), rgba(109,73,255,0.03))',
+  border: '1px solid rgba(109,73,255,0.16)',
+  boxShadow: '0 14px 34px rgba(109,73,255,0.05)',
 };
 
 const usageCard = {
@@ -1468,10 +1381,10 @@ const planCardHeader = {
 };
 
 const summaryLabel = {
-  color: 'var(--muted)',
-  fontSize: 13,
-  fontWeight: 700,
-  letterSpacing: '0.04em',
+  color: '#5d647a',
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
   textTransform: 'uppercase',
 };
 
@@ -1479,15 +1392,15 @@ const summaryValue = {
   marginTop: 12,
   fontSize: 32,
   fontWeight: 900,
-  color: 'var(--text)',
+  color: '#14122b',
   letterSpacing: '-0.04em',
 };
 
 const usageCardSubtext = {
   marginTop: 8,
   fontSize: 12,
-  color: 'var(--muted)',
-  lineHeight: 1.5,
+  color: '#5d647a',
+  lineHeight: 1.55,
 };
 
 const usageTrack = {
@@ -1506,21 +1419,47 @@ const usageFill = {
 
 const planEyebrow = {
   margin: 0,
-  color: 'var(--muted)',
+  color: '#5d647a',
   fontSize: 14,
 };
 
+const planNameRow = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  flexWrap: 'wrap',
+  marginTop: 8,
+};
+
 const planName = {
-  margin: '6px 0',
-  fontSize: '2rem',
-  letterSpacing: '-0.03em',
-  color: 'var(--text)',
+  margin: 0,
+  fontSize: '2.1rem',
+  letterSpacing: '-0.04em',
+  color: '#14122b',
+  fontWeight: 900,
+};
+
+const planBadge = {
+  padding: '6px 10px',
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 800,
+  border: '1px solid rgba(109,73,255,0.18)',
+  background: 'rgba(109,73,255,0.08)',
+  color: '#1a1531',
 };
 
 const planMeta = {
-  color: '#22c55e',
-  margin: 0,
+  color: '#16a34a',
+  margin: '10px 0 0',
   fontWeight: 700,
+  fontSize: 15,
+};
+
+const planActionWrap = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
 };
 
 const filtersWrap = {
@@ -1534,37 +1473,36 @@ const filtersRow = {
 };
 
 const filterBtn = {
-  padding: '10px 14px',
-  borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  color: 'var(--muted)',
+  padding: '11px 14px',
+  borderRadius: 14,
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: '#ffffff',
+  color: '#5d647a',
   fontWeight: 700,
   cursor: 'pointer',
 };
 
 const filterCountText = {
   marginTop: 10,
-  color: 'var(--muted)',
+  color: '#5d647a',
   fontSize: 13,
 };
 
 const gridWrap = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
   gap: 18,
 };
 
 const emailCard = {
   padding: 18,
-  borderRadius: 20,
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  minHeight: 235,
+  borderRadius: 22,
+  background: 'rgba(255,255,255,0.94)',
+  border: '1px solid rgba(15,23,42,0.08)',
+  minHeight: 250,
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
-  boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
 };
 
 const cardTop = {
@@ -1591,23 +1529,22 @@ const cardAddressWrap = {
 const addrText = {
   fontFamily:
     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
-  color: 'var(--text)',
+  color: '#14122b',
   fontSize: 15,
   lineHeight: 1.7,
   fontWeight: 800,
   letterSpacing: '-0.01em',
   wordBreak: 'break-word',
   overflowWrap: 'anywhere',
-  background: 'rgba(15,23,42,0.025)',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
+  background: 'rgba(15,23,42,0.02)',
+  border: '1px solid rgba(15,23,42,0.08)',
   borderRadius: 14,
   padding: '12px 14px',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5)',
 };
 
 const createdText = {
-  marginTop: 8,
-  color: 'var(--muted)',
+  marginTop: 6,
+  color: '#5d647a',
   fontSize: 12,
 };
 
@@ -1615,8 +1552,8 @@ const favoriteBtn = {
   width: 38,
   height: 38,
   borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'var(--surface-soft, rgba(15,23,42,0.03))',
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: 'rgba(15,23,42,0.025)',
   fontSize: 18,
   cursor: 'pointer',
   flexShrink: 0,
@@ -1651,7 +1588,7 @@ const statBox = {
   padding: '12px 14px',
   borderRadius: 14,
   background: 'rgba(15,23,42,0.02)',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
+  border: '1px solid rgba(15,23,42,0.08)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -1662,7 +1599,7 @@ const statBoxColumn = {
   padding: '12px 14px',
   borderRadius: 14,
   background: 'rgba(15,23,42,0.02)',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
+  border: '1px solid rgba(15,23,42,0.08)',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
@@ -1690,12 +1627,12 @@ const progressFill = {
 
 const progressText = {
   fontSize: 11,
-  color: 'var(--muted)',
+  color: '#5d647a',
 };
 
 const statLabel = {
   fontSize: 12,
-  color: 'var(--muted)',
+  color: '#5d647a',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
   fontWeight: 700,
@@ -1703,13 +1640,13 @@ const statLabel = {
 
 const statValue = {
   fontSize: 14,
-  color: 'var(--text)',
+  color: '#14122b',
   fontWeight: 800,
 };
 
 const statValueMuted = {
   fontSize: 14,
-  color: 'var(--text)',
+  color: '#14122b',
   fontWeight: 800,
 };
 
@@ -1730,21 +1667,21 @@ const actions = {
 };
 
 const primaryBtn = {
-  padding: '12px 18px',
-  borderRadius: 12,
+  padding: '13px 18px',
+  borderRadius: 14,
   border: 'none',
-  background: 'linear-gradient(135deg,#7c3aed,#ec4899)',
+  background: 'linear-gradient(135deg,#6d49ff,#d946b2)',
   color: '#fff',
   cursor: 'pointer',
   fontWeight: 800,
-  boxShadow: '0 10px 24px rgba(124,58,237,0.18)',
+  boxShadow: '0 12px 28px rgba(109,73,255,0.18)',
 };
 
 const upgradeBtn = {
-  padding: '10px 16px',
-  borderRadius: 10,
+  padding: '11px 16px',
+  borderRadius: 12,
   border: 'none',
-  background: '#7c3aed',
+  background: '#6d49ff',
   color: '#fff',
   cursor: 'pointer',
   fontWeight: 700,
@@ -1752,60 +1689,72 @@ const upgradeBtn = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  boxShadow: '0 10px 24px rgba(124,58,237,0.14)',
+  boxShadow: '0 10px 24px rgba(109,73,255,0.14)',
+};
+
+const topUpLink = {
+  padding: '11px 16px',
+  borderRadius: 12,
+  background: '#22c55e',
+  color: '#fff',
+  fontWeight: 700,
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: '0 10px 24px rgba(34,197,94,0.14)',
 };
 
 const manageBtn = {
-  padding: '10px 16px',
-  borderRadius: 10,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  color: 'var(--text)',
+  padding: '11px 16px',
+  borderRadius: 12,
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: '#ffffff',
+  color: '#14122b',
+  cursor: 'pointer',
+  fontWeight: 700,
+};
+
+const ghostBtn = {
+  padding: '13px 18px',
+  borderRadius: 14,
+  border: '1px solid rgba(239,68,68,0.18)',
+  background: 'rgba(239,68,68,0.04)',
+  color: '#dc2626',
   cursor: 'pointer',
   fontWeight: 700,
 };
 
 const secondaryBtn = {
   padding: '11px 14px',
-  borderRadius: 12,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  color: 'var(--text)',
+  borderRadius: 14,
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: '#ffffff',
+  color: '#14122b',
   textDecoration: 'none',
   cursor: 'pointer',
   fontWeight: 800,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  minHeight: 44,
-  boxShadow: '0 4px 14px rgba(15,23,42,0.04)',
+  minHeight: 46,
 };
 
 const deleteBtnInline = {
   ...secondaryBtn,
   gridColumn: '1 / -1',
-  border: '1px solid rgba(239,68,68,0.24)',
+  border: '1px solid rgba(239,68,68,0.18)',
   color: '#dc2626',
   background: 'rgba(239,68,68,0.04)',
-};
-
-const dangerBtn = {
-  padding: '12px 18px',
-  borderRadius: 12,
-  border: '1px solid rgba(239,68,68,0.22)',
-  background: 'rgba(239,68,68,0.04)',
-  color: '#dc2626',
-  cursor: 'pointer',
-  fontWeight: 700,
 };
 
 const emptyCard = {
-  padding: 32,
-  borderRadius: 18,
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  padding: 34,
+  borderRadius: 22,
+  background: 'rgba(255,255,255,0.94)',
+  border: '1px solid rgba(15,23,42,0.08)',
   textAlign: 'center',
-  boxShadow: '0 12px 32px rgba(15,23,42,0.06)',
+  boxShadow: '0 12px 30px rgba(15,23,42,0.05)',
 };
 
 const centerStyle = {
@@ -1813,8 +1762,8 @@ const centerStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'var(--bg)',
-  color: 'var(--text)',
+  background: '#f6f4ff',
+  color: '#14122b',
   flexDirection: 'column',
   gap: 12,
 };
@@ -1822,8 +1771,8 @@ const centerStyle = {
 const loadingSpinner = {
   width: 34,
   height: 34,
-  border: '3px solid rgba(167,139,250,0.18)',
-  borderTop: '3px solid #a78bfa',
+  border: '3px solid rgba(109,73,255,0.18)',
+  borderTop: '3px solid #6d49ff',
   borderRadius: '50%',
   animation: 'spin 0.8s linear infinite',
 };
@@ -1831,7 +1780,7 @@ const loadingSpinner = {
 const modalOverlay = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(15,23,42,0.30)',
+  background: 'rgba(15,23,42,0.28)',
   backdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
@@ -1841,8 +1790,8 @@ const modalOverlay = {
 };
 
 const modalBox = {
-  background: 'var(--surface-elevated, #ffffff)',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.08)',
   borderRadius: 24,
   padding: 32,
   maxWidth: 500,
@@ -1856,9 +1805,9 @@ const modalBadge = {
   marginBottom: 16,
   padding: '8px 12px',
   borderRadius: 999,
-  border: '1px solid rgba(167,139,250,0.24)',
-  background: 'rgba(167,139,250,0.10)',
-  color: 'var(--text)',
+  border: '1px solid rgba(109,73,255,0.18)',
+  background: 'rgba(109,73,255,0.08)',
+  color: '#1a1531',
   fontSize: 12,
   fontWeight: 800,
   letterSpacing: '0.06em',
@@ -1869,11 +1818,11 @@ const modalTitle = {
   margin: '0 0 14px',
   fontSize: '2rem',
   lineHeight: 1.1,
-  color: 'var(--text)',
+  color: '#14122b',
 };
 
 const modalText = {
-  color: 'var(--muted)',
+  color: '#5d647a',
   lineHeight: 1.7,
   fontSize: 15,
   margin: '0 0 24px',
@@ -1890,7 +1839,7 @@ const modalPrimaryLink = {
   padding: '14px 16px',
   borderRadius: 14,
   border: 'none',
-  background: 'linear-gradient(135deg,#7c3aed,#ec4899)',
+  background: 'linear-gradient(135deg,#6d49ff,#d946b2)',
   color: '#fff',
   fontWeight: 800,
   fontSize: 15,
@@ -1905,9 +1854,9 @@ const modalGhostSecondaryLink = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: 14,
-  border: '1px solid rgba(167,139,250,0.24)',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  color: 'var(--text)',
+  border: '1px solid rgba(109,73,255,0.18)',
+  background: '#ffffff',
+  color: '#14122b',
   fontWeight: 800,
   fontSize: 15,
   cursor: 'pointer',
@@ -1921,9 +1870,9 @@ const modalSecondaryBtn = {
   width: '100%',
   padding: '14px 16px',
   borderRadius: 14,
-  border: '1px solid rgba(167,139,250,0.24)',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  color: 'var(--text)',
+  border: '1px solid rgba(109,73,255,0.18)',
+  background: '#ffffff',
+  color: '#14122b',
   fontWeight: 800,
   fontSize: 15,
   cursor: 'pointer',
@@ -1946,11 +1895,11 @@ const deleteBox = {
   width: '100%',
   maxWidth: 470,
   borderRadius: 24,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'var(--surface-elevated, #ffffff)',
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: '#ffffff',
   boxShadow: '0 30px 80px rgba(15,23,42,0.16)',
   padding: 28,
-  color: 'var(--text)',
+  color: '#14122b',
 };
 
 const deleteIconWrap = {
@@ -1981,11 +1930,11 @@ const deleteTitle = {
   margin: 0,
   marginBottom: 10,
   letterSpacing: '-0.02em',
-  color: 'var(--text)',
+  color: '#14122b',
 };
 
 const deleteText = {
-  color: 'var(--muted)',
+  color: '#5d647a',
   fontSize: 15,
   lineHeight: 1.6,
   marginBottom: 18,
@@ -1995,8 +1944,8 @@ const deleteEmailBox = {
   padding: '14px 16px',
   borderRadius: 16,
   background: 'rgba(15,23,42,0.02)',
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.08))',
-  color: 'var(--text)',
+  border: '1px solid rgba(15,23,42,0.08)',
+  color: '#14122b',
   fontSize: 14,
   wordBreak: 'break-word',
   marginBottom: 24,
@@ -2012,9 +1961,9 @@ const deleteActions = {
 const deleteCancelBtn = {
   padding: '12px 18px',
   borderRadius: 14,
-  border: '1px solid var(--border-soft, rgba(15,23,42,0.10))',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.96))',
-  color: 'var(--text)',
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: '#ffffff',
+  color: '#14122b',
   fontWeight: 600,
   cursor: 'pointer',
 };
@@ -2036,9 +1985,9 @@ const toastStyle = {
   bottom: '24px',
   left: '50%',
   transform: 'translateX(-50%)',
-  background: 'var(--surface-elevated, rgba(255,255,255,0.98))',
-  border: '1px solid rgba(167,139,250,0.24)',
-  color: 'var(--text)',
+  background: '#ffffff',
+  border: '1px solid rgba(109,73,255,0.18)',
+  color: '#14122b',
   padding: '12px 18px',
   borderRadius: '12px',
   fontSize: '14px',
