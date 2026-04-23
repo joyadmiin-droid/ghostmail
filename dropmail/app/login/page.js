@@ -21,6 +21,36 @@ function getSafeNextPath() {
   return next;
 }
 
+function GhostLogo({ style = {} }) {
+  return (
+    <svg
+      viewBox="0 0 128 128"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={style}
+    >
+      <path
+        d="M64 14C42.46 14 25 31.46 25 53V89.5C25 96.404 30.596 102 37.5 102C42.984 102 47.642 98.465 49.349 93.55C50.811 98.634 55.499 102.35 61.12 102.35C66.77 102.35 71.477 98.595 72.912 93.469C74.603 98.425 79.278 102 84.8 102C91.711 102 97.314 96.397 97.314 89.486V53C97.314 31.46 79.854 14 58.314 14H64Z"
+        fill="white"
+      />
+      <path
+        d="M64 14C42.46 14 25 31.46 25 53V89.5C25 96.404 30.596 102 37.5 102C42.984 102 47.642 98.465 49.349 93.55C50.811 98.634 55.499 102.35 61.12 102.35C66.77 102.35 71.477 98.595 72.912 93.469C74.603 98.425 79.278 102 84.8 102C91.711 102 97.314 96.397 97.314 89.486V53C97.314 31.46 79.854 14 58.314 14H64Z"
+        stroke="currentColor"
+        strokeWidth="4.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="49.5" cy="50.5" r="5.8" fill="#1F1840" />
+      <circle cx="77.5" cy="50.5" r="5.8" fill="#1F1840" />
+      <path
+        d="M52 69C58 75 69 75 75 69"
+        stroke="#1F1840"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -179,7 +209,7 @@ export default function LoginPage() {
     width: '100%',
     padding: '14px 16px',
     borderRadius: '16px',
-    border: '1px solid rgba(255,255,255,0.12)',
+    border: '1px solid rgba(255,255,255,0.08)',
     color: '#ffffff',
     fontSize: '15px',
     fontWeight: '700',
@@ -189,92 +219,75 @@ export default function LoginPage() {
     justifyContent: 'center',
     gap: '12px',
     transition: 'all 0.2s ease',
-    boxShadow: '0 14px 34px rgba(0,0,0,0.22)',
+    boxShadow: '0 10px 26px rgba(0,0,0,0.18)',
   };
 
   if (checkingSession) {
     return (
-      <main
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background:
-            'radial-gradient(circle at top, rgba(124,58,237,0.18), transparent 35%), linear-gradient(135deg, #0b1020, #111827 55%, #050816)',
-          color: '#ffffff',
-          fontFamily: 'Inter, system-ui, sans-serif',
-        }}
-      >
-        Loading...
+      <main style={loadingWrap}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={loadingSpinner} />
+          <p style={loadingLabel}>Loading...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        background:
-          'radial-gradient(circle at top, rgba(124,58,237,0.18), transparent 35%), linear-gradient(135deg, #0b1020, #111827 55%, #050816)',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '460px',
-          background: 'rgba(15, 23, 42, 0.9)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '28px',
-          padding: '34px',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(16px)',
-        }}
-      >
+    <main style={pageWrap}>
+      <style>{`
+        * { box-sizing: border-box; }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .auth-social-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 16px 34px rgba(0,0,0,0.24);
+        }
+
+        .auth-tab:hover {
+          opacity: 0.95;
+        }
+
+        .auth-input:focus {
+          border-color: rgba(167,139,250,0.34) !important;
+          box-shadow: 0 0 0 4px rgba(109,73,255,0.10);
+        }
+
+        .auth-primary:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 18px 38px rgba(109,73,255,0.30);
+        }
+
+        @media (max-width: 640px) {
+          .auth-shell {
+            padding: 20px !important;
+            border-radius: 24px !important;
+          }
+
+          .auth-title {
+            font-size: 28px !important;
+          }
+        }
+      `}</style>
+
+      <div style={ambientGlowLeft} />
+      <div style={ambientGlowRight} />
+
+      <div style={shell} className="auth-shell">
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <a
-            href="/"
-            style={{
-              textDecoration: 'none',
-              color: '#ffffff',
-              fontSize: '30px',
-              fontWeight: '800',
-              letterSpacing: '-0.02em',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              marginBottom: '10px',
-            }}
-          >
-            <span style={{ color: '#8b5cf6', fontSize: '24px' }}>&#10022;</span>
-            GhostMail
+          <a href="/" style={brandLink}>
+            <GhostLogo style={{ width: 30, height: 30, color: '#8b5cf6', flexShrink: 0 }} />
+            <span style={brandText}>GhostMail</span>
           </a>
 
-          <h1
-            style={{
-              margin: '8px 0 8px',
-              color: '#ffffff',
-              fontSize: '32px',
-              fontWeight: '800',
-              letterSpacing: '-0.03em',
-            }}
-          >
+          <h1 style={title} className="auth-title">
             {isReset ? 'Reset password' : isSignup ? 'Create your account' : 'Welcome back'}
           </h1>
 
-          <p
-            style={{
-              margin: 0,
-              color: '#94a3b8',
-              fontSize: '15px',
-              lineHeight: 1.5,
-            }}
-          >
+          <p style={subtitle}>
             {isReset
               ? 'Enter your email and we’ll send you a reset link.'
               : isSignup
@@ -285,32 +298,20 @@ export default function LoginPage() {
 
         {!isReset && (
           <>
-            <div
-              style={{
-                marginBottom: '18px',
-                display: 'flex',
-                background: 'rgba(2,6,23,0.65)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '14px',
-                padding: '4px',
-              }}
-            >
+            <div style={switchWrap}>
               <button
                 type="button"
+                className="auth-tab"
                 onClick={() => {
                   setIsSignup(false);
                   setError('');
                   setMessage('');
                 }}
                 style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: !isSignup ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'transparent',
+                  ...switchBtn,
+                  background: !isSignup ? 'linear-gradient(135deg, #6d49ff, #5836e8)' : 'transparent',
                   color: '#ffffff',
-                  fontWeight: '700',
-                  cursor: 'pointer',
+                  boxShadow: !isSignup ? '0 10px 24px rgba(109,73,255,0.24)' : 'none',
                 }}
               >
                 Login
@@ -318,6 +319,7 @@ export default function LoginPage() {
 
               <button
                 type="button"
+                className="auth-tab"
                 onClick={() => {
                   setIsSignup(true);
                   setIsReset(false);
@@ -325,14 +327,10 @@ export default function LoginPage() {
                   setMessage('');
                 }}
                 style={{
-                  flex: 1,
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: isSignup ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : 'transparent',
+                  ...switchBtn,
+                  background: isSignup ? 'linear-gradient(135deg, #6d49ff, #5836e8)' : 'transparent',
                   color: '#ffffff',
-                  fontWeight: '700',
-                  cursor: 'pointer',
+                  boxShadow: isSignup ? '0 10px 24px rgba(109,73,255,0.24)' : 'none',
                 }}
               >
                 Sign up
@@ -342,11 +340,12 @@ export default function LoginPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
               <button
                 type="button"
+                className="auth-social-btn"
                 onClick={() => handleOAuth('google')}
                 disabled={oauthLoading !== ''}
                 style={{
                   ...socialButtonBase,
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))',
                 }}
               >
                 <GoogleIcon />
@@ -355,12 +354,13 @@ export default function LoginPage() {
 
               <button
                 type="button"
+                className="auth-social-btn"
                 onClick={() => handleOAuth('github')}
                 disabled={oauthLoading !== ''}
                 style={{
                   ...socialButtonBase,
                   background: 'linear-gradient(135deg, #161b22, #0d1117)',
-                  border: '1px solid rgba(255,255,255,0.14)',
+                  border: '1px solid rgba(255,255,255,0.12)',
                 }}
               >
                 <GitHubIcon />
@@ -369,12 +369,13 @@ export default function LoginPage() {
 
               <button
                 type="button"
+                className="auth-social-btn"
                 onClick={() => handleOAuth('x')}
                 disabled={oauthLoading !== ''}
                 style={{
                   ...socialButtonBase,
                   background: 'linear-gradient(135deg, #111111, #000000)',
-                  border: '1px solid rgba(255,255,255,0.16)',
+                  border: '1px solid rgba(255,255,255,0.14)',
                 }}
               >
                 <XIcon />
@@ -382,113 +383,48 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: '18px',
-              }}
-            >
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-              <span style={{ color: '#94a3b8', fontSize: '13px' }}>or continue with email</span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+            <div style={dividerWrap}>
+              <div style={dividerLine} />
+              <span style={dividerText}>or continue with email</span>
+              <div style={dividerLine} />
             </div>
           </>
         )}
 
         {error ? (
-          <div
-            style={{
-              marginBottom: '16px',
-              padding: '12px 14px',
-              borderRadius: '12px',
-              background: 'rgba(239,68,68,0.12)',
-              border: '1px solid rgba(239,68,68,0.28)',
-              color: '#fca5a5',
-              fontSize: '14px',
-            }}
-          >
+          <div style={errorBox}>
             {error}
           </div>
         ) : null}
 
         {message ? (
-          <div
-            style={{
-              marginBottom: '16px',
-              padding: '12px 14px',
-              borderRadius: '12px',
-              background: 'rgba(34,197,94,0.12)',
-              border: '1px solid rgba(34,197,94,0.28)',
-              color: '#86efac',
-              fontSize: '14px',
-            }}
-          >
+          <div style={successBox}>
             {message}
           </div>
         ) : null}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#cbd5e1',
-                fontSize: '14px',
-                fontWeight: '600',
-              }}
-            >
-              Email
-            </label>
+            <label style={label}>Email</label>
             <input
+              className="auth-input"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '14px 16px',
-                borderRadius: '14px',
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(2,6,23,0.7)',
-                color: '#ffffff',
-                fontSize: '15px',
-                outline: 'none',
-              }}
+              style={input}
             />
           </div>
 
           {!isReset && (
             <div>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  color: '#cbd5e1',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                }}
-              >
-                Password
-              </label>
+              <label style={label}>Password</label>
               <input
+                className="auth-input"
                 placeholder={isSignup ? 'Create a password' : 'Enter your password'}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '14px 16px',
-                  borderRadius: '14px',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  background: 'rgba(2,6,23,0.7)',
-                  color: '#ffffff',
-                  fontSize: '15px',
-                  outline: 'none',
-                }}
+                style={input}
               />
             </div>
           )}
@@ -496,19 +432,11 @@ export default function LoginPage() {
           <button
             onClick={handleSubmit}
             disabled={loading}
+            className="auth-primary"
             style={{
-              width: '100%',
-              marginTop: '6px',
-              padding: '14px 16px',
-              border: 'none',
-              borderRadius: '14px',
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              color: '#ffffff',
-              fontSize: '15px',
-              fontWeight: '700',
+              ...primaryBtn,
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              boxShadow: '0 16px 40px rgba(79,70,229,0.35)',
+              opacity: loading ? 0.72 : 1,
             }}
           >
             {loading
@@ -522,15 +450,7 @@ export default function LoginPage() {
         </div>
 
         {!isReset ? (
-          <div
-            style={{
-              marginTop: '18px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: '10px',
-              flexWrap: 'wrap',
-            }}
-          >
+          <div style={bottomRow}>
             <button
               type="button"
               onClick={() => {
@@ -538,15 +458,7 @@ export default function LoginPage() {
                 setError('');
                 setMessage('');
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#a78bfa',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                padding: 0,
-              }}
+              style={linkBtnPrimary}
             >
               {isSignup ? 'Already have an account? Login' : 'New here? Sign up'}
             </button>
@@ -558,15 +470,7 @@ export default function LoginPage() {
                 setError('');
                 setMessage('');
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#cbd5e1',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                padding: 0,
-              }}
+              style={linkBtnMuted}
             >
               Forgot password?
             </button>
@@ -580,15 +484,7 @@ export default function LoginPage() {
                 setError('');
                 setMessage('');
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#a78bfa',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                padding: 0,
-              }}
+              style={linkBtnPrimary}
             >
               Back to login
             </button>
@@ -598,3 +494,235 @@ export default function LoginPage() {
     </main>
   );
 }
+
+/* styles */
+
+const pageWrap = {
+  minHeight: '100vh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '24px',
+  background:
+    'radial-gradient(circle at top, rgba(109,73,255,0.18), transparent 28%), linear-gradient(135deg, #0b1020, #111827 55%, #050816)',
+  fontFamily: 'Inter, system-ui, sans-serif',
+  position: 'relative',
+  overflow: 'hidden',
+};
+
+const ambientGlowLeft = {
+  position: 'absolute',
+  width: 420,
+  height: 420,
+  borderRadius: '50%',
+  background: 'rgba(109,73,255,0.18)',
+  filter: 'blur(120px)',
+  top: '-10%',
+  left: '-6%',
+  pointerEvents: 'none',
+};
+
+const ambientGlowRight = {
+  position: 'absolute',
+  width: 360,
+  height: 360,
+  borderRadius: '50%',
+  background: 'rgba(217,70,178,0.12)',
+  filter: 'blur(120px)',
+  bottom: '-10%',
+  right: '-4%',
+  pointerEvents: 'none',
+};
+
+const shell = {
+  width: '100%',
+  maxWidth: '470px',
+  background: 'rgba(15, 23, 42, 0.88)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '28px',
+  padding: '34px',
+  boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
+  backdropFilter: 'blur(16px)',
+  position: 'relative',
+  zIndex: 1,
+};
+
+const brandLink = {
+  textDecoration: 'none',
+  color: '#ffffff',
+  fontSize: '30px',
+  fontWeight: '800',
+  letterSpacing: '-0.02em',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '10px',
+  marginBottom: '10px',
+};
+
+const brandText = {
+  color: '#ffffff',
+  fontSize: '30px',
+  fontWeight: 800,
+  letterSpacing: '-0.03em',
+};
+
+const title = {
+  margin: '8px 0 8px',
+  color: '#ffffff',
+  fontSize: '34px',
+  fontWeight: '800',
+  letterSpacing: '-0.04em',
+};
+
+const subtitle = {
+  margin: 0,
+  color: '#94a3b8',
+  fontSize: '15px',
+  lineHeight: 1.5,
+};
+
+const switchWrap = {
+  marginBottom: '18px',
+  display: 'flex',
+  background: 'rgba(2,6,23,0.55)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '16px',
+  padding: '4px',
+};
+
+const switchBtn = {
+  flex: 1,
+  padding: '11px 12px',
+  borderRadius: '12px',
+  border: 'none',
+  fontWeight: '700',
+  cursor: 'pointer',
+};
+
+const dividerWrap = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  marginBottom: '18px',
+};
+
+const dividerLine = {
+  flex: 1,
+  height: '1px',
+  background: 'rgba(255,255,255,0.08)',
+};
+
+const dividerText = {
+  color: '#94a3b8',
+  fontSize: '13px',
+};
+
+const errorBox = {
+  marginBottom: '16px',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  background: 'rgba(239,68,68,0.12)',
+  border: '1px solid rgba(239,68,68,0.28)',
+  color: '#fca5a5',
+  fontSize: '14px',
+};
+
+const successBox = {
+  marginBottom: '16px',
+  padding: '12px 14px',
+  borderRadius: '12px',
+  background: 'rgba(34,197,94,0.12)',
+  border: '1px solid rgba(34,197,94,0.28)',
+  color: '#86efac',
+  fontSize: '14px',
+};
+
+const label = {
+  display: 'block',
+  marginBottom: '8px',
+  color: '#cbd5e1',
+  fontSize: '14px',
+  fontWeight: '600',
+};
+
+const input = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '14px 16px',
+  borderRadius: '14px',
+  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(2,6,23,0.7)',
+  color: '#ffffff',
+  fontSize: '15px',
+  outline: 'none',
+  transition: 'all 0.18s ease',
+};
+
+const primaryBtn = {
+  width: '100%',
+  marginTop: '6px',
+  padding: '14px 16px',
+  border: 'none',
+  borderRadius: '14px',
+  background: 'linear-gradient(135deg, #6d49ff, #5836e8)',
+  color: '#ffffff',
+  fontSize: '15px',
+  fontWeight: '700',
+  boxShadow: '0 16px 40px rgba(109,73,255,0.28)',
+  transition: 'all 0.18s ease',
+};
+
+const bottomRow = {
+  marginTop: '18px',
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '10px',
+  flexWrap: 'wrap',
+};
+
+const linkBtnPrimary = {
+  background: 'transparent',
+  border: 'none',
+  color: '#a78bfa',
+  fontSize: '14px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  padding: 0,
+};
+
+const linkBtnMuted = {
+  background: 'transparent',
+  border: 'none',
+  color: '#cbd5e1',
+  fontSize: '14px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  padding: 0,
+};
+
+const loadingWrap = {
+  minHeight: '100vh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background:
+    'radial-gradient(circle at top, rgba(109,73,255,0.18), transparent 28%), linear-gradient(135deg, #0b1020, #111827 55%, #050816)',
+  color: '#ffffff',
+  fontFamily: 'Inter, system-ui, sans-serif',
+};
+
+const loadingSpinner = {
+  width: 34,
+  height: 34,
+  border: '3px solid rgba(255,255,255,0.18)',
+  borderTop: '3px solid #8b5cf6',
+  borderRadius: '50%',
+  animation: 'spin 0.8s linear infinite',
+  margin: '0 auto',
+};
+
+const loadingLabel = {
+  marginTop: 14,
+  color: '#cbd5e1',
+  fontSize: 14,
+};
