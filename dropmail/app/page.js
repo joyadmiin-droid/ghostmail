@@ -491,9 +491,9 @@ export default function Home() {
             </div>
 
             <h1 className={styles.heroTitle}>
-  <span className={styles.line1}>Disposable Email.</span>
-  <span className={styles.line2}>Real Privacy.</span>
-</h1>
+              <span className={styles.heroLine1}>Disposable Email.</span>
+              <span className={styles.heroLine2}>Real Privacy.</span>
+           </h1>
 
             <p className={styles.heroSub}>
               Create private inboxes in one click. No sign-ups. No spam. No tracking.
@@ -979,20 +979,20 @@ function GhostLogo({ className = '' }) {
       className={className}
     >
       <path
-        d="M64 14C42.46 14 25 31.46 25 53V89.5C25 96.404 30.596 102 37.5 102C42.984 102 47.642 98.465 49.349 93.55C50.811 98.634 55.499 102.35 61.12 102.35C66.77 102.35 71.477 98.595 72.912 93.469C74.603 98.425 79.278 102 84.8 102C91.711 102 97.314 96.397 97.314 89.486V53C97.314 31.46 79.854 14 58.314 14H64Z"
+        d="M64 12C42.5 12 25 29.5 25 51V86.5C25 94 31 100 38.5 100C44.1 100 48.9 96.4 50.7 91.2C52.3 96.5 57.1 100.3 62.8 100.3C68.4 100.3 73.2 96.6 74.9 91.4C76.8 96.5 81.5 100 87 100C94.5 100 100.5 94 100.5 86.5V51C100.5 29.5 83 12 61.5 12H64Z"
         fill="white"
       />
       <path
-        d="M64 14C42.46 14 25 31.46 25 53V89.5C25 96.404 30.596 102 37.5 102C42.984 102 47.642 98.465 49.349 93.55C50.811 98.634 55.499 102.35 61.12 102.35C66.77 102.35 71.477 98.595 72.912 93.469C74.603 98.425 79.278 102 84.8 102C91.711 102 97.314 96.397 97.314 89.486V53C97.314 31.46 79.854 14 58.314 14H64Z"
+        d="M64 12C42.5 12 25 29.5 25 51V86.5C25 94 31 100 38.5 100C44.1 100 48.9 96.4 50.7 91.2C52.3 96.5 57.1 100.3 62.8 100.3C68.4 100.3 73.2 96.6 74.9 91.4C76.8 96.5 81.5 100 87 100C94.5 100 100.5 94 100.5 86.5V51C100.5 29.5 83 12 61.5 12H64Z"
         stroke="currentColor"
-        strokeWidth="4.5"
+        strokeWidth="4"
         strokeLinejoin="round"
       />
-      <circle cx="49.5" cy="50.5" r="5.8" fill="#1F1840" />
-      <circle cx="77.5" cy="50.5" r="5.8" fill="#1F1840" />
+      <circle cx="50" cy="49" r="5.7" fill="#20193f" />
+      <circle cx="78" cy="49" r="5.7" fill="#20193f" />
       <path
-        d="M52 69C58 75 69 75 75 69"
-        stroke="#1F1840"
+        d="M52 67C58 73 70 73 76 67"
+        stroke="#20193f"
         strokeWidth="4.5"
         strokeLinecap="round"
       />

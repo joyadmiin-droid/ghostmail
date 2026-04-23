@@ -1620,3 +1620,103 @@
   50% { transform: translateY(-8px) translateX(6px); }
   100% { transform: translateY(0px) translateX(0px); }
 }
+
+/* ===== exact homepage hero fixes ===== */
+
+.heroTitle {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 0.94;
+  letter-spacing: -0.06em;
+  max-width: 760px;
+}
+
+.heroLine1 {
+  font-size: clamp(64px, 7vw, 96px);
+  font-weight: 900;
+  color: #0f1230;
+  display: block;
+}
+
+.heroLine2 {
+  font-size: clamp(64px, 7vw, 96px);
+  font-weight: 900;
+  display: block;
+  background: linear-gradient(90deg, #7c5cff 0%, #5b31ea 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brandLogo {
+  width: 38px;
+  height: 38px;
+  color: #5b31ea;
+  flex-shrink: 0;
+}
+
+.heroGhost {
+  width: 108px;
+  height: 108px;
+  color: #5b31ea;
+  filter: drop-shadow(0 8px 18px rgba(91, 49, 234, 0.10));
+}
+
+.ghostFloatWrap {
+  position: absolute;
+  top: -54px;
+  right: 16px;
+  animation: ghostFloat 4.8s ease-in-out infinite;
+}
+
+.floatIconLeft,
+.floatIconRight {
+  position: absolute;
+  color: rgba(124, 92, 255, 0.45);
+  font-size: 34px;
+  pointer-events: none;
+  animation: sideFloat 4s ease-in-out infinite;
+}
+
+.floatIconLeft {
+  left: -34px;
+  top: 34%;
+}
+
+.floatIconRight {
+  right: -34px;
+  top: 46%;
+  animation-delay: 1s;
+}
+
+@keyframes sideFloat {
+  0% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-8px) translateX(6px); }
+  100% { transform: translateY(0px) translateX(0px); }
+}
+
+/* force 2-line title on desktop */
+@media (min-width: 981px) {
+  .heroLeft {
+    max-width: 720px;
+  }
+
+  .heroTitle {
+    max-width: 700px;
+  }
+}
+
+/* keep title readable on mobile */
+@media (max-width: 980px) {
+  .heroLine1,
+  .heroLine2 {
+    font-size: clamp(42px, 12vw, 68px);
+  }
+
+  .floatIconLeft,
+  .floatIconRight {
+    display: none;
+  }
+}
