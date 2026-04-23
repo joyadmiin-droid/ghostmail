@@ -1977,3 +1977,22 @@
   height: 22px;
   object-fit: contain;
 }
+
+/* step 1: logo polish */
+.brandLogo {
+  width: 38px;
+  height: 38px;
+  color: #5b31ea;
+}
+
+.heroGhost {
+  width: 108px;
+  height: 108px;
+  color: #6a43f3;
+  filter: drop-shadow(0 12px 24px rgba(91, 49, 234, 0.16));
+}
+
+.ghostFloatWrap {
+  top: -54px;
+  right: 18px;
+}

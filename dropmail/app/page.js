@@ -601,9 +601,7 @@ export default function Home() {
                 ).map((item) => (
                   <div key={`${item.brand}-${item.subject}`} className={styles.previewItem}>
                     <div className={styles.previewBrandMark}>
-  {item.brand === 'Google' && <img src="/logos/google.svg" />}
-  {item.brand === 'Slack' && <img src="/logos/slack.svg" />}
-  {item.brand === 'GitHub' && <img src="/logos/github.svg" />}
+  {item.brand[0]}
 </div>
 
                     <div className={styles.previewItemText}>
@@ -990,20 +988,17 @@ function GhostLogo({ className = '' }) {
       className={className}
     >
       <path
-        d="M64 12C42.5 12 25 29.5 25 51V86.5C25 94 31 100 38.5 100C44.1 100 48.9 96.4 50.7 91.2C52.3 96.5 57.1 100.3 62.8 100.3C68.4 100.3 73.2 96.6 74.9 91.4C76.8 96.5 81.5 100 87 100C94.5 100 100.5 94 100.5 86.5V51C100.5 29.5 83 12 61.5 12H64Z"
+        d="M64 14C43 14 27 30 27 50.5V84.5C27 91.8 32.2 98 39.2 98C44.7 98 49.3 94.8 51.8 89.8C54.1 95 58.8 98.6 64.2 98.6C69.6 98.6 74.2 95 76.5 89.8C79 94.8 83.6 98 89.1 98C96.1 98 101.3 91.8 101.3 84.5V50.5C101.3 30 85 14 64 14Z"
         fill="white"
-      />
-      <path
-        d="M64 12C42.5 12 25 29.5 25 51V86.5C25 94 31 100 38.5 100C44.1 100 48.9 96.4 50.7 91.2C52.3 96.5 57.1 100.3 62.8 100.3C68.4 100.3 73.2 96.6 74.9 91.4C76.8 96.5 81.5 100 87 100C94.5 100 100.5 94 100.5 86.5V51C100.5 29.5 83 12 61.5 12H64Z"
         stroke="currentColor"
         strokeWidth="4"
         strokeLinejoin="round"
       />
-      <circle cx="50" cy="49" r="5.7" fill="#20193f" />
-      <circle cx="78" cy="49" r="5.7" fill="#20193f" />
+      <ellipse cx="51" cy="49" rx="5.5" ry="7" fill="#2B2150" />
+      <ellipse cx="77" cy="49" rx="5.5" ry="7" fill="#2B2150" />
       <path
-        d="M52 67C58 73 70 73 76 67"
-        stroke="#20193f"
+        d="M55 67C58.5 71 69.5 71 73 67"
+        stroke="#2B2150"
         strokeWidth="4.5"
         strokeLinecap="round"
       />
