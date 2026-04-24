@@ -5,6 +5,13 @@ import ThemeClient from './ThemeClient';
 export const metadata = {
   title: 'GhostMail',
   description: 'Private email inbox for developers & testing',
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({ children }) {
