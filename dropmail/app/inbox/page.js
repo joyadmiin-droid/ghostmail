@@ -1276,7 +1276,6 @@ function InboxContent() {
     </main>
   );
 }
-}
 export default function InboxPage() {
   return (
     <Suspense
