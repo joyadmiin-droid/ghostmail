@@ -63,6 +63,9 @@ function InboxContent() {
 
   const hasCleanedExpiredMailbox = useRef(false);
   const attachmentBlobUrlsRef = useRef({});
+  const fetchInProgressRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
+  const rateLimitedUntilRef = useRef(0);
 
   function showToast(message) {
     setToast(message);
@@ -310,7 +313,31 @@ function InboxContent() {
   }, [selected?.id, isLoggedIn, fetchAttachmentBlob, revokeAttachmentUrls]);
 
   const fetchEmails = useCallback(
-    async (showRefreshState = false) => {
+    async (showRefreshState = false) => {const fetchEmails = useCallback(
+  async (showRefreshState = false) => {
+    const now = Date.now();
+
+    if (fetchInProgressRef.current) return;
+
+    if (rateLimitedUntilRef.current && now < rateLimitedUntilRef.current) {
+      setErrorType('rate_limit');
+      setError('Please wait a bit before trying again.');
+      setLoading(false);
+      return;
+    }
+
+    if (showRefreshState && now - lastFetchAtRef.current < 10000) {
+      showToast('Please wait 10 seconds before refreshing again');
+      return;
+    }
+
+    fetchInProgressRef.current = true;
+    lastFetchAtRef.current = now;
+
+    if (!token || !isLoggedIn) {
+      setLoading(false);
+      return;
+    }
       if (!token || !isLoggedIn) {
         setLoading(false);
         return;
@@ -343,10 +370,11 @@ function InboxContent() {
           }
 
           if (res.status === 429) {
-            setErrorType('rate_limit');
-            setError(message);
-            return;
-          }
+  rateLimitedUntilRef.current = Date.now() + 60 * 1000; // 1 min block
+  setErrorType('rate_limit');
+  setError('Too many refreshes. Please wait 1 minute.');
+  return;
+}
 
           if (res.status === 401) {
             setErrorType('auth');
@@ -397,9 +425,10 @@ function InboxContent() {
         setErrorType('generic');
         setError(err.message || 'Failed to load inbox');
       } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
+  fetchInProgressRef.current = false;
+  setLoading(false);
+  setRefreshing(false);
+}
     },
     [token, isLoggedIn, cleanupExpiredMailbox, mailbox?.id]
   );
@@ -835,9 +864,9 @@ function InboxContent() {
               style={autoRefreshSelect}
             >
               <option value={0}>Off</option>
-              <option value={5}>5s</option>
-              <option value={10}>10s</option>
-              <option value={15}>15s</option>
+              <option value={60}>1 min</option>
+              <option value={120}>2 min</option>
+              <option value={300}>5 min</option> 
             </select>
           </div>
 
