@@ -313,7 +313,6 @@ function InboxContent() {
   }, [selected?.id, isLoggedIn, fetchAttachmentBlob, revokeAttachmentUrls]);
 
   const fetchEmails = useCallback(
-    async (showRefreshState = false) => {const fetchEmails = useCallback(
   async (showRefreshState = false) => {
     const now = Date.now();
 
