@@ -1,6 +1,7 @@
 import './globals.css';
 import Script from 'next/script';
 import ThemeClient from './ThemeClient';
+import Script from 'next/script';
 
 export const metadata = {
   title: 'GhostMail',
