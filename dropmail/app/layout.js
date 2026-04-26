@@ -1,6 +1,7 @@
 import './globals.css';
 import Script from 'next/script';
 import ThemeClient from './ThemeClient';
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata = {
   title: 'GhostMail',
@@ -33,6 +34,8 @@ export default function RootLayout({ children }) {
       <body>
         <ThemeClient />
         {children}
+
+        <Analytics />
 
         <Script
           src="https://cloud.umami.is/script.js"
