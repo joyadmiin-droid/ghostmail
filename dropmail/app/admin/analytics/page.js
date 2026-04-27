@@ -31,9 +31,7 @@ export default function AnalyticsAdminPage() {
         }
 
         const res = await fetch('/api/admin/analytics', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
 
         const data = await res.json();
@@ -56,12 +54,24 @@ export default function AnalyticsAdminPage() {
     const signups = events.filter((e) => e.event === 'signup_success').length;
     const clicks = events.filter((e) => e.event === 'generate_email_click').length;
 
-    const uniqueUsers = new Set(
-      events
-        .map((e) => e.user_email)
-        .filter(Boolean)
-        .map((email) => email.toLowerCase())
-    ).size;
+    const userGroups = events
+      .filter((e) => e.user_email)
+      .reduce((acc, e) => {
+        const email = e.user_email.toLowerCase();
+        if (!acc[email]) acc[email] = [];
+        acc[email].push(e);
+        return acc;
+      }, {});
+
+    const userJourneys = Object.entries(userGroups)
+      .map(([email, userEvents]) => ({
+        email,
+        events: userEvents.sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        ),
+        lastSeen: userEvents[0]?.created_at,
+      }))
+      .sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
 
     const topPages = Object.entries(
       events
@@ -79,7 +89,7 @@ export default function AnalyticsAdminPage() {
       { label: 'Signups', value: signups, rate: pct(signups, pageViews) },
     ];
 
-    return { pageViews, logins, signups, clicks, uniqueUsers, topPages, funnel };
+    return { pageViews, logins, signups, clicks, topPages, funnel, userJourneys };
   }, [events]);
 
   if (loading) return <main style={page}>Loading analytics...</main>;
@@ -103,7 +113,7 @@ export default function AnalyticsAdminPage() {
           <Card title="Logins" value={stats.logins} />
           <Card title="Signups" value={stats.signups} />
           <Card title="Email Clicks" value={stats.clicks} />
-          <Card title="Known Users" value={stats.uniqueUsers} />
+          <Card title="Known Users" value={stats.userJourneys.length} />
         </div>
 
         <section style={panel}>
@@ -119,18 +129,44 @@ export default function AnalyticsAdminPage() {
                 </div>
 
                 <div style={barTrack}>
-                  <div
-                    style={{
-                      ...barFill,
-                      width: item.rate,
-                    }}
-                  />
+                  <div style={{ ...barFill, width: item.rate }} />
                 </div>
 
                 <div style={funnelRate}>{item.rate}</div>
               </div>
             ))}
           </div>
+        </section>
+
+        <section style={panel}>
+          <h2 style={sectionTitle}>User Journeys</h2>
+          <p style={muted}>See what each known user did recently.</p>
+
+          {stats.userJourneys.length === 0 ? (
+            <p style={muted}>No user-linked events yet.</p>
+          ) : (
+            <div style={journeyGrid}>
+              {stats.userJourneys.map((user) => (
+                <div key={user.email} style={journeyCard}>
+                  <h3 style={journeyEmail}>{user.email}</h3>
+
+                  {user.events.slice(0, 8).map((e) => (
+                    <div key={e.id} style={journeyEvent}>
+                      <div>
+                        <strong>{e.event}</strong>
+                        <div style={journeyMeta}>
+                          {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+                        </div>
+                      </div>
+                      <span style={journeyTime}>
+                        {new Date(e.created_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section style={panel}>
@@ -189,10 +225,7 @@ const page = {
   fontFamily: 'Inter, system-ui, sans-serif',
 };
 
-const container = {
-  maxWidth: 1180,
-  margin: '0 auto',
-};
+const container = { maxWidth: 1180, margin: '0 auto' };
 
 const topbar = {
   display: 'flex',
@@ -220,10 +253,7 @@ const title = {
   letterSpacing: '-0.05em',
 };
 
-const subtitle = {
-  color: '#5d647a',
-  margin: 0,
-};
+const subtitle = { color: '#5d647a', margin: 0 };
 
 const button = {
   padding: '13px 18px',
@@ -273,20 +303,10 @@ const panel = {
   boxShadow: '0 14px 34px rgba(15,23,42,0.06)',
 };
 
-const sectionTitle = {
-  margin: '0 0 8px',
-  fontSize: 22,
-};
+const sectionTitle = { margin: '0 0 8px', fontSize: 22 };
+const muted = { margin: '0 0 18px', color: '#5d647a' };
 
-const muted = {
-  margin: '0 0 18px',
-  color: '#5d647a',
-};
-
-const funnelWrap = {
-  display: 'grid',
-  gap: 16,
-};
+const funnelWrap = { display: 'grid', gap: 16 };
 
 const funnelItem = {
   padding: 16,
@@ -321,6 +341,46 @@ const funnelRate = {
   color: '#6d49ff',
 };
 
+const journeyGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: 16,
+};
+
+const journeyCard = {
+  padding: 18,
+  borderRadius: 18,
+  background: 'rgba(109,73,255,0.04)',
+  border: '1px solid rgba(109,73,255,0.10)',
+};
+
+const journeyEmail = {
+  margin: '0 0 14px',
+  fontSize: 16,
+  wordBreak: 'break-word',
+};
+
+const journeyEvent = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  padding: '10px 0',
+  borderTop: '1px solid rgba(15,23,42,0.06)',
+};
+
+const journeyMeta = {
+  color: '#5d647a',
+  fontSize: 13,
+  marginTop: 3,
+};
+
+const journeyTime = {
+  color: '#6d49ff',
+  fontSize: 12,
+  fontWeight: 800,
+  whiteSpace: 'nowrap',
+};
+
 const row = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -328,9 +388,7 @@ const row = {
   borderBottom: '1px solid rgba(15,23,42,0.06)',
 };
 
-const table = {
-  overflowX: 'auto',
-};
+const table = { overflowX: 'auto' };
 
 const thead = {
   display: 'grid',
