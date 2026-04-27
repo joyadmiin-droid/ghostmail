@@ -37,6 +37,19 @@ export default function RootLayout({ children }) {
 
         <Analytics />
 
+        <Script id="ghostmail-page-view-tracker" strategy="afterInteractive">
+          {`
+            fetch('/api/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                event: 'page_view',
+                path: window.location.pathname
+              })
+            }).catch(() => {});
+          `}
+        </Script>
+
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GEHF8MZ703"
           strategy="afterInteractive"
