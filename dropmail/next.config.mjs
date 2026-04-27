@@ -7,13 +7,13 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: `
+                        value: `
               default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://cloud.umami.is;
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.googletagmanager.com;
               style-src 'self' 'unsafe-inline';
               img-src 'self' data: blob: https:;
               font-src 'self' data:;
-              connect-src 'self' https://*.supabase.co https://challenges.cloudflare.com https://cloud.umami.is;
+              connect-src 'self' https://*.supabase.co https://challenges.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com;
               frame-src 'self' blob: https://challenges.cloudflare.com;
               object-src 'none';
               base-uri 'self';
