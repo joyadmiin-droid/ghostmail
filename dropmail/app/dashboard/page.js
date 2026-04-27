@@ -1027,7 +1027,23 @@ export default function DashboardPage() {
             <p style={{ margin: '0 0 18px', color: '#5d647a', lineHeight: 1.6 }}>
               Generate your first address to start receiving emails.
             </p>
-            <button style={primaryBtn} onClick={generateMailbox} disabled={loadingCreate}>
+            <button
+  style={primaryBtn}
+  onClick={() => {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'generate_email_click',
+        path: window.location.pathname,
+        label: 'create_first_address'
+      })
+    }).catch(() => {});
+
+    generateMailbox();
+  }}
+  disabled={loadingCreate}
+>
               {loadingCreate ? 'Generating...' : 'Create First Address'}
             </button>
           </div>
