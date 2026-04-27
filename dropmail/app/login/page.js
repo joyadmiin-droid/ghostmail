@@ -213,7 +213,7 @@ fetch('/api/track', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     event: 'login_success',
-    path: window.location.pathname,
+    path: typeof window !== 'undefined' ? window.location.pathname : '',
     label: 'email_login',
     user_email: email
   })
