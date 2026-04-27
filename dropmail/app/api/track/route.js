@@ -11,15 +11,33 @@ export async function POST(req) {
 
     const { event, path, label, user_email, metadata } = body;
 
-    await supabase.from('analytics_events').insert([
+    const country =
+      req.headers.get('x-vercel-ip-country') ||
+      req.headers.get('cf-ipcountry') ||
+      null;
+
+    const countryName =
+      req.headers.get('x-vercel-ip-country-region') ||
+      country ||
+      null;
+
+    const finalMetadata = {
+      ...(metadata || {}),
+      country,
+      countryName,
+    };
+
+    const { error } = await supabase.from('analytics_events').insert([
       {
         event,
         path,
         label,
         user_email,
-        metadata,
+        metadata: finalMetadata,
       },
     ]);
+
+    if (error) throw error;
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
