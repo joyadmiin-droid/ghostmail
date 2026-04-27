@@ -185,19 +185,41 @@ export default function LoginPage() {
       }
 
       if (isSignup) {
-        const { error } = await supabase.auth.signUp({ email, password });
+  const { error } = await supabase.auth.signUp({ email, password });
 
-        if (error) throw error;
+  if (error) throw error;
 
-        setMessage('Account created. Check your email if confirmation is required.');
-        return;
-      }
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event: 'signup_success',
+      path: window.location.pathname,
+      label: 'email_signup',
+      user_email: email
+    })
+  }).catch(() => {});
+
+  setMessage('Account created. Check your email if confirmation is required.');
+  return;
+}
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) throw error;
+if (error) throw error;
 
-      window.location.replace(nextPath);
+fetch('/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    event: 'login_success',
+    path: window.location.pathname,
+    label: 'email_login',
+    user_email: email
+  })
+}).catch(() => {});
+
+window.location.replace(nextPath);
     } catch (err) {
       setError(err?.message || 'Something went wrong.');
     } finally {
