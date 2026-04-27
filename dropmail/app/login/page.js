@@ -189,16 +189,16 @@ export default function LoginPage() {
 
   if (error) throw error;
 
-  fetch('/api/track', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      event: 'signup_success',
-      path: typeof window !== 'undefined' ? window.location.pathname : '',
-      label: 'email_signup',
-      user_email: email
-    })
-  }).catch(() => {});
+  await fetch('/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    event: 'signup_success',
+    path: typeof window !== 'undefined' ? window.location.pathname : '',
+    label: 'email_login',
+    user_email: email
+  })
+}).catch(() => {});
 
   setMessage('Account created. Check your email if confirmation is required.');
   return;
@@ -208,7 +208,7 @@ export default function LoginPage() {
 
 if (error) throw error;
 
-fetch('/api/track', {
+await fetch('/api/track', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
