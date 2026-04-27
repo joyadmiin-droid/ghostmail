@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const ADMIN_EMAIL = 'joyadmiin@gmail.com';
+const ADMIN_EMAIL = 'erkan.iseni20@gmail.com';
 
 export default function FeedbackAdminPage() {
   const [checking, setChecking] = useState(true);
