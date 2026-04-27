@@ -13,10 +13,68 @@ function pct(value, base) {
   return `${Math.round((value / base) * 100)}%`;
 }
 
+function money(value) {
+  if (!value) return '$0';
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return `$${num.toFixed(2)}`;
+}
+
+function getPaymentEmail(payment) {
+  return (
+    payment.email ||
+    payment.user_email ||
+    payment.customer_email ||
+    payment.billing_email ||
+    payment.meta?.email ||
+    ''
+  ).toLowerCase();
+}
+
+function getPaymentAmount(payment) {
+  return (
+    payment.amount ||
+    payment.total ||
+    payment.price ||
+    payment.amount_total ||
+    payment.total_usd ||
+    0
+  );
+}
+
+function getPaymentPlan(payment) {
+  const raw =
+    payment.plan ||
+    payment.product_name ||
+    payment.variant_name ||
+    payment.product ||
+    payment.name ||
+    '';
+
+  const value = String(raw).toLowerCase();
+
+  if (value.includes('spectre')) return 'spectre';
+  if (value.includes('phantom')) return 'phantom';
+  if (value.includes('ghost')) return 'ghost';
+
+  return raw || 'paid';
+}
+
+function daysSince(value) {
+  if (!value) return '—';
+  const diff = Date.now() - new Date(value).getTime();
+  if (Number.isNaN(diff)) return '—';
+  return Math.max(0, Math.floor(diff / 86400000));
+}
+
 export default function AnalyticsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [error, setError] = useState('');
+  const [selectedEmail, setSelectedEmail] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -35,9 +93,12 @@ export default function AnalyticsAdminPage() {
         });
 
         const data = await res.json();
+
         if (!res.ok) throw new Error(data?.error || 'Failed to load analytics');
 
         setEvents(data.events || []);
+        setProfiles(data.profiles || []);
+        setPayments(data.payments || []);
       } catch (err) {
         setError(err.message || 'Failed to load analytics');
       } finally {
@@ -54,6 +115,19 @@ export default function AnalyticsAdminPage() {
     const signups = events.filter((e) => e.event === 'signup_success').length;
     const clicks = events.filter((e) => e.event === 'generate_email_click').length;
 
+    const profileMap = {};
+    profiles.forEach((p) => {
+      if (p.email) profileMap[p.email.toLowerCase()] = p;
+    });
+
+    const paymentsByEmail = {};
+    payments.forEach((p) => {
+      const email = getPaymentEmail(p);
+      if (!email) return;
+      if (!paymentsByEmail[email]) paymentsByEmail[email] = [];
+      paymentsByEmail[email].push(p);
+    });
+
     const userGroups = events
       .filter((e) => e.user_email)
       .reduce((acc, e) => {
@@ -63,15 +137,52 @@ export default function AnalyticsAdminPage() {
         return acc;
       }, {});
 
-    const userJourneys = Object.entries(userGroups)
-      .map(([email, userEvents]) => ({
-        email,
-        events: userEvents.sort(
+    const allEmails = new Set([
+      ...Object.keys(userGroups),
+      ...Object.keys(profileMap),
+      ...Object.keys(paymentsByEmail),
+    ]);
+
+    const userJourneys = Array.from(allEmails)
+      .map((email) => {
+        const userEvents = (userGroups[email] || []).sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        ),
-        lastSeen: userEvents[0]?.created_at,
-      }))
-      .sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+        );
+
+        const userPayments = paymentsByEmail[email] || [];
+        const profile = profileMap[email] || {};
+        const latestPayment = userPayments[0];
+
+        const paidTotal = userPayments.reduce(
+          (sum, p) => sum + Number(getPaymentAmount(p) || 0),
+          0
+        );
+
+        const plan = profile.plan || getPaymentPlan(latestPayment || {}) || 'ghost';
+        const isPaid =
+          plan === 'phantom' ||
+          plan === 'spectre' ||
+          userPayments.length > 0;
+
+        const lastSeen =
+          userEvents[0]?.created_at ||
+          latestPayment?.created_at ||
+          profile.created_at ||
+          null;
+
+        return {
+          email,
+          events: userEvents,
+          payments: userPayments,
+          profile,
+          plan,
+          isPaid,
+          paidTotal,
+          latestPayment,
+          lastSeen,
+        };
+      })
+      .sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
 
     const topPages = Object.entries(
       events
@@ -90,7 +201,13 @@ export default function AnalyticsAdminPage() {
     ];
 
     return { pageViews, logins, signups, clicks, topPages, funnel, userJourneys };
-  }, [events]);
+  }, [events, profiles, payments]);
+
+  const filteredUsers = stats.userJourneys.filter((u) =>
+    u.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selectedUser = stats.userJourneys.find((u) => u.email === selectedEmail);
 
   if (loading) return <main style={page}>Loading analytics...</main>;
   if (error) return <main style={page}>Error: {error}</main>;
@@ -102,7 +219,7 @@ export default function AnalyticsAdminPage() {
           <div>
             <p style={eyebrow}>GhostMail Admin</p>
             <h1 style={title}>Analytics Dashboard</h1>
-            <p style={subtitle}>Your private product analytics hub.</p>
+            <p style={subtitle}>Private product analytics + user journeys.</p>
           </div>
 
           <a href="/dashboard" style={button}>Back to dashboard</a>
@@ -127,11 +244,9 @@ export default function AnalyticsAdminPage() {
                   <strong>{item.label}</strong>
                   <span>{item.value}</span>
                 </div>
-
                 <div style={barTrack}>
                   <div style={{ ...barFill, width: item.rate }} />
                 </div>
-
                 <div style={funnelRate}>{item.rate}</div>
               </div>
             ))}
@@ -139,35 +254,99 @@ export default function AnalyticsAdminPage() {
         </section>
 
         <section style={panel}>
-          <h2 style={sectionTitle}>User Journeys</h2>
-          <p style={muted}>See what each known user did recently.</p>
+          <h2 style={sectionTitle}>Users</h2>
+          <p style={muted}>Click a user to see their full journey and subscription info.</p>
 
-          {stats.userJourneys.length === 0 ? (
-            <p style={muted}>No user-linked events yet.</p>
-          ) : (
-            <div style={journeyGrid}>
-              {stats.userJourneys.map((user) => (
-                <div key={user.email} style={journeyCard}>
-                  <h3 style={journeyEmail}>{user.email}</h3>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search user email..."
+            style={searchInput}
+          />
 
-                  {user.events.slice(0, 8).map((e) => (
-                    <div key={e.id} style={journeyEvent}>
-                      <div>
-                        <strong>{e.event}</strong>
-                        <div style={journeyMeta}>
-                          {e.path || '-'} {e.label ? `• ${e.label}` : ''}
-                        </div>
-                      </div>
-                      <span style={journeyTime}>
-                        {new Date(e.created_at).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  ))}
+          <div style={userList}>
+            {filteredUsers.map((user) => (
+              <button
+                key={user.email}
+                type="button"
+                style={{
+                  ...userRow,
+                  borderColor:
+                    selectedEmail === user.email
+                      ? 'rgba(109,73,255,0.45)'
+                      : 'rgba(15,23,42,0.08)',
+                }}
+                onClick={() => setSelectedEmail(user.email)}
+              >
+                <div>
+                  <strong>{user.email}</strong>
+                  <div style={smallMuted}>
+                    {user.events.length} events • last seen{' '}
+                    {user.lastSeen ? new Date(user.lastSeen).toLocaleString() : '—'}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div style={userBadges}>
+                  <span style={planBadge}>{user.plan || 'ghost'}</span>
+                  <span style={user.isPaid ? paidBadge : freeBadge}>
+                    {user.isPaid ? 'paid' : 'free'}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
+
+        {selectedUser && (
+          <section style={panel}>
+            <h2 style={sectionTitle}>{selectedUser.email}</h2>
+            <p style={muted}>User stats, plan info, payments, and recent timeline.</p>
+
+            <div style={cards}>
+              <Card title="Plan" value={selectedUser.plan || 'ghost'} />
+              <Card title="Status" value={selectedUser.isPaid ? 'Paid' : 'Free'} />
+              <Card title="Paid Total" value={money(selectedUser.paidTotal)} />
+              <Card
+                title="Subscriber Days"
+                value={daysSince(
+                  selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at
+                )}
+              />
+            </div>
+
+            <h3 style={miniTitle}>Payments</h3>
+            {selectedUser.payments.length === 0 ? (
+              <p style={muted}>No payments found for this user.</p>
+            ) : (
+              selectedUser.payments.slice(0, 6).map((p) => (
+                <div key={p.id || p.created_at} style={paymentRow}>
+                  <span>{getPaymentPlan(p)}</span>
+                  <strong>{money(getPaymentAmount(p))}</strong>
+                  <span>{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</span>
+                </div>
+              ))
+            )}
+
+            <h3 style={miniTitle}>Timeline</h3>
+            {selectedUser.events.length === 0 ? (
+              <p style={muted}>No events found for this user.</p>
+            ) : (
+              selectedUser.events.map((e) => (
+                <div key={e.id} style={timelineRow}>
+                  <div>
+                    <strong>{e.event}</strong>
+                    <div style={smallMuted}>
+                      {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+                    </div>
+                  </div>
+                  <span style={timeText}>
+                    {new Date(e.created_at).toLocaleString()}
+                  </span>
+                </div>
+              ))
+            )}
+          </section>
+        )}
 
         <section style={panel}>
           <h2 style={sectionTitle}>Top Pages</h2>
@@ -289,7 +468,7 @@ const cardTitle = {
 };
 
 const cardValue = {
-  fontSize: 36,
+  fontSize: 30,
   margin: '10px 0 0',
   fontWeight: 900,
 };
@@ -304,7 +483,9 @@ const panel = {
 };
 
 const sectionTitle = { margin: '0 0 8px', fontSize: 22 };
+const miniTitle = { margin: '22px 0 12px', fontSize: 18 };
 const muted = { margin: '0 0 18px', color: '#5d647a' };
+const smallMuted = { marginTop: 4, color: '#5d647a', fontSize: 13 };
 
 const funnelWrap = { display: 'grid', gap: 16 };
 
@@ -341,42 +522,90 @@ const funnelRate = {
   color: '#6d49ff',
 };
 
-const journeyGrid = {
+const searchInput = {
+  width: '100%',
+  padding: '14px 16px',
+  borderRadius: 14,
+  border: '1px solid rgba(15,23,42,0.10)',
+  marginBottom: 16,
+  fontSize: 15,
+};
+
+const userList = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: 16,
+  gap: 10,
 };
 
-const journeyCard = {
-  padding: 18,
-  borderRadius: 18,
-  background: 'rgba(109,73,255,0.04)',
-  border: '1px solid rgba(109,73,255,0.10)',
-};
-
-const journeyEmail = {
-  margin: '0 0 14px',
-  fontSize: 16,
-  wordBreak: 'break-word',
-};
-
-const journeyEvent = {
+const userRow = {
+  width: '100%',
+  textAlign: 'left',
+  padding: 16,
+  borderRadius: 16,
+  border: '1px solid rgba(15,23,42,0.08)',
+  background: 'rgba(109,73,255,0.035)',
+  cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
-  gap: 12,
-  padding: '10px 0',
-  borderTop: '1px solid rgba(15,23,42,0.06)',
+  gap: 14,
+  alignItems: 'center',
 };
 
-const journeyMeta = {
-  color: '#5d647a',
-  fontSize: 13,
-  marginTop: 3,
+const userBadges = {
+  display: 'flex',
+  gap: 8,
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
 };
 
-const journeyTime = {
+const planBadge = {
+  padding: '7px 10px',
+  borderRadius: 999,
+  background: 'rgba(109,73,255,0.10)',
   color: '#6d49ff',
   fontSize: 12,
+  fontWeight: 900,
+  textTransform: 'uppercase',
+};
+
+const paidBadge = {
+  padding: '7px 10px',
+  borderRadius: 999,
+  background: 'rgba(34,197,94,0.12)',
+  color: '#16a34a',
+  fontSize: 12,
+  fontWeight: 900,
+  textTransform: 'uppercase',
+};
+
+const freeBadge = {
+  padding: '7px 10px',
+  borderRadius: 999,
+  background: 'rgba(148,163,184,0.14)',
+  color: '#64748b',
+  fontSize: 12,
+  fontWeight: 900,
+  textTransform: 'uppercase',
+};
+
+const paymentRow = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr 1.4fr',
+  gap: 12,
+  padding: '12px 0',
+  borderBottom: '1px solid rgba(15,23,42,0.06)',
+};
+
+const timelineRow = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 14,
+  padding: '13px 0',
+  borderBottom: '1px solid rgba(15,23,42,0.06)',
+};
+
+const timeText = {
+  color: '#6d49ff',
+  fontSize: 13,
   fontWeight: 800,
   whiteSpace: 'nowrap',
 };

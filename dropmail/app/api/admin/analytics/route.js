@@ -24,15 +24,32 @@ export async function GET(req) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const { data, error } = await supabaseAdmin
-    .from('analytics_events')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(300);
+  const [{ data: events, error: eventsError }, { data: profiles }, { data: payments }] =
+    await Promise.all([
+      supabaseAdmin
+        .from('analytics_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500),
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+      supabaseAdmin
+        .from('profiles')
+        .select('*'),
+
+      supabaseAdmin
+        .from('payments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500),
+    ]);
+
+  if (eventsError) {
+    return Response.json({ error: eventsError.message }, { status: 500 });
   }
 
-  return Response.json({ events: data || [] });
+  return Response.json({
+    events: events || [],
+    profiles: profiles || [],
+    payments: payments || [],
+  });
 }
