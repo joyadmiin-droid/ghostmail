@@ -263,7 +263,43 @@ export default function AnalyticsAdminPage() {
             placeholder="Search user email..."
             style={searchInput}
           />
+{selectedUser && (
+  <div style={selectedBox}>
+    <h3 style={{ margin: '0 0 8px' }}>{selectedUser.email}</h3>
 
+    <div style={cards}>
+      <Card title="Plan" value={selectedUser.plan || 'ghost'} />
+      <Card title="Status" value={selectedUser.isPaid ? 'Paid' : 'Free'} />
+      <Card title="Paid Total" value={money(selectedUser.paidTotal)} />
+      <Card
+        title="Subscriber Days"
+        value={daysSince(
+          selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at
+        )}
+      />
+    </div>
+
+    <h3 style={miniTitle}>Timeline</h3>
+
+    {selectedUser.events.length === 0 ? (
+      <p style={muted}>No events found for this user.</p>
+    ) : (
+      selectedUser.events.map((e) => (
+        <div key={e.id} style={timelineRow}>
+          <div>
+            <strong>{e.event}</strong>
+            <div style={smallMuted}>
+              {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+            </div>
+          </div>
+          <span style={timeText}>
+            {new Date(e.created_at).toLocaleString()}
+          </span>
+        </div>
+      ))
+    )}
+  </div>
+)}
           <div style={userList}>
             {filteredUsers.map((user) => (
               <button
@@ -638,4 +674,12 @@ const trow = {
   padding: '13px 0',
   borderBottom: '1px solid rgba(15,23,42,0.06)',
   fontSize: 14,
+};
+
+const selectedBox = {
+  marginBottom: 18,
+  padding: 18,
+  borderRadius: 20,
+  background: 'rgba(109,73,255,0.06)',
+  border: '1px solid rgba(109,73,255,0.18)',
 };
