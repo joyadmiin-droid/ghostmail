@@ -805,10 +805,11 @@ export default function DashboardPage() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      event: 'generate_email_click',
-      path: window.location.pathname,
-      label: 'new_address_button'
-    })
+  event: 'generate_email_click',
+  path: window.location.pathname,
+  label: 'new_address_button',
+  user_email: user?.email || null
+})
   }).catch(() => {});
 
   generateMailbox();
@@ -1045,10 +1046,11 @@ export default function DashboardPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        event: 'generate_email_click',
-        path: window.location.pathname,
-        label: 'create_first_address'
-      })
+  event: 'generate_email_click',
+  path: window.location.pathname,
+  label: 'new_address_button',
+  user_email: user?.email || null
+})
     }).catch(() => {});
 
     generateMailbox();
