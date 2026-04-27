@@ -195,7 +195,7 @@ export default function LoginPage() {
   body: JSON.stringify({
     event: 'signup_success',
     path: typeof window !== 'undefined' ? window.location.pathname : '',
-    label: 'email_login',
+    label: 'email_signup',
     user_email: email
   })
 }).catch(() => {});
@@ -219,7 +219,9 @@ await fetch('/api/track', {
   })
 }).catch(() => {});
 
-window.location.replace(nextPath);
+setTimeout(() => {
+  window.location.replace(nextPath);
+}, 300);
     } catch (err) {
       setError(err?.message || 'Something went wrong.');
     } finally {
