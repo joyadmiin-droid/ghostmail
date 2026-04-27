@@ -20,6 +20,19 @@ function money(value) {
   return `$${num.toFixed(2)}`;
 }
 
+function countryCodeToFlag(code) {
+  if (!code || code.length !== 2) return '🌍';
+  return code
+    .toUpperCase()
+    .replace(/./g, (char) =>
+      String.fromCodePoint(127397 + char.charCodeAt())
+    );
+}
+
+function getEventCountry(event) {
+  return event?.metadata?.country || event?.metadata?.countryName || null;
+}
+
 function getPaymentEmail(payment) {
   return (
     payment.email ||
@@ -158,6 +171,8 @@ export default function AnalyticsAdminPage() {
           0
         );
 
+        const country = getEventCountry(userEvents.find((e) => getEventCountry(e)));
+
         const plan = profile.plan || getPaymentPlan(latestPayment || {}) || 'ghost';
         const isPaid =
           plan === 'phantom' ||
@@ -180,6 +195,7 @@ export default function AnalyticsAdminPage() {
           paidTotal,
           latestPayment,
           lastSeen,
+          country,
         };
       })
       .sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
@@ -193,6 +209,15 @@ export default function AnalyticsAdminPage() {
         }, {})
     ).sort((a, b) => b[1] - a[1]);
 
+    const topCountries = Object.entries(
+      events.reduce((acc, e) => {
+        const country = getEventCountry(e);
+        if (!country) return acc;
+        acc[country] = (acc[country] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1]);
+
     const funnel = [
       { label: 'Page Views', value: pageViews, rate: '100%' },
       { label: 'Logins', value: logins, rate: pct(logins, pageViews) },
@@ -200,7 +225,16 @@ export default function AnalyticsAdminPage() {
       { label: 'Signups', value: signups, rate: pct(signups, pageViews) },
     ];
 
-    return { pageViews, logins, signups, clicks, topPages, funnel, userJourneys };
+    return {
+      pageViews,
+      logins,
+      signups,
+      clicks,
+      topPages,
+      topCountries,
+      funnel,
+      userJourneys,
+    };
   }, [events, profiles, payments]);
 
   const filteredUsers = stats.userJourneys.filter((u) =>
@@ -254,6 +288,24 @@ export default function AnalyticsAdminPage() {
         </section>
 
         <section style={panel}>
+          <h2 style={sectionTitle}>Top Countries</h2>
+          <p style={muted}>Countries detected from analytics event metadata.</p>
+
+          {stats.topCountries.length === 0 ? (
+            <p style={muted}>No country data yet.</p>
+          ) : (
+            stats.topCountries.map(([country, count]) => (
+              <div key={country} style={row}>
+                <span>
+                  {countryCodeToFlag(country)} {country}
+                </span>
+                <strong>{count}</strong>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section style={panel}>
           <h2 style={sectionTitle}>Users</h2>
           <p style={muted}>Click a user to see their full journey and subscription info.</p>
 
@@ -263,43 +315,56 @@ export default function AnalyticsAdminPage() {
             placeholder="Search user email..."
             style={searchInput}
           />
-{selectedUser && (
-  <div style={selectedBox}>
-    <h3 style={{ margin: '0 0 8px' }}>{selectedUser.email}</h3>
 
-    <div style={cards}>
-      <Card title="Plan" value={selectedUser.plan || 'ghost'} />
-      <Card title="Status" value={selectedUser.isPaid ? 'Paid' : 'Free'} />
-      <Card title="Paid Total" value={money(selectedUser.paidTotal)} />
-      <Card
-        title="Subscriber Days"
-        value={daysSince(
-          selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at
-        )}
-      />
-    </div>
+          {selectedUser && (
+            <div style={selectedBox}>
+              <h3 style={{ margin: '0 0 8px' }}>
+                {selectedUser.country ? `${countryCodeToFlag(selectedUser.country)} ` : ''}
+                {selectedUser.email}
+              </h3>
 
-    <h3 style={miniTitle}>Timeline</h3>
+              <div style={cards}>
+                <Card title="Plan" value={selectedUser.plan || 'ghost'} />
+                <Card title="Status" value={selectedUser.isPaid ? 'Paid' : 'Free'} />
+                <Card title="Paid Total" value={money(selectedUser.paidTotal)} />
+                <Card
+                  title="Subscriber Days"
+                  value={daysSince(
+                    selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at
+                  )}
+                />
+              </div>
 
-    {selectedUser.events.length === 0 ? (
-      <p style={muted}>No events found for this user.</p>
-    ) : (
-      selectedUser.events.map((e) => (
-        <div key={e.id} style={timelineRow}>
-          <div>
-            <strong>{e.event}</strong>
-            <div style={smallMuted}>
-              {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+              <h3 style={miniTitle}>Timeline</h3>
+
+              {selectedUser.events.length === 0 ? (
+                <p style={muted}>No events found for this user.</p>
+              ) : (
+                selectedUser.events.map((e) => {
+                  const country = getEventCountry(e);
+
+                  return (
+                    <div key={e.id} style={timelineRow}>
+                      <div>
+                        <strong>
+                          {country ? `${countryCodeToFlag(country)} ` : ''}
+                          {e.event}
+                        </strong>
+                        <div style={smallMuted}>
+                          {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+                          {country ? ` • ${country}` : ''}
+                        </div>
+                      </div>
+                      <span style={timeText}>
+                        {new Date(e.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
             </div>
-          </div>
-          <span style={timeText}>
-            {new Date(e.created_at).toLocaleString()}
-          </span>
-        </div>
-      ))
-    )}
-  </div>
-)}
+          )}
+
           <div style={userList}>
             {filteredUsers.map((user) => (
               <button
@@ -315,7 +380,10 @@ export default function AnalyticsAdminPage() {
                 onClick={() => setSelectedEmail(user.email)}
               >
                 <div>
-                  <strong>{user.email}</strong>
+                  <strong>
+                    {user.country ? `${countryCodeToFlag(user.country)} ` : ''}
+                    {user.email}
+                  </strong>
                   <div style={smallMuted}>
                     {user.events.length} events • last seen{' '}
                     {user.lastSeen ? new Date(user.lastSeen).toLocaleString() : '—'}
@@ -335,7 +403,10 @@ export default function AnalyticsAdminPage() {
 
         {selectedUser && (
           <section style={panel}>
-            <h2 style={sectionTitle}>{selectedUser.email}</h2>
+            <h2 style={sectionTitle}>
+              {selectedUser.country ? `${countryCodeToFlag(selectedUser.country)} ` : ''}
+              {selectedUser.email}
+            </h2>
             <p style={muted}>User stats, plan info, payments, and recent timeline.</p>
 
             <div style={cards}>
@@ -367,19 +438,27 @@ export default function AnalyticsAdminPage() {
             {selectedUser.events.length === 0 ? (
               <p style={muted}>No events found for this user.</p>
             ) : (
-              selectedUser.events.map((e) => (
-                <div key={e.id} style={timelineRow}>
-                  <div>
-                    <strong>{e.event}</strong>
-                    <div style={smallMuted}>
-                      {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+              selectedUser.events.map((e) => {
+                const country = getEventCountry(e);
+
+                return (
+                  <div key={e.id} style={timelineRow}>
+                    <div>
+                      <strong>
+                        {country ? `${countryCodeToFlag(country)} ` : ''}
+                        {e.event}
+                      </strong>
+                      <div style={smallMuted}>
+                        {e.path || '-'} {e.label ? `• ${e.label}` : ''}
+                        {country ? ` • ${country}` : ''}
+                      </div>
                     </div>
+                    <span style={timeText}>
+                      {new Date(e.created_at).toLocaleString()}
+                    </span>
                   </div>
-                  <span style={timeText}>
-                    {new Date(e.created_at).toLocaleString()}
-                  </span>
-                </div>
-              ))
+                );
+              })
             )}
           </section>
         )}
@@ -401,20 +480,26 @@ export default function AnalyticsAdminPage() {
             <div style={thead}>
               <span>Event</span>
               <span>Path</span>
+              <span>Country</span>
               <span>Label</span>
               <span>User</span>
               <span>Time</span>
             </div>
 
-            {events.map((e) => (
-              <div key={e.id} style={trow}>
-                <span>{e.event}</span>
-                <span>{e.path || '-'}</span>
-                <span>{e.label || '-'}</span>
-                <span>{e.user_email || '-'}</span>
-                <span>{new Date(e.created_at).toLocaleString()}</span>
-              </div>
-            ))}
+            {events.map((e) => {
+              const country = getEventCountry(e);
+
+              return (
+                <div key={e.id} style={trow}>
+                  <span>{e.event}</span>
+                  <span>{e.path || '-'}</span>
+                  <span>{country ? `${countryCodeToFlag(country)} ${country}` : '-'}</span>
+                  <span>{e.label || '-'}</span>
+                  <span>{e.user_email || '-'}</span>
+                  <span>{new Date(e.created_at).toLocaleString()}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
       </div>
@@ -657,7 +742,7 @@ const table = { overflowX: 'auto' };
 
 const thead = {
   display: 'grid',
-  gridTemplateColumns: '1fr 1fr 1fr 1.5fr 1.4fr',
+  gridTemplateColumns: '1fr 1fr 1fr 1fr 1.5fr 1.4fr',
   gap: 12,
   color: '#5d647a',
   fontSize: 12,
@@ -669,7 +754,7 @@ const thead = {
 
 const trow = {
   display: 'grid',
-  gridTemplateColumns: '1fr 1fr 1fr 1.5fr 1.4fr',
+  gridTemplateColumns: '1fr 1fr 1fr 1fr 1.5fr 1.4fr',
   gap: 12,
   padding: '13px 0',
   borderBottom: '1px solid rgba(15,23,42,0.06)',
