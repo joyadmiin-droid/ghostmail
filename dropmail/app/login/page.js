@@ -194,7 +194,7 @@ export default function LoginPage() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       event: 'signup_success',
-      path: window.location.pathname,
+      path: typeof window !== 'undefined' ? window.location.pathname : '',
       label: 'email_signup',
       user_email: email
     })
