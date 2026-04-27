@@ -781,27 +781,38 @@ export default function DashboardPage() {
                 cursor: hasHitInboxLimit ? 'not-allowed' : 'pointer',
               }}
               onClick={() => {
-                if (hasHitInboxLimit) {
-                  if (plan === 'ghost') {
-                    openUpgradeModal(
-                      'phantom',
-                      'Inbox limit reached',
-                      'Your Ghost plan allows 1 active inbox. Upgrade to Phantom to unlock up to 5 active inboxes.'
-                    );
-                  } else if (plan === 'phantom') {
-                    openUpgradeModal(
-                      'spectre',
-                      'Inbox limit reached',
-                      'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 active inboxes.'
-                    );
-                  } else {
-                    showToast('You have reached your current inbox limit.');
-                  }
-                  return;
-                }
+  if (hasHitInboxLimit) {
+    if (plan === 'ghost') {
+      openUpgradeModal(
+        'phantom',
+        'Inbox limit reached',
+        'Your Ghost plan allows 1 active inbox. Upgrade to Phantom to unlock up to 5 active inboxes.'
+      );
+    } else if (plan === 'phantom') {
+      openUpgradeModal(
+        'spectre',
+        'Inbox limit reached',
+        'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 active inboxes.'
+      );
+    } else {
+      showToast('You have reached your current inbox limit.');
+    }
+    return;
+  }
 
-                generateMailbox();
-              }}
+  // ✅ TRACK HERE
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event: 'generate_email_click',
+      path: window.location.pathname,
+      label: 'new_address_button'
+    })
+  }).catch(() => {});
+
+  generateMailbox();
+}}
               disabled={loadingCreate}
             >
               {loadingCreate
