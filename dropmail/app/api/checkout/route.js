@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { normalizePlan } from '../../../../lib/plans';
+import { normalizePlan } from '../../../lib/plans';
 import { PRICING } from '@/app/lib/pricing';
 
 export async function POST(req) {
