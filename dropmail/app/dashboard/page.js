@@ -69,7 +69,8 @@ export default function DashboardPage() {
   const [favorites, setFavorites] = useState({});
   const [activeFilter, setActiveFilter] = useState('all');
   const [toast, setToast] = useState(null);
-  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase());
+  const userEmail = user?.email ? user.email.toLowerCase() : '';
+  const isAdmin = ADMIN_EMAILS.includes(userEmail);
 
   function showToast(message) {
     setToast(message);
