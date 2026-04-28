@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
+import {
+  getPlanConfig,
+  normalizePlan,
+  getPlanDisplayName
+} from '@/lib/plans';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -11,36 +17,6 @@ const supabase = createClient(
 const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 
 const ADMIN_EMAILS = ['erkan.iseni20@gmail.com'];
-
-const PLAN_CONFIG = {
-  ghost: {
-    label: 'GHOST',
-    emailLimit: 5,
-    inboxLimit: 1,
-  },
-  phantom: {
-    label: 'PHANTOM',
-    emailLimit: 200,
-    inboxLimit: 5,
-  },
-  spectre: {
-    label: 'SPECTRE',
-    emailLimit: 600,
-    inboxLimit: 50,
-  },
-};
-
-function normalizePlan(value) {
-  const v = String(value || 'ghost').toLowerCase();
-  if (v === 'spectre') return 'spectre';
-  if (v === 'phantom') return 'phantom';
-  if (v === 'ghost' || v === 'free') return 'ghost';
-  return 'ghost';
-}
-
-function getPlanDisplayName(value) {
-  return PLAN_CONFIG[normalizePlan(value)]?.label || 'GHOST';
-}
 
 function getCurrentMonthStartIso() {
   const now = new Date();
@@ -583,7 +559,7 @@ Inbox limit: ${planInboxLimit}`,
     };
   }, [addresses, mailboxUsage, favorites]);
 
-  const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.ghost;
+  const currentPlanConfig = getPlanConfig(plan);
   const planEmailLimit = currentPlanConfig.emailLimit;
   const planInboxLimit = currentPlanConfig.inboxLimit;
   const totalAvailableEmails = planEmailLimit + extraCredits;
