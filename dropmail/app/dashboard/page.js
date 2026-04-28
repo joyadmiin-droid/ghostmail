@@ -1187,9 +1187,28 @@ Inbox limit: ${planInboxLimit}`,
       {showUpgrade && (
         <div style={modalOverlay}>
           <div style={modalBox}>
-            <div style={modalBadge}>Upgrade recommended</div>
-            <h2 style={modalTitle}>{upgradeContext.title}</h2>
-            <p style={modalText}>{upgradeContext.text}</p>
+            <div style={modalBadge}>
+  {plan === 'spectre' ? 'Your current plan' : 'Upgrade available'}
+</div>
+            <h2 style={modalTitle}>Your Plan</h2>
+
+<div style={{ marginBottom: 20 }}>
+  <div style={{ fontSize: 22, fontWeight: 900, color: '#14122b' }}>
+    {getPlanDisplayName(plan)}
+  </div>
+
+  <div style={{ marginTop: 8, color: '#5d647a', fontSize: 14 }}>
+    Emails limit: <b>{planEmailLimit}</b>
+  </div>
+
+  <div style={{ color: '#5d647a', fontSize: 14 }}>
+    Inbox limit: <b>{planInboxLimit}</b>
+  </div>
+
+  <div style={{ marginTop: 10, fontSize: 14 }}>
+    Usage: <b>{emailCount}</b> / {planEmailLimit}
+  </div>
+</div>
 
             <div style={modalPlans}>
               {plan === 'ghost' && (
