@@ -6,8 +6,8 @@ import { createClient } from '@supabase/supabase-js';
 import {
   getPlanConfig,
   normalizePlan,
-  getPlanDisplayName
-} from '@/lib/plans';
+  getPlanDisplayName,
+} from '../../lib/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -51,6 +51,16 @@ export default function DashboardPage() {
   const userEmail = user?.email ? user.email.toLowerCase() : '';
   const isAdmin = ADMIN_EMAILS.includes(userEmail);
 
+  const currentPlanConfig = getPlanConfig(plan);
+  const planId = currentPlanConfig.id;
+  const planLabel = currentPlanConfig.label;
+  const planBadgeText = currentPlanConfig.badge;
+  const planEmailLimit = currentPlanConfig.emailLimit;
+  const planInboxLimit = currentPlanConfig.inboxLimit;
+
+  const phantomConfig = getPlanConfig('phantom');
+  const spectreConfig = getPlanConfig('spectre');
+
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 2200);
@@ -63,6 +73,16 @@ export default function DashboardPage() {
       text,
     });
     setShowUpgrade(true);
+  }
+
+  function openLimitModal(targetPlan, type = 'inbox') {
+    const targetConfig = getPlanConfig(targetPlan);
+
+    openUpgradeModal(
+      targetPlan,
+      `${type === 'email' ? 'Email' : 'Inbox'} limit reached`,
+      `Your ${planLabel} plan allows ${planInboxLimit} active inbox${planInboxLimit === 1 ? '' : 'es'} and ${planEmailLimit} monthly emails. Upgrade to ${targetConfig.displayName} to unlock ${targetConfig.inboxLimit} inboxes and ${targetConfig.emailLimit} monthly emails.`
+    );
   }
 
   async function syncPlanFromServer() {
@@ -95,16 +115,20 @@ export default function DashboardPage() {
   }
 
   function handleManageBilling() {
-  setShowUpgrade(true);
-  setUpgradeContext({
-    title: 'Plan details',
-    text: `You are currently on the ${getPlanDisplayName(plan)} plan.
+    setLoadingBilling(true);
+
+    setShowUpgrade(true);
+    setUpgradeContext({
+      title: 'Plan details',
+      text: `You are currently on the ${planLabel} plan.
 
 Emails limit: ${planEmailLimit}
 Inbox limit: ${planInboxLimit}`,
-    targetPlan: plan,
-  });
-}
+      targetPlan: planId,
+    });
+
+    setTimeout(() => setLoadingBilling(false), 300);
+  }
 
   useEffect(() => {
     try {
@@ -355,26 +379,15 @@ Inbox limit: ${planInboxLimit}`,
       const data = await res.json();
 
       if (!res.ok) {
-        if (
-          data?.code === 'GHOST_PLAN_LIMIT' ||
-          data?.code === 'FREE_PLAN_LIMIT'
-        ) {
-          openUpgradeModal(
-            'phantom',
-            'Ghost plan limit reached',
-            'Your Ghost plan allows 1 active inbox and 5 monthly emails. Upgrade to Phantom to unlock up to 5 inboxes and 200 monthly emails.'
-          );
+        if (data?.code === 'GHOST_PLAN_LIMIT' || data?.code === 'FREE_PLAN_LIMIT') {
+          openLimitModal('phantom', 'inbox');
         } else if (data?.code === 'PHANTOM_PLAN_LIMIT') {
-          openUpgradeModal(
-            'spectre',
-            'Phantom plan limit reached',
-            'Your Phantom plan allows up to 5 active inboxes and 200 monthly emails. Upgrade to Spectre to unlock up to 50 inboxes and 600 monthly emails.'
-          );
+          openLimitModal('spectre', 'inbox');
         } else if (data?.code === 'SPECTRE_PLAN_LIMIT') {
           openUpgradeModal(
-            'spectre',
-            'Spectre plan limit reached',
-            'Your Spectre plan currently allows up to 50 active inboxes. Delete expired inboxes or manage your usage.'
+            planId,
+            `${planLabel} plan limit reached`,
+            `Your ${planLabel} plan currently allows up to ${planInboxLimit} active inboxes. Delete old inboxes or manage your usage.`
           );
         }
 
@@ -559,9 +572,6 @@ Inbox limit: ${planInboxLimit}`,
     };
   }, [addresses, mailboxUsage, favorites]);
 
-  const currentPlanConfig = getPlanConfig(plan);
-  const planEmailLimit = currentPlanConfig.emailLimit;
-  const planInboxLimit = currentPlanConfig.inboxLimit;
   const totalAvailableEmails = planEmailLimit + extraCredits;
   const emailsLeft = Math.max(totalAvailableEmails - emailCount, 0);
   const inboxesLeft = Math.max(planInboxLimit - stats.total, 0);
@@ -593,19 +603,28 @@ Inbox limit: ${planInboxLimit}`,
       : '#22c55e';
 
   function handleUpgradeFromWarning() {
-    if (plan === 'ghost') {
+    if (planId === 'ghost') {
       openUpgradeModal(
         'phantom',
-        'Ghost plan almost full',
-        'You are close to your Ghost plan limits. Upgrade to Phantom to unlock 5 inboxes and 200 monthly emails.'
+        `${planLabel} plan almost full`,
+        `You are close to your ${planLabel} plan limits. Upgrade to ${phantomConfig.displayName} to unlock ${phantomConfig.inboxLimit} inboxes and ${phantomConfig.emailLimit} monthly emails.`
+      );
+      return;
+    }
+
+    if (planId === 'phantom') {
+      openUpgradeModal(
+        'spectre',
+        `${planLabel} plan almost full`,
+        `You are close to your ${planLabel} plan limits. Upgrade to ${spectreConfig.displayName} to unlock ${spectreConfig.inboxLimit} inboxes and ${spectreConfig.emailLimit} monthly emails.`
       );
       return;
     }
 
     openUpgradeModal(
-      'spectre',
-      'Phantom plan almost full',
-      'You are close to your Phantom plan limits. Upgrade to Spectre to unlock 50 inboxes and 600 monthly emails.'
+      planId,
+      `${planLabel} usage warning`,
+      `You are close to your ${planLabel} plan limits. Buy extra emails or manage current usage to stay within your account limits.`
     );
   }
 
@@ -756,18 +775,10 @@ Inbox limit: ${planInboxLimit}`,
               }}
               onClick={() => {
                 if (hasHitInboxLimit) {
-                  if (plan === 'ghost') {
-                    openUpgradeModal(
-                      'phantom',
-                      'Inbox limit reached',
-                      'Your Ghost plan allows 1 active inbox. Upgrade to Phantom to unlock up to 5 active inboxes.'
-                    );
-                  } else if (plan === 'phantom') {
-                    openUpgradeModal(
-                      'spectre',
-                      'Inbox limit reached',
-                      'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 active inboxes.'
-                    );
+                  if (planId === 'ghost') {
+                    openLimitModal('phantom', 'inbox');
+                  } else if (planId === 'phantom') {
+                    openLimitModal('spectre', 'inbox');
                   } else {
                     showToast('You have reached your current inbox limit.');
                   }
@@ -830,23 +841,23 @@ Inbox limit: ${planInboxLimit}`,
 
                 <div style={warningTitle}>
                   {hasHitEmailLimit
-                    ? `You have used all ${totalAvailableEmails} available emails in your ${getPlanDisplayName(plan)} account.`
+                    ? `You have used all ${totalAvailableEmails} available emails in your ${planLabel} account.`
                     : hasHitInboxLimit
-                    ? `You have used all ${planInboxLimit} inbox slots in your ${getPlanDisplayName(plan)} plan.`
-                    : `You have used ${emailCount} of ${totalAvailableEmails} available emails in your ${getPlanDisplayName(plan)} account.`}
+                    ? `You have used all ${planInboxLimit} inbox slots in your ${planLabel} plan.`
+                    : `You have used ${emailCount} of ${totalAvailableEmails} available emails in your ${planLabel} account.`}
                 </div>
 
                 <div style={warningText}>
-                  {plan === 'ghost'
-                    ? 'Upgrade to Phantom to unlock 5 inboxes and 200 monthly emails.'
-                    : plan === 'phantom'
-                    ? 'Upgrade to Spectre or buy extra emails to keep using GhostMail without waiting for next month.'
+                  {planId === 'ghost'
+                    ? `Upgrade to ${phantomConfig.displayName} to unlock ${phantomConfig.inboxLimit} inboxes and ${phantomConfig.emailLimit} monthly emails.`
+                    : planId === 'phantom'
+                    ? `Upgrade to ${spectreConfig.displayName} or buy extra emails to keep using GhostMail without waiting for next month.`
                     : 'Buy extra emails or manage current usage to stay within your account limits.'}
                 </div>
               </div>
 
               <div style={warningActions}>
-                {plan !== 'spectre' && (
+                {planId !== 'spectre' && (
                   <button style={upgradeBtn} onClick={handleUpgradeFromWarning}>
                     Upgrade now
                   </button>
@@ -869,10 +880,8 @@ Inbox limit: ${planInboxLimit}`,
                 <div style={planEyebrow}>Current plan</div>
 
                 <div style={planNameRow}>
-                  <h2 style={planName}>{getPlanDisplayName(plan)}</h2>
-                  <span style={planBadge}>
-                    {plan === 'ghost' ? 'Free Tier' : 'Premium'}
-                  </span>
+                  <h2 style={planName}>{planLabel}</h2>
+                  <span style={planBadge}>{planBadgeText}</span>
                 </div>
 
                 <p style={planMeta}>
@@ -882,14 +891,14 @@ Inbox limit: ${planInboxLimit}`,
               </div>
 
               <div style={planActionWrap}>
-                {plan === 'ghost' ? (
+                {planId === 'ghost' ? (
                   <a href="/#pricing" style={upgradeBtn}>
                     Upgrade plan
                   </a>
-                ) : plan === 'phantom' ? (
+                ) : planId === 'phantom' ? (
                   <>
                     <a href="/checkout?plan=spectre" style={upgradeBtn}>
-                      Upgrade to Spectre
+                      Upgrade to {spectreConfig.displayName}
                     </a>
                     <button
                       type="button"
@@ -945,7 +954,7 @@ Inbox limit: ${planInboxLimit}`,
             </div>
 
             <div style={usageCardSubtext}>
-              {emailCount} used this month from your {getPlanDisplayName(plan)} plan
+              {emailCount} used this month from your {planLabel} plan
               {extraCredits > 0 ? ` with ${extraCredits} extra credits available` : ''}
             </div>
 
@@ -962,7 +971,7 @@ Inbox limit: ${planInboxLimit}`,
             </div>
 
             <div style={usageCardSubtext}>
-              {stats.total} active inboxes in your {getPlanDisplayName(plan)} plan
+              {stats.total} active inboxes in your {planLabel} plan
             </div>
 
             <div style={usageTrack}>
@@ -1164,44 +1173,49 @@ Inbox limit: ${planInboxLimit}`,
         <div style={modalOverlay}>
           <div style={modalBox}>
             <div style={modalBadge}>
-  {plan === 'spectre' ? 'Your current plan' : 'Upgrade available'}
-</div>
+              {planId === 'spectre' ? 'Your current plan' : 'Upgrade available'}
+            </div>
+
             <h2 style={modalTitle}>Your Plan</h2>
 
-<div style={{ marginBottom: 20 }}>
-  <div style={{ fontSize: 22, fontWeight: 900, color: '#14122b' }}>
-    {getPlanDisplayName(plan)}
-  </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#14122b' }}>
+                {planLabel}
+              </div>
 
-  <div style={{ marginTop: 8, color: '#5d647a', fontSize: 14 }}>
-    Emails limit: <b>{planEmailLimit}</b>
-  </div>
+              <div style={{ marginTop: 8, color: '#5d647a', fontSize: 14 }}>
+                Emails limit: <b>{planEmailLimit}</b>
+              </div>
 
-  <div style={{ color: '#5d647a', fontSize: 14 }}>
-    Inbox limit: <b>{planInboxLimit}</b>
-  </div>
+              <div style={{ color: '#5d647a', fontSize: 14 }}>
+                Inbox limit: <b>{planInboxLimit}</b>
+              </div>
 
-  <div style={{ marginTop: 10, fontSize: 14 }}>
-    Usage: <b>{emailCount}</b> / {planEmailLimit}
-  </div>
-</div>
+              <div style={{ marginTop: 10, fontSize: 14 }}>
+                Usage: <b>{emailCount}</b> / {planEmailLimit}
+              </div>
+
+              <div style={usageTrack}>
+                <div style={{ ...usageFill, width: `${usagePercent}%` }} />
+              </div>
+            </div>
 
             <div style={modalPlans}>
-              {plan === 'ghost' && (
+              {planId === 'ghost' && (
                 <>
                   <a href="/checkout?plan=phantom" style={modalPrimaryLink}>
-                    Upgrade to Phantom
+                    Upgrade to {phantomConfig.displayName}
                   </a>
                   <a href="/checkout?plan=spectre" style={modalGhostSecondaryLink}>
-                    Upgrade to Spectre
+                    Upgrade to {spectreConfig.displayName}
                   </a>
                 </>
               )}
 
-              {plan === 'phantom' && (
+              {planId === 'phantom' && (
                 <>
                   <a href="/checkout?plan=spectre" style={modalPrimaryLink}>
-                    Upgrade to Spectre
+                    Upgrade to {spectreConfig.displayName}
                   </a>
                   <a href="/checkout?plan=topup_100" style={modalGhostSecondaryLink}>
                     Buy +100 emails
@@ -1209,7 +1223,7 @@ Inbox limit: ${planInboxLimit}`,
                 </>
               )}
 
-              {plan === 'spectre' && hasHitEmailLimit && (
+              {planId === 'spectre' && hasHitEmailLimit && (
                 <a href="/checkout?plan=topup_100" style={modalPrimaryLink}>
                   Buy +100 emails
                 </a>
