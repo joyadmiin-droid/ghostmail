@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const [favorites, setFavorites] = useState({});
   const [activeFilter, setActiveFilter] = useState('all');
   const [toast, setToast] = useState(null);
+  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase());
 
   function showToast(message) {
     setToast(message);
@@ -603,6 +604,7 @@ export default function DashboardPage() {
   }, [addresses, mailboxUsage, favorites]);
 
   const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.ghost;
+  const ADMIN_EMAILS = ['erkan.iseni20@gmail.com'];
   const planEmailLimit = currentPlanConfig.emailLimit;
   const planInboxLimit = currentPlanConfig.inboxLimit;
   const totalAvailableEmails = planEmailLimit + extraCredits;
@@ -776,21 +778,18 @@ export default function DashboardPage() {
           <div style={headerActions} className="dashboard-top-actions">
 
   {/* ✅ ADMIN ONLY ANALYTICS BUTTON */}
-  {user?.email?.toLowerCase() === 'erkan.iseni20@gmail.com' && (
-    <a
-      href="/admin/analytics"
-      style={{
-        ...primaryBtn,
-        textDecoration: 'none',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg,#111827,#6d49ff)',
-      }}
-    >
-      Analytics
-    </a>
-  )}
+  {isAdmin && (
+  <a
+    href="/admin/analytics"
+    style={{
+      ...primaryBtn,
+      background: '#111',
+      color: '#fff',
+    }}
+  >
+    Analytics
+  </a>
+)}
 
   <button
     style={{
