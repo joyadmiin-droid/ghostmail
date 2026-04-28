@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   normalizePlan,
   getPlanMrr,
-} from '../../../lib/plans';
+} from '../../lib/plans'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
