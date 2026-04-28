@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 import {
-  getPlanConfig,
   normalizePlan,
   getPlanMrr,
 } from '../../../lib/plans';
@@ -99,11 +98,6 @@ function getPaymentPlan(payment) {
 
   return raw || 'paid';
 }
-
-const estimatedMrr = userJourneys.reduce((sum, u) => {
-  const userPlan = normalizePlan(u.plan);
-  return sum + (u.isPaid ? getPlanMrr(userPlan) : 0);
-}, 0);
 
 function daysSince(value) {
   if (!value) return '—';
@@ -356,7 +350,9 @@ export default function AnalyticsAdminPage() {
 
         const country = getEventCountry(userEvents.find((e) => getEventCountry(e)));
 
-        const plan = profile.plan || getPaymentPlan(latestPayment || {}) || 'ghost';
+        const rawPlan = profile.plan || getPaymentPlan(latestPayment || {}) || 'ghost';
+        const plan = normalizePlan(rawPlan);
+
         const isPaid =
           plan === 'phantom' ||
           plan === 'spectre' ||
@@ -401,10 +397,10 @@ export default function AnalyticsAdminPage() {
     const phantomUsers = userJourneys.filter((u) => u.plan === 'phantom').length;
     const spectreUsers = userJourneys.filter((u) => u.plan === 'spectre').length;
 
-    const estimatedMrr = userJourneys.reduce(
-      (sum, u) => sum + (u.isPaid ? estimatePlanMrr(u.plan) : 0),
-      0
-    );
+    const estimatedMrr = userJourneys.reduce((sum, u) => {
+      const userPlan = normalizePlan(u.plan);
+      return sum + (u.isPaid ? getPlanMrr(userPlan) : 0);
+    }, 0);
 
     const conversionRate = pct(signups || clicks, pageViews);
 
