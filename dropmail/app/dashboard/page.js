@@ -129,40 +129,6 @@ Inbox limit: ${planInboxLimit}`,
     targetPlan: plan,
   });
 }
-    try {
-      setLoadingBilling(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const res = await fetch('/api/billing', {
-        method: 'GET',
-        headers: {
-          Authorization: 'Bearer ' + session.access_token,
-        },
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.url) {
-        alert(data?.error || 'Failed to open billing portal');
-        return;
-      }
-
-      window.open(data.url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      console.error('Manage billing failed:', err);
-      alert('Failed to open billing portal');
-    } finally {
-      setLoadingBilling(false);
-    }
-  }
 
   useEffect(() => {
     try {
