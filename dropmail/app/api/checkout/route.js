@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { normalizePlan } from '../../../../lib/plans';
 import { PRICING } from '@/app/lib/pricing';
 
 export async function POST(req) {
@@ -9,8 +10,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Missing data' }, { status: 400 });
     }
 
-    const normalizedPlan = String(plan).toLowerCase();
-    const normalizedCycle = String(cycle).toLowerCase();
+    const rawPlan = String(plan).toLowerCase();
+    const normalizedPlan = rawPlan === 'topup_100' ? 'topup_100' : normalizePlan(rawPlan);
+    const normalizedCycle = String(cycle || 'monthly').toLowerCase();
 
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const apiKey = process.env.LEMONSQUEEZY_API_KEY;
