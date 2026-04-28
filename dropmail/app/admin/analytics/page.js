@@ -394,7 +394,7 @@ export default function AnalyticsAdminPage() {
         <header style={hero}>
           <div>
             <p style={eyebrow}>01 · Headline metrics</p>
-            <h1 style={title}>Analytics Dashboard</h1>
+            <h1 style={{ ...title, color: t.text }}>Analytics Dashboard</h1>
             <p style={{ ...subtitle, color: t.muted }}>
               Private product analytics, traffic, conversion funnel, countries and user journeys.
             </p>
@@ -569,7 +569,7 @@ export default function AnalyticsAdminPage() {
                 onClick={() => setSelectedEmail(user.email)}
               >
                 <div style={{ minWidth: 0 }}>
-                  <strong style={truncateBlock}>
+                  <strong style={{ ...truncateBlock, color: t.text }}>
                     {user.country ? `${countryCodeToFlag(user.country)} ` : ''}
                     {user.email}
                   </strong>
@@ -592,7 +592,7 @@ export default function AnalyticsAdminPage() {
 
         {selectedUser && (
           <section style={panel(t)}>
-            <h2 style={sectionTitle}>
+            <h2 style={{ ...sectionTitle, color: t.text }}>
               {selectedUser.country ? `${countryCodeToFlag(selectedUser.country)} ` : ''}
               {selectedUser.email}
             </h2>
@@ -680,7 +680,7 @@ function MetricCard({ t, title, value, note }) {
   return (
     <div style={{ ...metricCard, background: t.card, borderColor: t.border }}>
       <p style={{ ...cardTitle, color: t.muted }}>{title}</p>
-      <h2 style={cardValue}>{value}</h2>
+      <h2 style={{ ...cardValue, color: t.text }}>{value}</h2>
       <p style={{ ...cardNote, color: t.muted }}>{note}</p>
     </div>
   );
@@ -691,7 +691,7 @@ function SmallTrend({ t, label, value, data, theme, last }) {
     <div style={{ ...smallTrend, borderColor: t.border, borderBottom: last ? 'none' : `1px solid ${t.border}` }}>
       <div style={smallTrendTop}>
         <span style={{ color: t.muted }}>{label}</span>
-        <strong>{value}</strong>
+        <strong style={{ color: t.text }}>{value}</strong>
       </div>
       <MiniLineChart data={data} theme={theme} />
     </div>
@@ -915,11 +915,13 @@ const sectionTitle = {
   fontSize: 22,
   fontWeight: 950,
   letterSpacing: '-0.03em',
+  color: 'inherit',
 };
 
 const bigNumber = {
   fontSize: 34,
   letterSpacing: '-0.04em',
+  color: 'inherit',
 };
 
 const mutedText = {
