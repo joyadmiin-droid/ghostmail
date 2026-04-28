@@ -100,11 +100,10 @@ function getPaymentPlan(payment) {
   return raw || 'paid';
 }
 
-function estimatePlanMrr(plan) {
-  if (plan === 'spectre') return 8.99;
-  if (plan === 'phantom') return 4.99;
-  return 0;
-}
+const estimatedMrr = userJourneys.reduce((sum, u) => {
+  const userPlan = normalizePlan(u.plan);
+  return sum + (u.isPaid ? getPlanMrr(userPlan) : 0);
+}, 0);
 
 function daysSince(value) {
   if (!value) return '—';
