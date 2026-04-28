@@ -122,7 +122,10 @@ export default function DashboardPage() {
   setShowUpgrade(true);
   setUpgradeContext({
     title: 'Plan details',
-    text: `You are currently on the ${getPlanDisplayName(plan)} plan.\n\nEmails limit: ${planEmailLimit}\nInbox limit: ${planInboxLimit}`,
+    text: `You are currently on the ${getPlanDisplayName(plan)} plan.
+
+Emails limit: ${planEmailLimit}
+Inbox limit: ${planInboxLimit}`,
     targetPlan: plan,
   });
 }
