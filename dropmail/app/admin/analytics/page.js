@@ -37,6 +37,23 @@ function getEventCountry(event) {
   return String(raw).toUpperCase().slice(0, 2);
 }
 
+function getReferrer(event) {
+  const raw =
+    event?.metadata?.referrer ||
+    event?.metadata?.referer ||
+    event?.metadata?.source ||
+    '';
+
+  if (!raw) return 'Direct';
+
+  try {
+    const url = new URL(raw);
+    return url.hostname.replace('www.', '');
+  } catch {
+    return String(raw).replace('www.', '') || 'Direct';
+  }
+}
+
 function getPaymentEmail(payment) {
   return (
     payment.email ||
@@ -75,6 +92,12 @@ function getPaymentPlan(payment) {
   if (value.includes('ghost')) return 'ghost';
 
   return raw || 'paid';
+}
+
+function estimatePlanMrr(plan) {
+  if (plan === 'spectre') return 8.99;
+  if (plan === 'phantom') return 4.99;
+  return 0;
 }
 
 function daysSince(value) {
@@ -170,16 +193,16 @@ function LineChart({ data, theme, height = 170 }) {
       </svg>
 
       <div style={chartLabels}>
-  {data.map((d, i) => {
-    const showLabel = i === 0 || i === data.length - 1 || i % 5 === 0;
+        {data.map((d, i) => {
+          const showLabel = i === 0 || i === data.length - 1 || i % 5 === 0;
 
-    return (
-      <span key={`${d.label}-${i}`}>
-        {showLabel ? d.label : ''}
-      </span>
-    );
-  })}
-</div>
+          return (
+            <span key={`${d.label}-${i}`}>
+              {showLabel ? d.label : ''}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -340,6 +363,16 @@ export default function AnalyticsAdminPage() {
           profile.created_at ||
           null;
 
+        const firstSeen =
+          [...userEvents]
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0]?.created_at ||
+          profile.created_at ||
+          latestPayment?.created_at ||
+          null;
+
+        const pagesVisited = new Set(userEvents.map((e) => e.path).filter(Boolean)).size;
+        const sessions = new Set(userEvents.map((e) => dateKey(e.created_at)).filter(Boolean)).size;
+
         return {
           email,
           events: userEvents,
@@ -350,7 +383,10 @@ export default function AnalyticsAdminPage() {
           paidTotal,
           latestPayment,
           lastSeen,
+          firstSeen,
           country,
+          pagesVisited,
+          sessions,
         };
       })
       .sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
@@ -359,12 +395,35 @@ export default function AnalyticsAdminPage() {
     const ghostUsers = userJourneys.filter((u) => !u.isPaid).length;
     const phantomUsers = userJourneys.filter((u) => u.plan === 'phantom').length;
     const spectreUsers = userJourneys.filter((u) => u.plan === 'spectre').length;
+
+    const estimatedMrr = userJourneys.reduce(
+      (sum, u) => sum + (u.isPaid ? estimatePlanMrr(u.plan) : 0),
+      0
+    );
+
     const conversionRate = pct(signups || clicks, pageViews);
+
     const todayEvents = events.filter((e) => {
       const d = new Date(e.created_at);
       const now = new Date();
       return d.toDateString() === now.toDateString();
     }).length;
+
+    const liveEvents = events.filter((e) => {
+      const created = new Date(e.created_at).getTime();
+      return created && Date.now() - created <= 5 * 60 * 1000;
+    });
+
+    const liveEmails = new Set(liveEvents.map((e) => e.user_email).filter(Boolean));
+    const liveVisitors = liveEmails.size || liveEvents.length;
+
+    const livePages = Object.entries(
+      liveEvents.reduce((acc, e) => {
+        const path = e.path || 'unknown';
+        acc[path] = (acc[path] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1]);
 
     const days = lastDays(range === '90d' ? 30 : range === '30d' ? 30 : range === '7d' ? 7 : 14);
 
@@ -382,7 +441,9 @@ export default function AnalyticsAdminPage() {
 
     const signupTrend = days.map((d) => ({
       ...d,
-      value: filteredEvents.filter((e) => dateKey(e.created_at) === d.key && e.event === 'signup_success').length,
+      value: filteredEvents.filter(
+        (e) => dateKey(e.created_at) === d.key && e.event === 'signup_success'
+      ).length,
     }));
 
     const topPages = Object.entries(
@@ -399,6 +460,14 @@ export default function AnalyticsAdminPage() {
         const country = getEventCountry(e);
         if (!country) return acc;
         acc[country] = (acc[country] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1]);
+
+    const topReferrers = Object.entries(
+      filteredEvents.reduce((acc, e) => {
+        const ref = getReferrer(e);
+        acc[ref] = (acc[ref] || 0) + 1;
         return acc;
       }, {})
     ).sort((a, b) => b[1] - a[1]);
@@ -423,6 +492,7 @@ export default function AnalyticsAdminPage() {
       { label: 'Email Clicks', value: clicks, rate: pct(clicks, pageViews) },
       { label: 'Logins', value: logins, rate: pct(logins, pageViews) },
       { label: 'Signups', value: signups, rate: pct(signups, pageViews) },
+      { label: 'Paid Users', value: paidUsers, rate: pct(paidUsers, pageViews) },
     ];
 
     return {
@@ -431,16 +501,19 @@ export default function AnalyticsAdminPage() {
       signups,
       clicks,
       revenue,
-      mrr: revenue,
-      arr: revenue * 12,
+      estimatedMrr,
+      arr: estimatedMrr * 12,
       paidUsers,
       ghostUsers,
       phantomUsers,
       spectreUsers,
       conversionRate,
       todayEvents,
+      liveVisitors,
+      livePages,
       topPages,
       topCountries,
+      topReferrers,
       eventTypes,
       countries,
       funnel,
@@ -504,7 +577,7 @@ export default function AnalyticsAdminPage() {
             <div style={{ ...logoBox, background: t.logoBg, color: t.logoText }}>G</div>
             <strong>GhostMail</strong>
             <span style={{ ...pill, background: t.softBg, color: t.muted }}>
-              admin analytics
+              v2 analytics
             </span>
           </div>
 
@@ -528,13 +601,14 @@ export default function AnalyticsAdminPage() {
             <p style={eyebrow}>GhostMail Command Center</p>
             <h1 style={{ ...title, color: t.text }}>Analytics Dashboard</h1>
             <p style={{ ...subtitle, color: t.muted }}>
-              Traffic, user journeys, countries, revenue signals, conversion funnel and recent activity.
+              Traffic, countries, user journeys, conversion, live visitors and revenue signals.
             </p>
           </div>
 
-          <div style={{ ...statusPill, background: t.card, borderColor: t.border }}>
+          <div style={{ ...liveBox, background: t.card, borderColor: t.border }}>
             <span style={liveDot} />
-            Live data · {stats.todayEvents} today
+            <strong>{stats.liveVisitors}</strong>
+            <span style={{ color: t.muted }}>live now</span>
           </div>
         </header>
 
@@ -574,12 +648,12 @@ export default function AnalyticsAdminPage() {
         </section>
 
         <div style={metricGrid}>
-          <MetricCard t={t} title="Revenue" value={money(stats.revenue)} note="tracked payments" accent="green" />
-          <MetricCard t={t} title="MRR" value={money(stats.mrr)} note="current estimate" />
+          <MetricCard t={t} title="Revenue" value={money(stats.revenue)} note="tracked payments in range" accent />
+          <MetricCard t={t} title="Est. MRR" value={money(stats.estimatedMrr)} note="paid plan estimate" accent />
           <MetricCard t={t} title="ARR" value={money(stats.arr)} note="MRR × 12" />
-          <MetricCard t={t} title="Paid Users" value={stats.paidUsers} note="active paid" accent="green" />
+          <MetricCard t={t} title="Live Now" value={stats.liveVisitors} note="last 5 minutes" accent />
           <MetricCard t={t} title="Page Views" value={stats.pageViews} note="filtered traffic" />
-          <MetricCard t={t} title="Conversion" value={stats.conversionRate} note="signup/click rate" accent="pink" />
+          <MetricCard t={t} title="Conversion" value={stats.conversionRate} note="signup/click rate" />
         </div>
 
         <div style={trajectoryGrid}>
@@ -614,10 +688,52 @@ export default function AnalyticsAdminPage() {
           <MetricCard t={t} title="Spectre" value={stats.spectreUsers} note="spectre plan" />
         </div>
 
+        <div style={threeCol}>
+          <section style={panel(t)}>
+            <h2 style={sectionTitle}>Live Pages</h2>
+            <p style={{ ...mutedText, color: t.muted }}>Activity from the last 5 minutes.</p>
+
+            {stats.livePages.length === 0 ? (
+              <p style={{ color: t.muted }}>No live activity right now.</p>
+            ) : (
+              stats.livePages.slice(0, 6).map(([path, count]) => (
+                <div key={path} style={row(t)}>
+                  <span style={{ ...truncate, color: t.text }}>{path}</span>
+                  <strong>{count}</strong>
+                </div>
+              ))
+            )}
+          </section>
+
+          <section style={panel(t)}>
+            <h2 style={sectionTitle}>Top Referrers</h2>
+            <p style={{ ...mutedText, color: t.muted }}>Where traffic is coming from.</p>
+
+            {stats.topReferrers.slice(0, 6).map(([ref, count]) => (
+              <div key={ref} style={row(t)}>
+                <span style={{ ...truncate, color: t.text }}>{ref}</span>
+                <strong>{count}</strong>
+              </div>
+            ))}
+          </section>
+
+          <section style={panel(t)}>
+            <h2 style={sectionTitle}>Event Mix</h2>
+            <p style={{ ...mutedText, color: t.muted }}>Top tracked actions.</p>
+
+            {stats.eventTypes.slice(0, 6).map(([event, count]) => (
+              <div key={event} style={row(t)}>
+                <span style={{ ...truncate, color: t.text }}>{event}</span>
+                <strong>{count}</strong>
+              </div>
+            ))}
+          </section>
+        </div>
+
         <section style={panel(t)}>
           <h2 style={sectionTitle}>Conversion Funnel</h2>
           <p style={{ ...mutedText, color: t.muted }}>
-            Shows how users move from traffic into real product actions.
+            Shows how users move from traffic into product actions.
           </p>
 
           <div style={funnelWrap}>
@@ -647,12 +763,13 @@ export default function AnalyticsAdminPage() {
               <p style={{ color: t.muted }}>No country data yet.</p>
             ) : (
               stats.topCountries.slice(0, 10).map(([country, count]) => (
-                <div key={country} style={row(t)}>
-                  <span style={{ color: t.text }}>
-                    {countryCodeToFlag(country)} {country}
-                  </span>
-                  <strong style={{ color: t.text }}>{count}</strong>
-                </div>
+                <CountryRow
+                  key={country}
+                  t={t}
+                  country={country}
+                  count={count}
+                  total={stats.topCountries.reduce((sum, [, value]) => sum + value, 0)}
+                />
               ))
             )}
           </section>
@@ -681,7 +798,7 @@ export default function AnalyticsAdminPage() {
             <div>
               <h2 style={sectionTitle}>Users</h2>
               <p style={{ ...mutedText, color: t.muted }}>
-                Click a user to inspect plan, payments and journey.
+                Click a user to inspect plan, payments, sessions and journey.
               </p>
             </div>
             <strong style={{ color: t.accent }}>{filteredUsers.length} users</strong>
@@ -698,18 +815,20 @@ export default function AnalyticsAdminPage() {
                 <MetricCard t={t} title="Plan" value={selectedUser.plan || 'ghost'} note="current plan" />
                 <MetricCard t={t} title="Status" value={selectedUser.isPaid ? 'Paid' : 'Free'} note="billing state" />
                 <MetricCard t={t} title="Paid Total" value={money(selectedUser.paidTotal)} note="lifetime value" />
+                <MetricCard t={t} title="Sessions" value={selectedUser.sessions} note="active days" />
+                <MetricCard t={t} title="Pages" value={selectedUser.pagesVisited} note="unique paths" />
                 <MetricCard
                   t={t}
-                  title="Subscriber Days"
-                  value={daysSince(selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at)}
-                  note="since first record"
+                  title="Age"
+                  value={daysSince(selectedUser.firstSeen)}
+                  note="days since first seen"
                 />
               </div>
             </div>
           )}
 
           <div style={userList}>
-            {filteredUsers.slice(0, 80).map((user) => (
+            {filteredUsers.slice(0, 100).map((user) => (
               <button
                 key={user.email}
                 type="button"
@@ -727,7 +846,7 @@ export default function AnalyticsAdminPage() {
                     {user.email}
                   </strong>
                   <div style={{ ...smallMuted, color: t.muted }}>
-                    {user.events.length} events · last seen{' '}
+                    {user.events.length} events · {user.sessions} sessions · last seen{' '}
                     {user.lastSeen ? new Date(user.lastSeen).toLocaleString() : '—'}
                   </div>
                 </div>
@@ -750,7 +869,8 @@ export default function AnalyticsAdminPage() {
               {selectedUser.email}
             </h2>
             <p style={{ ...mutedText, color: t.muted }}>
-              Payments and recent product timeline.
+              First seen: {selectedUser.firstSeen ? new Date(selectedUser.firstSeen).toLocaleString() : '—'} · Last seen:{' '}
+              {selectedUser.lastSeen ? new Date(selectedUser.lastSeen).toLocaleString() : '—'}
             </p>
 
             <h3 style={{ ...miniTitle, color: t.text }}>Payments</h3>
@@ -770,7 +890,7 @@ export default function AnalyticsAdminPage() {
             {selectedUser.events.length === 0 ? (
               <p style={{ color: t.muted }}>No events found for this user.</p>
             ) : (
-              selectedUser.events.slice(0, 40).map((e) => {
+              selectedUser.events.slice(0, 50).map((e) => {
                 const country = getEventCountry(e);
 
                 return (
@@ -808,7 +928,7 @@ export default function AnalyticsAdminPage() {
               <span>Time</span>
             </div>
 
-            {filteredEvents.slice(0, 120).map((e) => {
+            {filteredEvents.slice(0, 140).map((e) => {
               const country = getEventCountry(e);
 
               return (
@@ -847,6 +967,24 @@ function SmallTrend({ t, label, value, data, theme }) {
         <strong style={{ color: t.text }}>{value}</strong>
       </div>
       <LineChart data={data} theme={theme} height={82} />
+    </div>
+  );
+}
+
+function CountryRow({ t, country, count, total }) {
+  const width = total ? `${Math.max(4, Math.round((count / total) * 100))}%` : '0%';
+
+  return (
+    <div style={countryRow}>
+      <div style={countryTop}>
+        <span style={{ color: t.text }}>
+          {countryCodeToFlag(country)} {country}
+        </span>
+        <strong style={{ color: t.text }}>{count}</strong>
+      </div>
+      <div style={{ ...countryBarTrack, background: t.track }}>
+        <div style={{ ...countryBarFill, width }} />
+      </div>
     </div>
   );
 }
@@ -1008,7 +1146,7 @@ const subtitle = {
   maxWidth: 760,
 };
 
-const statusPill = {
+const liveBox = {
   display: 'flex',
   gap: 8,
   alignItems: 'center',
@@ -1097,6 +1235,18 @@ const trajectoryGrid = {
   gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.9fr)',
   gap: 14,
   marginBottom: 26,
+};
+
+const twoCol = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: 14,
+};
+
+const threeCol = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+  gap: 14,
 };
 
 const panel = (t) => ({
@@ -1197,12 +1347,6 @@ const funnelRate = {
   fontWeight: 900,
 };
 
-const twoCol = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: 14,
-};
-
 const row = (t) => ({
   display: 'flex',
   justifyContent: 'space-between',
@@ -1211,6 +1355,29 @@ const row = (t) => ({
   borderBottom: `1px solid ${t.border}`,
   color: t.text,
 });
+
+const countryRow = {
+  padding: '13px 0',
+};
+
+const countryTop = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  marginBottom: 8,
+};
+
+const countryBarTrack = {
+  height: 8,
+  borderRadius: 999,
+  overflow: 'hidden',
+};
+
+const countryBarFill = {
+  height: '100%',
+  borderRadius: 999,
+  background: 'linear-gradient(135deg,#6d49ff,#d946b2)',
+};
 
 const selectedBox = {
   marginBottom: 18,
