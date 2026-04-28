@@ -20,16 +20,21 @@ function money(value) {
 }
 
 function countryCodeToFlag(code) {
-  if (!code || code.length !== 2) return '🌍';
-  return code
+  if (!code || String(code).length !== 2) return '🌍';
+  return String(code)
     .toUpperCase()
-    .replace(/./g, (char) =>
-      String.fromCodePoint(127397 + char.charCodeAt())
-    );
+    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt()));
 }
 
 function getEventCountry(event) {
-  return event?.metadata?.country || event?.metadata?.countryName || null;
+  const raw =
+    event?.metadata?.country ||
+    event?.metadata?.countryCode ||
+    event?.metadata?.countryName ||
+    null;
+
+  if (!raw) return null;
+  return String(raw).toUpperCase().slice(0, 2);
 }
 
 function getPaymentEmail(payment) {
@@ -79,28 +84,63 @@ function daysSince(value) {
   return Math.max(0, Math.floor(diff / 86400000));
 }
 
-function monthKey(dateValue) {
-  const d = new Date(dateValue);
+function dateKey(value) {
+  const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return d.toISOString().slice(0, 10);
 }
 
-function lastMonths(count = 6) {
+function lastDays(count = 14) {
   const out = [];
   const now = new Date();
 
   for (let i = count - 1; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
     out.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-      label: d.toLocaleString(undefined, { month: 'short' }),
+      key: d.toISOString().slice(0, 10),
+      label: d.toLocaleString(undefined, { month: 'short', day: 'numeric' }),
     });
   }
 
   return out;
 }
 
-function MiniLineChart({ data, theme }) {
+function inRange(item, range) {
+  if (range === 'all') return true;
+  const created = new Date(item.created_at || item.createdAt || 0).getTime();
+  if (!created) return false;
+
+  const now = Date.now();
+  const days =
+    range === '24h' ? 1 :
+    range === '7d' ? 7 :
+    range === '30d' ? 30 :
+    range === '90d' ? 90 :
+    99999;
+
+  return created >= now - days * 86400000;
+}
+
+function exportCSV(rows, filename) {
+  const csv = rows
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`)
+        .join(',')
+    )
+    .join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function LineChart({ data, theme, height = 170 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const points = data
     .map((d, index) => {
@@ -110,13 +150,19 @@ function MiniLineChart({ data, theme }) {
     })
     .join(' ');
 
+  const fillPoints = `0,100 ${points} 100,100`;
+
   return (
-    <div style={chartWrap}>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={chartSvg}>
+    <div>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height }}>
+        <polygon
+          points={fillPoints}
+          fill={theme === 'dark' ? 'rgba(120,224,143,0.12)' : 'rgba(109,73,255,0.10)'}
+        />
         <polyline
           fill="none"
           stroke={theme === 'dark' ? '#78e08f' : '#6d49ff'}
-          strokeWidth="3"
+          strokeWidth="2.7"
           strokeLinecap="round"
           strokeLinejoin="round"
           points={points}
@@ -124,8 +170,8 @@ function MiniLineChart({ data, theme }) {
       </svg>
 
       <div style={chartLabels}>
-        {data.map((d) => (
-          <span key={d.label}>{d.label}</span>
+        {data.map((d, i) => (
+          <span key={`${d.label}-${i}`}>{d.label}</span>
         ))}
       </div>
     </div>
@@ -140,6 +186,9 @@ export default function AnalyticsAdminPage() {
   const [error, setError] = useState('');
   const [selectedEmail, setSelectedEmail] = useState('');
   const [search, setSearch] = useState('');
+  const [range, setRange] = useState('30d');
+  const [eventFilter, setEventFilter] = useState('all');
+  const [countryFilter, setCountryFilter] = useState('all');
   const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
@@ -188,13 +237,36 @@ export default function AnalyticsAdminPage() {
 
   const t = theme === 'dark' ? darkTheme : lightTheme;
 
-  const stats = useMemo(() => {
-    const pageViews = events.filter((e) => e.event === 'page_view').length;
-    const logins = events.filter((e) => e.event === 'login_success').length;
-    const signups = events.filter((e) => e.event === 'signup_success').length;
-    const clicks = events.filter((e) => e.event === 'generate_email_click').length;
+  const filteredEvents = useMemo(() => {
+    return events.filter((e) => {
+      const country = getEventCountry(e);
+      const matchesRange = inRange(e, range);
+      const matchesEvent = eventFilter === 'all' || e.event === eventFilter;
+      const matchesCountry = countryFilter === 'all' || country === countryFilter;
+      const q = search.trim().toLowerCase();
 
-    const revenue = payments.reduce(
+      const matchesSearch =
+        !q ||
+        String(e.event || '').toLowerCase().includes(q) ||
+        String(e.path || '').toLowerCase().includes(q) ||
+        String(e.label || '').toLowerCase().includes(q) ||
+        String(e.user_email || '').toLowerCase().includes(q);
+
+      return matchesRange && matchesEvent && matchesCountry && matchesSearch;
+    });
+  }, [events, range, eventFilter, countryFilter, search]);
+
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p) => inRange(p, range));
+  }, [payments, range]);
+
+  const stats = useMemo(() => {
+    const pageViews = filteredEvents.filter((e) => e.event === 'page_view').length;
+    const logins = filteredEvents.filter((e) => e.event === 'login_success').length;
+    const signups = filteredEvents.filter((e) => e.event === 'signup_success').length;
+    const clicks = filteredEvents.filter((e) => e.event === 'generate_email_click').length;
+
+    const revenue = filteredPayments.reduce(
       (sum, p) => sum + Number(getPaymentAmount(p) || 0),
       0
     );
@@ -278,23 +350,37 @@ export default function AnalyticsAdminPage() {
       .sort((a, b) => new Date(b.lastSeen || 0) - new Date(a.lastSeen || 0));
 
     const paidUsers = userJourneys.filter((u) => u.isPaid).length;
-    const churn = paidUsers ? Math.max(0, Math.round(((paidUsers - payments.length) / paidUsers) * 100)) : 0;
+    const ghostUsers = userJourneys.filter((u) => !u.isPaid).length;
+    const phantomUsers = userJourneys.filter((u) => u.plan === 'phantom').length;
+    const spectreUsers = userJourneys.filter((u) => u.plan === 'spectre').length;
+    const conversionRate = pct(signups || clicks, pageViews);
+    const todayEvents = events.filter((e) => {
+      const d = new Date(e.created_at);
+      const now = new Date();
+      return d.toDateString() === now.toDateString();
+    }).length;
 
-    const months = lastMonths(6);
-    const revenueByMonth = months.map((m) => ({
-      ...m,
-      value: payments
-        .filter((p) => monthKey(p.created_at) === m.key)
+    const days = lastDays(range === '90d' ? 30 : range === '30d' ? 30 : range === '7d' ? 7 : 14);
+
+    const revenueTrend = days.map((d) => ({
+      ...d,
+      value: filteredPayments
+        .filter((p) => dateKey(p.created_at) === d.key)
         .reduce((sum, p) => sum + Number(getPaymentAmount(p) || 0), 0),
     }));
 
-    const eventTrend = months.map((m) => ({
-      ...m,
-      value: events.filter((e) => monthKey(e.created_at) === m.key).length,
+    const eventTrend = days.map((d) => ({
+      ...d,
+      value: filteredEvents.filter((e) => dateKey(e.created_at) === d.key).length,
+    }));
+
+    const signupTrend = days.map((d) => ({
+      ...d,
+      value: filteredEvents.filter((e) => dateKey(e.created_at) === d.key && e.event === 'signup_success').length,
     }));
 
     const topPages = Object.entries(
-      events
+      filteredEvents
         .filter((e) => e.path)
         .reduce((acc, e) => {
           acc[e.path] = (acc[e.path] || 0) + 1;
@@ -303,7 +389,7 @@ export default function AnalyticsAdminPage() {
     ).sort((a, b) => b[1] - a[1]);
 
     const topCountries = Object.entries(
-      events.reduce((acc, e) => {
+      filteredEvents.reduce((acc, e) => {
         const country = getEventCountry(e);
         if (!country) return acc;
         acc[country] = (acc[country] || 0) + 1;
@@ -311,10 +397,25 @@ export default function AnalyticsAdminPage() {
       }, {})
     ).sort((a, b) => b[1] - a[1]);
 
+    const eventTypes = Object.entries(
+      events.reduce((acc, e) => {
+        acc[e.event] = (acc[e.event] || 0) + 1;
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1]);
+
+    const countries = Object.keys(
+      events.reduce((acc, e) => {
+        const country = getEventCountry(e);
+        if (country) acc[country] = true;
+        return acc;
+      }, {})
+    ).sort();
+
     const funnel = [
       { label: 'Page Views', value: pageViews, rate: '100%' },
-      { label: 'Logins', value: logins, rate: pct(logins, pageViews) },
       { label: 'Email Clicks', value: clicks, rate: pct(clicks, pageViews) },
+      { label: 'Logins', value: logins, rate: pct(logins, pageViews) },
       { label: 'Signups', value: signups, rate: pct(signups, pageViews) },
     ];
 
@@ -327,21 +428,48 @@ export default function AnalyticsAdminPage() {
       mrr: revenue,
       arr: revenue * 12,
       paidUsers,
-      churn,
+      ghostUsers,
+      phantomUsers,
+      spectreUsers,
+      conversionRate,
+      todayEvents,
       topPages,
       topCountries,
+      eventTypes,
+      countries,
       funnel,
       userJourneys,
-      revenueByMonth,
+      revenueTrend,
       eventTrend,
+      signupTrend,
     };
-  }, [events, profiles, payments]);
+  }, [events, filteredEvents, filteredPayments, payments, profiles, range]);
 
-  const filteredUsers = stats.userJourneys.filter((u) =>
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = stats.userJourneys.filter((u) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || u.email.toLowerCase().includes(q);
+    const matchesCountry = countryFilter === 'all' || u.country === countryFilter;
+    return matchesSearch && matchesCountry;
+  });
 
   const selectedUser = stats.userJourneys.find((u) => u.email === selectedEmail);
+
+  function downloadEvents() {
+    exportCSV(
+      [
+        ['event', 'path', 'country', 'label', 'user_email', 'created_at'],
+        ...filteredEvents.map((e) => [
+          e.event,
+          e.path || '',
+          getEventCountry(e) || '',
+          e.label || '',
+          e.user_email || '',
+          e.created_at || '',
+        ]),
+      ],
+      'ghostmail-events.csv'
+    );
+  }
 
   if (loading) {
     return (
@@ -361,6 +489,9 @@ export default function AnalyticsAdminPage() {
 
   return (
     <main style={{ ...pageBase, background: t.pageBg, color: t.text }}>
+      <div style={glowOne} />
+      <div style={glowTwo} />
+
       <div style={container}>
         <div style={topNav}>
           <div style={brand}>
@@ -372,17 +503,12 @@ export default function AnalyticsAdminPage() {
           </div>
 
           <div style={navActions}>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              style={{
-                ...iconButton,
-                background: t.card,
-                borderColor: t.border,
-                color: t.text,
-              }}
-            >
+            <button type="button" onClick={toggleTheme} style={ghostButton(t)}>
               {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
+
+            <button type="button" onClick={downloadEvents} style={ghostButton(t)}>
+              Export CSV
             </button>
 
             <a href="/dashboard" style={primaryButton}>
@@ -393,52 +519,83 @@ export default function AnalyticsAdminPage() {
 
         <header style={hero}>
           <div>
-            <p style={eyebrow}>01 · Headline metrics</p>
+            <p style={eyebrow}>GhostMail Command Center</p>
             <h1 style={{ ...title, color: t.text }}>Analytics Dashboard</h1>
             <p style={{ ...subtitle, color: t.muted }}>
-              Private product analytics, traffic, conversion funnel, countries and user journeys.
+              Traffic, user journeys, countries, revenue signals, conversion funnel and recent activity.
             </p>
           </div>
 
           <div style={{ ...statusPill, background: t.card, borderColor: t.border }}>
             <span style={liveDot} />
-            Live data
+            Live data · {stats.todayEvents} today
           </div>
         </header>
 
-        <div style={metricGrid}>
-          <MetricCard t={t} title="Revenue" value={money(stats.revenue)} note="total tracked" />
-          <MetricCard t={t} title="MRR" value={money(stats.mrr)} note="current estimate" />
-          <MetricCard t={t} title="ARR" value={money(stats.arr)} note="MRR × 12" />
-          <MetricCard t={t} title="Paid Users" value={stats.paidUsers} note="active paid" />
-          <MetricCard t={t} title="Page Views" value={stats.pageViews} note="all events" />
-          <MetricCard t={t} title="Known Users" value={stats.userJourneys.length} note="profiles + events" />
-        </div>
+        <section style={{ ...panel(t), padding: 16 }}>
+          <div style={filters}>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search email, event, path..."
+              style={{ ...searchInput, background: t.input, color: t.text, borderColor: t.border }}
+            />
 
-        <section style={sectionHeader}>
-          <p style={eyebrow}>02 · Trajectory</p>
+            <select value={range} onChange={(e) => setRange(e.target.value)} style={selectBox(t)}>
+              <option value="24h">Last 24h</option>
+              <option value="7d">Last 7d</option>
+              <option value="30d">Last 30d</option>
+              <option value="90d">Last 90d</option>
+              <option value="all">All time</option>
+            </select>
+
+            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} style={selectBox(t)}>
+              <option value="all">All events</option>
+              {stats.eventTypes.map(([event]) => (
+                <option key={event} value={event}>{event}</option>
+              ))}
+            </select>
+
+            <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)} style={selectBox(t)}>
+              <option value="all">All countries</option>
+              {stats.countries.map((country) => (
+                <option key={country} value={country}>
+                  {countryCodeToFlag(country)} {country}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
 
+        <div style={metricGrid}>
+          <MetricCard t={t} title="Revenue" value={money(stats.revenue)} note="tracked payments" accent="green" />
+          <MetricCard t={t} title="MRR" value={money(stats.mrr)} note="current estimate" />
+          <MetricCard t={t} title="ARR" value={money(stats.arr)} note="MRR × 12" />
+          <MetricCard t={t} title="Paid Users" value={stats.paidUsers} note="active paid" accent="green" />
+          <MetricCard t={t} title="Page Views" value={stats.pageViews} note="filtered traffic" />
+          <MetricCard t={t} title="Conversion" value={stats.conversionRate} note="signup/click rate" accent="pink" />
+        </div>
+
         <div style={trajectoryGrid}>
-          <section style={{ ...panel(t), minHeight: 360 }}>
+          <section style={{ ...panel(t), minHeight: 410 }}>
             <div style={panelTop}>
               <div>
+                <p style={{ ...eyebrow, marginBottom: 8 }}>Trajectory</p>
+                <h2 style={sectionTitle}>Traffic Trend</h2>
                 <p style={{ ...mutedText, color: t.muted }}>
-                  Gross revenue tracked from payment records.
+                  Product activity for the selected time range.
                 </p>
-                <h2 style={sectionTitle}>Revenue</h2>
               </div>
-              <strong style={bigNumber}>{money(stats.revenue)}</strong>
+              <strong style={bigNumber}>{filteredEvents.length}</strong>
             </div>
 
-            <MiniLineChart data={stats.revenueByMonth} theme={theme} />
+            <LineChart data={stats.eventTrend} theme={theme} height={230} />
           </section>
 
-          <section style={{ ...panel(t), minHeight: 360 }}>
-            <SmallTrend t={t} label="MRR" value={money(stats.mrr)} data={stats.revenueByMonth} theme={theme} />
-            <SmallTrend t={t} label="ARR" value={money(stats.arr)} data={stats.revenueByMonth} theme={theme} />
-            <SmallTrend t={t} label="Events" value={events.length} data={stats.eventTrend} theme={theme} />
-            <SmallTrend t={t} label="Churn" value={`${stats.churn}%`} data={stats.eventTrend} theme={theme} last />
+          <section style={{ ...panel(t), minHeight: 410 }}>
+            <SmallTrend t={t} label="Revenue" value={money(stats.revenue)} data={stats.revenueTrend} theme={theme} />
+            <SmallTrend t={t} label="Signups" value={stats.signups} data={stats.signupTrend} theme={theme} />
+            <SmallTrend t={t} label="Email Clicks" value={stats.clicks} data={stats.eventTrend} theme={theme} />
           </section>
         </div>
 
@@ -446,7 +603,9 @@ export default function AnalyticsAdminPage() {
           <MetricCard t={t} title="Logins" value={stats.logins} note={pct(stats.logins, stats.pageViews)} />
           <MetricCard t={t} title="Signups" value={stats.signups} note={pct(stats.signups, stats.pageViews)} />
           <MetricCard t={t} title="Email Clicks" value={stats.clicks} note={pct(stats.clicks, stats.pageViews)} />
-          <MetricCard t={t} title="Events" value={events.length} note="recent product actions" />
+          <MetricCard t={t} title="Ghost Users" value={stats.ghostUsers} note="free users" />
+          <MetricCard t={t} title="Phantom" value={stats.phantomUsers} note="phantom plan" />
+          <MetricCard t={t} title="Spectre" value={stats.spectreUsers} note="spectre plan" />
         </div>
 
         <section style={panel(t)}>
@@ -460,12 +619,12 @@ export default function AnalyticsAdminPage() {
               <div key={item.label} style={{ ...funnelItem, background: t.softBg, borderColor: t.border }}>
                 <div style={funnelTop}>
                   <strong style={{ color: t.text }}>{item.label}</strong>
-<span style={{ color: t.text }}>{item.value}</span>
+                  <span style={{ color: t.text }}>{item.value}</span>
                 </div>
                 <div style={{ ...barTrack, background: t.track }}>
                   <div style={{ ...barFill, width: item.rate }} />
                 </div>
-                <div style={{ ...funnelRate, color: t.text }}>{item.rate}</div>
+                <div style={{ ...funnelRate, color: t.accent }}>{item.rate}</div>
               </div>
             ))}
           </div>
@@ -475,19 +634,19 @@ export default function AnalyticsAdminPage() {
           <section style={panel(t)}>
             <h2 style={sectionTitle}>Top Countries</h2>
             <p style={{ ...mutedText, color: t.muted }}>
-              Countries detected from analytics event metadata.
+              Countries detected from analytics metadata.
             </p>
 
             {stats.topCountries.length === 0 ? (
               <p style={{ color: t.muted }}>No country data yet.</p>
             ) : (
-              stats.topCountries.map(([country, count]) => (
-                <div key={country} style={{ ...row(t) }}>
-  <span style={{ color: t.text }}>
-    {countryCodeToFlag(country)} {country}
-  </span>
-  <strong style={{ color: t.text }}>{count}</strong>
-</div>
+              stats.topCountries.slice(0, 10).map(([country, count]) => (
+                <div key={country} style={row(t)}>
+                  <span style={{ color: t.text }}>
+                    {countryCodeToFlag(country)} {country}
+                  </span>
+                  <strong style={{ color: t.text }}>{count}</strong>
+                </div>
               ))
             )}
           </section>
@@ -501,37 +660,30 @@ export default function AnalyticsAdminPage() {
             {stats.topPages.length === 0 ? (
               <p style={{ color: t.muted }}>No page data yet.</p>
             ) : (
-              stats.topPages.slice(0, 8).map(([path, count]) => (
-                <div key={path} style={{ ...row(t) }}>
-  <span style={{ ...truncate, color: t.text }}>{path}</span>
-  <strong style={{ color: t.text }}>{count}</strong>
-</div>
+              stats.topPages.slice(0, 10).map(([path, count]) => (
+                <div key={path} style={row(t)}>
+                  <span style={{ ...truncate, color: t.text }}>{path}</span>
+                  <strong style={{ color: t.text }}>{count}</strong>
+                </div>
               ))
             )}
           </section>
         </div>
 
         <section style={panel(t)}>
-          <h2 style={sectionTitle}>Users</h2>
-          <p style={{ ...mutedText, color: t.muted }}>
-            Click a user to see their full journey and subscription info.
-          </p>
-
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search user email..."
-            style={{
-              ...searchInput,
-              background: t.input,
-              color: t.text,
-              borderColor: t.border,
-            }}
-          />
+          <div style={panelTop}>
+            <div>
+              <h2 style={sectionTitle}>Users</h2>
+              <p style={{ ...mutedText, color: t.muted }}>
+                Click a user to inspect plan, payments and journey.
+              </p>
+            </div>
+            <strong style={{ color: t.accent }}>{filteredUsers.length} users</strong>
+          </div>
 
           {selectedUser && (
             <div style={{ ...selectedBox, background: t.softBg, borderColor: t.border }}>
-              <h3 style={{ margin: '0 0 8px' }}>
+              <h3 style={{ margin: '0 0 12px', color: t.text }}>
                 {selectedUser.country ? `${countryCodeToFlag(selectedUser.country)} ` : ''}
                 {selectedUser.email}
               </h3>
@@ -543,9 +695,7 @@ export default function AnalyticsAdminPage() {
                 <MetricCard
                   t={t}
                   title="Subscriber Days"
-                  value={daysSince(
-                    selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at
-                  )}
+                  value={daysSince(selectedUser.latestPayment?.created_at || selectedUser.profile?.created_at)}
                   note="since first record"
                 />
               </div>
@@ -553,7 +703,7 @@ export default function AnalyticsAdminPage() {
           )}
 
           <div style={userList}>
-            {filteredUsers.map((user) => (
+            {filteredUsers.slice(0, 80).map((user) => (
               <button
                 key={user.email}
                 type="button"
@@ -561,10 +711,7 @@ export default function AnalyticsAdminPage() {
                   ...userRow,
                   background: selectedEmail === user.email ? t.softBg : t.rowBg,
                   color: t.text,
-                  borderColor:
-                    selectedEmail === user.email
-                      ? 'rgba(109,73,255,0.55)'
-                      : t.border,
+                  borderColor: selectedEmail === user.email ? 'rgba(109,73,255,0.55)' : t.border,
                 }}
                 onClick={() => setSelectedEmail(user.email)}
               >
@@ -574,7 +721,7 @@ export default function AnalyticsAdminPage() {
                     {user.email}
                   </strong>
                   <div style={{ ...smallMuted, color: t.muted }}>
-                    {user.events.length} events • last seen{' '}
+                    {user.events.length} events · last seen{' '}
                     {user.lastSeen ? new Date(user.lastSeen).toLocaleString() : '—'}
                   </div>
                 </div>
@@ -592,20 +739,20 @@ export default function AnalyticsAdminPage() {
 
         {selectedUser && (
           <section style={panel(t)}>
-            <h2 style={{ ...sectionTitle, color: t.text }}>
+            <h2 style={sectionTitle}>
               {selectedUser.country ? `${countryCodeToFlag(selectedUser.country)} ` : ''}
               {selectedUser.email}
             </h2>
             <p style={{ ...mutedText, color: t.muted }}>
-              User stats, plan info, payments, and recent timeline.
+              Payments and recent product timeline.
             </p>
 
-            <h3 style={miniTitle}>Payments</h3>
+            <h3 style={{ ...miniTitle, color: t.text }}>Payments</h3>
             {selectedUser.payments.length === 0 ? (
               <p style={{ color: t.muted }}>No payments found for this user.</p>
             ) : (
-              selectedUser.payments.slice(0, 6).map((p) => (
-                <div key={p.id || p.created_at} style={{ ...paymentRow, borderColor: t.border }}>
+              selectedUser.payments.slice(0, 8).map((p) => (
+                <div key={p.id || p.created_at} style={{ ...paymentRow, borderColor: t.border, color: t.text }}>
                   <span>{getPaymentPlan(p)}</span>
                   <strong>{money(getPaymentAmount(p))}</strong>
                   <span>{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</span>
@@ -613,23 +760,23 @@ export default function AnalyticsAdminPage() {
               ))
             )}
 
-            <h3 style={miniTitle}>Timeline</h3>
+            <h3 style={{ ...miniTitle, color: t.text }}>Timeline</h3>
             {selectedUser.events.length === 0 ? (
               <p style={{ color: t.muted }}>No events found for this user.</p>
             ) : (
-              selectedUser.events.map((e) => {
+              selectedUser.events.slice(0, 40).map((e) => {
                 const country = getEventCountry(e);
 
                 return (
-                  <div key={e.id} style={{ ...timelineRow, borderColor: t.border }}>
+                  <div key={e.id} style={{ ...timelineRow, borderColor: t.border, color: t.text }}>
                     <div>
                       <strong>
                         {country ? `${countryCodeToFlag(country)} ` : ''}
                         {e.event}
                       </strong>
                       <div style={{ ...smallMuted, color: t.muted }}>
-                        {e.path || '-'} {e.label ? `• ${e.label}` : ''}
-                        {country ? ` • ${country}` : ''}
+                        {e.path || '-'} {e.label ? `· ${e.label}` : ''}
+                        {country ? ` · ${country}` : ''}
                       </div>
                     </div>
                     <span style={timeText}>
@@ -655,11 +802,11 @@ export default function AnalyticsAdminPage() {
               <span>Time</span>
             </div>
 
-            {events.map((e) => {
+            {filteredEvents.slice(0, 120).map((e) => {
               const country = getEventCountry(e);
 
               return (
-                <div key={e.id} style={{ ...trow, borderColor: t.border }}>
+                <div key={e.id} style={{ ...trow, borderColor: t.border, color: t.text }}>
                   <span>{e.event}</span>
                   <span>{e.path || '-'}</span>
                   <span>{country ? `${countryCodeToFlag(country)} ${country}` : '-'}</span>
@@ -676,52 +823,54 @@ export default function AnalyticsAdminPage() {
   );
 }
 
-function MetricCard({ t, title, value, note }) {
+function MetricCard({ t, title, value, note, accent }) {
   return (
     <div style={{ ...metricCard, background: t.card, borderColor: t.border }}>
       <p style={{ ...cardTitle, color: t.muted }}>{title}</p>
-      <h2 style={{ ...cardValue, color: t.text }}>{value}</h2>
+      <h2 style={{ ...cardValue, color: accent ? t.accent : t.text }}>{value}</h2>
       <p style={{ ...cardNote, color: t.muted }}>{note}</p>
     </div>
   );
 }
 
-function SmallTrend({ t, label, value, data, theme, last }) {
+function SmallTrend({ t, label, value, data, theme }) {
   return (
-    <div style={{ ...smallTrend, borderColor: t.border, borderBottom: last ? 'none' : `1px solid ${t.border}` }}>
+    <div style={{ ...smallTrend, borderColor: t.border }}>
       <div style={smallTrendTop}>
         <span style={{ color: t.muted }}>{label}</span>
         <strong style={{ color: t.text }}>{value}</strong>
       </div>
-      <MiniLineChart data={data} theme={theme} />
+      <LineChart data={data} theme={theme} height={82} />
     </div>
   );
 }
 
 const darkTheme = {
   pageBg: '#08090d',
-  card: '#121319',
+  card: 'rgba(18,19,25,0.92)',
   softBg: 'rgba(120,224,143,0.07)',
   rowBg: 'rgba(255,255,255,0.025)',
   input: '#0f1015',
-  border: 'rgba(255,255,255,0.08)',
-  text: '#f5f7fb',
-  muted: '#8d93a5',
-  track: 'rgba(255,255,255,0.08)',
+  border: 'rgba(255,255,255,0.09)',
+  text: '#f8fafc',
+  muted: '#9aa4b8',
+  track: 'rgba(255,255,255,0.09)',
+  accent: '#78e08f',
   logoBg: '#f5f7fb',
   logoText: '#08090d',
 };
 
 const lightTheme = {
-  pageBg: 'linear-gradient(180deg, rgba(109,73,255,0.08), rgba(109,73,255,0.02)), #f6f4ff',
+  pageBg: 'linear-gradient(180deg, rgba(109,73,255,0.10), rgba(109,73,255,0.02)), #f6f4ff',
   card: '#ffffff',
   softBg: 'rgba(109,73,255,0.06)',
   rowBg: 'rgba(109,73,255,0.035)',
   input: '#ffffff',
   border: 'rgba(15,23,42,0.10)',
-  text: '#111827',
+  text: '#071022',
   muted: '#5d647a',
   track: 'rgba(15,23,42,0.08)',
+  accent: '#6d49ff',
   logoBg: '#111827',
   logoText: '#ffffff',
 };
@@ -730,11 +879,39 @@ const pageBase = {
   minHeight: '100vh',
   padding: '28px 18px 50px',
   fontFamily: 'Inter, system-ui, sans-serif',
+  position: 'relative',
+  overflow: 'hidden',
+};
+
+const glowOne = {
+  position: 'fixed',
+  top: -180,
+  right: -160,
+  width: 360,
+  height: 360,
+  borderRadius: 999,
+  background: 'rgba(109,73,255,0.20)',
+  filter: 'blur(80px)',
+  pointerEvents: 'none',
+};
+
+const glowTwo = {
+  position: 'fixed',
+  bottom: -180,
+  left: -160,
+  width: 360,
+  height: 360,
+  borderRadius: 999,
+  background: 'rgba(217,70,178,0.14)',
+  filter: 'blur(90px)',
+  pointerEvents: 'none',
 };
 
 const container = {
-  maxWidth: 1220,
+  maxWidth: 1240,
   margin: '0 auto',
+  position: 'relative',
+  zIndex: 1,
 };
 
 const topNav = {
@@ -775,13 +952,15 @@ const navActions = {
   flexWrap: 'wrap',
 };
 
-const iconButton = {
+const ghostButton = (t) => ({
   padding: '11px 14px',
   borderRadius: 13,
-  border: '1px solid',
+  border: `1px solid ${t.border}`,
+  background: t.card,
+  color: t.text,
   cursor: 'pointer',
   fontWeight: 900,
-};
+});
 
 const primaryButton = {
   padding: '12px 16px',
@@ -811,7 +990,7 @@ const eyebrow = {
 };
 
 const title = {
-  fontSize: 48,
+  fontSize: 50,
   lineHeight: 1,
   margin: '10px 0 8px',
   fontWeight: 950,
@@ -820,7 +999,7 @@ const title = {
 
 const subtitle = {
   margin: 0,
-  maxWidth: 680,
+  maxWidth: 760,
 };
 
 const statusPill = {
@@ -840,6 +1019,31 @@ const liveDot = {
   background: '#22c55e',
   boxShadow: '0 0 18px rgba(34,197,94,0.7)',
 };
+
+const filters = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(220px, 1fr) 140px 180px 160px',
+  gap: 10,
+};
+
+const searchInput = {
+  width: '100%',
+  padding: '13px 15px',
+  borderRadius: 14,
+  border: '1px solid',
+  fontSize: 14,
+  outline: 'none',
+};
+
+const selectBox = (t) => ({
+  padding: '13px 12px',
+  borderRadius: 14,
+  border: `1px solid ${t.border}`,
+  background: t.input,
+  color: t.text,
+  fontWeight: 800,
+  outline: 'none',
+});
 
 const metricGrid = {
   display: 'grid',
@@ -871,7 +1075,7 @@ const cardTitle = {
 };
 
 const cardValue = {
-  fontSize: 30,
+  fontSize: 31,
   margin: '10px 0 0',
   fontWeight: 950,
   letterSpacing: '-0.04em',
@@ -882,13 +1086,9 @@ const cardNote = {
   fontSize: 12,
 };
 
-const sectionHeader = {
-  margin: '10px 0 14px',
-};
-
 const trajectoryGrid = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1.45fr) minmax(280px, 0.95fr)',
+  gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.9fr)',
   gap: 14,
   marginBottom: 26,
 };
@@ -900,6 +1100,8 @@ const panel = (t) => ({
   padding: 22,
   marginBottom: 24,
   boxShadow: '0 18px 40px rgba(0,0,0,0.12)',
+  backdropFilter: 'blur(16px)',
+  color: t.text,
 });
 
 const panelTop = {
@@ -919,7 +1121,7 @@ const sectionTitle = {
 };
 
 const bigNumber = {
-  fontSize: 34,
+  fontSize: 36,
   letterSpacing: '-0.04em',
   color: 'inherit',
 };
@@ -929,28 +1131,19 @@ const mutedText = {
   fontSize: 13,
 };
 
-const chartWrap = {
-  width: '100%',
-  minHeight: 120,
-};
-
-const chartSvg = {
-  width: '100%',
-  height: 120,
-  display: 'block',
-};
-
 const chartLabels = {
   display: 'flex',
   justifyContent: 'space-between',
-  fontSize: 11,
+  fontSize: 10,
   color: 'inherit',
   opacity: 0.55,
+  gap: 8,
 };
 
 const smallTrend = {
   padding: '0 0 18px',
   marginBottom: 18,
+  borderBottom: '1px solid',
 };
 
 const smallTrendTop = {
@@ -994,7 +1187,6 @@ const funnelRate = {
   marginTop: 8,
   fontSize: 12,
   fontWeight: 900,
-  color: '#7c5cff',
 };
 
 const twoCol = {
@@ -1009,18 +1201,8 @@ const row = (t) => ({
   gap: 12,
   padding: '13px 0',
   borderBottom: `1px solid ${t.border}`,
-   color: t.text,
+  color: t.text,
 });
-
-const searchInput = {
-  width: '100%',
-  padding: '14px 16px',
-  borderRadius: 14,
-  border: '1px solid',
-  marginBottom: 16,
-  fontSize: 15,
-  outline: 'none',
-};
 
 const selectedBox = {
   marginBottom: 18,
@@ -1057,7 +1239,7 @@ const userBadges = {
 const planBadge = {
   padding: '7px 10px',
   borderRadius: 999,
-  background: 'rgba(109,73,255,0.14)',
+  background: 'rgba(109,73,255,0.16)',
   color: '#8b5cf6',
   fontSize: 12,
   fontWeight: 950,
@@ -1067,7 +1249,7 @@ const planBadge = {
 const paidBadge = {
   padding: '7px 10px',
   borderRadius: 999,
-  background: 'rgba(34,197,94,0.14)',
+  background: 'rgba(34,197,94,0.16)',
   color: '#22c55e',
   fontSize: 12,
   fontWeight: 950,
@@ -1077,7 +1259,7 @@ const paidBadge = {
 const freeBadge = {
   padding: '7px 10px',
   borderRadius: 999,
-  background: 'rgba(148,163,184,0.14)',
+  background: 'rgba(148,163,184,0.16)',
   color: '#94a3b8',
   fontSize: 12,
   fontWeight: 950,
