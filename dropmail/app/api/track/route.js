@@ -16,16 +16,15 @@ export async function POST(req) {
       req.headers.get('cf-ipcountry') ||
       null;
 
-    const countryName =
-      req.headers.get('x-vercel-ip-country-region') ||
-      country ||
-      null;
+    const countryName = country || null;
+const region = req.headers.get('x-vercel-ip-country-region') || null;
 
     const finalMetadata = {
-      ...(metadata || {}),
-      country,
-      countryName,
-    };
+  ...(metadata || {}),
+  country,
+  countryName,
+  region,
+};
 
     const { error } = await supabase.from('analytics_events').insert([
       {
