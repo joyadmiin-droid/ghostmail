@@ -10,6 +10,8 @@ const supabase = createClient(
 
 const FAVORITES_KEY = 'ghostmail_favorite_inboxes';
 
+const ADMIN_EMAILS = ['erkan.iseni20@gmail.com'];
+
 const PLAN_CONFIG = {
   ghost: {
     label: 'GHOST',
@@ -69,6 +71,7 @@ export default function DashboardPage() {
   const [favorites, setFavorites] = useState({});
   const [activeFilter, setActiveFilter] = useState('all');
   const [toast, setToast] = useState(null);
+
   const userEmail = user?.email ? user.email.toLowerCase() : '';
   const isAdmin = ADMIN_EMAILS.includes(userEmail);
 
@@ -605,7 +608,6 @@ export default function DashboardPage() {
   }, [addresses, mailboxUsage, favorites]);
 
   const currentPlanConfig = PLAN_CONFIG[plan] || PLAN_CONFIG.ghost;
-  const ADMIN_EMAILS = ['erkan.iseni20@gmail.com'];
   const planEmailLimit = currentPlanConfig.emailLimit;
   const planInboxLimit = currentPlanConfig.inboxLimit;
   const totalAvailableEmails = planEmailLimit + extraCredits;
@@ -777,74 +779,75 @@ export default function DashboardPage() {
           </div>
 
           <div style={headerActions} className="dashboard-top-actions">
+            {isAdmin && (
+              <a
+                href="/admin/analytics"
+                style={{
+                  ...primaryBtn,
+                  background: '#111',
+                  color: '#fff',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                Analytics
+              </a>
+            )}
 
-  {/* ✅ ADMIN ONLY ANALYTICS BUTTON */}
-  {isAdmin && (
-  <a
-    href="/admin/analytics"
-    style={{
-      ...primaryBtn,
-      background: '#111',
-      color: '#fff',
-    }}
-  >
-    Analytics
-  </a>
-)}
+            <button
+              style={{
+                ...primaryBtn,
+                opacity: hasHitInboxLimit ? 0.7 : 1,
+                cursor: hasHitInboxLimit ? 'not-allowed' : 'pointer',
+              }}
+              onClick={() => {
+                if (hasHitInboxLimit) {
+                  if (plan === 'ghost') {
+                    openUpgradeModal(
+                      'phantom',
+                      'Inbox limit reached',
+                      'Your Ghost plan allows 1 active inbox. Upgrade to Phantom to unlock up to 5 active inboxes.'
+                    );
+                  } else if (plan === 'phantom') {
+                    openUpgradeModal(
+                      'spectre',
+                      'Inbox limit reached',
+                      'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 active inboxes.'
+                    );
+                  } else {
+                    showToast('You have reached your current inbox limit.');
+                  }
+                  return;
+                }
 
-  <button
-    style={{
-      ...primaryBtn,
-      opacity: hasHitInboxLimit ? 0.7 : 1,
-      cursor: hasHitInboxLimit ? 'not-allowed' : 'pointer',
-    }}
-    onClick={() => {
-      if (hasHitInboxLimit) {
-        if (plan === 'ghost') {
-          openUpgradeModal(
-            'phantom',
-            'Inbox limit reached',
-            'Your Ghost plan allows 1 active inbox. Upgrade to Phantom to unlock up to 5 active inboxes.'
-          );
-        } else if (plan === 'phantom') {
-          openUpgradeModal(
-            'spectre',
-            'Inbox limit reached',
-            'Your Phantom plan allows up to 5 active inboxes. Upgrade to Spectre to unlock up to 50 active inboxes.'
-          );
-        } else {
-          showToast('You have reached your current inbox limit.');
-        }
-        return;
-      }
+                fetch('/api/track', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    event: 'generate_email_click',
+                    path: window.location.pathname,
+                    label: 'new_address_button',
+                    user_email: user?.email || null,
+                  }),
+                }).catch(() => {});
 
-      fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: 'generate_email_click',
-          path: window.location.pathname,
-          label: 'new_address_button',
-          user_email: user?.email || null
-        })
-      }).catch(() => {});
+                generateMailbox();
+              }}
+              disabled={loadingCreate}
+            >
+              {loadingCreate
+                ? 'Generating...'
+                : hasHitInboxLimit
+                ? 'Inbox limit reached'
+                : 'New Address'}
+            </button>
 
-      generateMailbox();
-    }}
-    disabled={loadingCreate}
-  >
-    {loadingCreate
-      ? 'Generating...'
-      : hasHitInboxLimit
-      ? 'Inbox limit reached'
-      : 'New Address'}
-  </button>
-
-  <button style={ghostBtn} onClick={handleSignOut}>
-    Sign out
-  </button>
-
-</div>
+            <button style={ghostBtn} onClick={handleSignOut}>
+              Sign out
+            </button>
+          </div>
         </div>
 
         {(isNearEmailLimit || hasHitInboxLimit) && (
@@ -1058,23 +1061,23 @@ export default function DashboardPage() {
               Generate your first address to start receiving emails.
             </p>
             <button
-  style={primaryBtn}
-  onClick={() => {
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-  event: 'generate_email_click',
-  path: window.location.pathname,
-  label: 'new_address_button',
-  user_email: user?.email || null
-})
-    }).catch(() => {});
+              style={primaryBtn}
+              onClick={() => {
+                fetch('/api/track', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    event: 'generate_email_click',
+                    path: window.location.pathname,
+                    label: 'new_address_button',
+                    user_email: user?.email || null,
+                  }),
+                }).catch(() => {});
 
-    generateMailbox();
-  }}
-  disabled={loadingCreate}
->
+                generateMailbox();
+              }}
+              disabled={loadingCreate}
+            >
               {loadingCreate ? 'Generating...' : 'Create First Address'}
             </button>
           </div>
