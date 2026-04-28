@@ -170,10 +170,16 @@ function LineChart({ data, theme, height = 170 }) {
       </svg>
 
       <div style={chartLabels}>
-        {data.map((d, i) => (
-          <span key={`${d.label}-${i}`}>{d.label}</span>
-        ))}
-      </div>
+  {data.map((d, i) => {
+    const showLabel = i === 0 || i === data.length - 1 || i % 5 === 0;
+
+    return (
+      <span key={`${d.label}-${i}`}>
+        {showLabel ? d.label : ''}
+      </span>
+    );
+  })}
+</div>
     </div>
   );
 }
@@ -1134,10 +1140,12 @@ const mutedText = {
 const chartLabels = {
   display: 'flex',
   justifyContent: 'space-between',
-  fontSize: 10,
+  fontSize: 9,
   color: 'inherit',
   opacity: 0.55,
-  gap: 8,
+  gap: 4,
+  overflow: 'hidden',
+  whiteSpace: 'nowrap',
 };
 
 const smallTrend = {
