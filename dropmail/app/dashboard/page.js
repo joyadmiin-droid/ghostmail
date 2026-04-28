@@ -118,7 +118,14 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleManageBilling() {
+  function handleManageBilling() {
+  setShowUpgrade(true);
+  setUpgradeContext({
+    title: 'Plan details',
+    text: `You are currently on the ${getPlanDisplayName(plan)} plan.\n\nEmails limit: ${planEmailLimit}\nInbox limit: ${planInboxLimit}`,
+    targetPlan: plan,
+  });
+}
     try {
       setLoadingBilling(true);
 
@@ -949,7 +956,7 @@ export default function DashboardPage() {
                       }}
                       disabled={loadingBilling}
                     >
-                      {loadingBilling ? 'Opening...' : 'Manage billing'}
+                      {loadingBilling ? 'Opening...' : 'Plan details'}
                     </button>
                   </>
                 ) : (
@@ -963,7 +970,7 @@ export default function DashboardPage() {
                     }}
                     disabled={loadingBilling}
                   >
-                    {loadingBilling ? 'Opening...' : 'Manage billing'}
+                    {loadingBilling ? 'Opening...' : 'Plan details'}
                   </button>
                 )}
               </div>
