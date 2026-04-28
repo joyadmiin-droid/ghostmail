@@ -459,13 +459,13 @@ export default function AnalyticsAdminPage() {
             {stats.funnel.map((item) => (
               <div key={item.label} style={{ ...funnelItem, background: t.softBg, borderColor: t.border }}>
                 <div style={funnelTop}>
-                  <strong>{item.label}</strong>
-                  <span>{item.value}</span>
+                  <strong style={{ color: t.text }}>{item.label}</strong>
+<span style={{ color: t.text }}>{item.value}</span>
                 </div>
                 <div style={{ ...barTrack, background: t.track }}>
                   <div style={{ ...barFill, width: item.rate }} />
                 </div>
-                <div style={funnelRate}>{item.rate}</div>
+                <div style={{ ...funnelRate, color: t.text }}>{item.rate}</div>
               </div>
             ))}
           </div>
@@ -969,6 +969,7 @@ const funnelItem = {
   padding: 16,
   borderRadius: 18,
   border: '1px solid',
+  color: 'inherit',
 };
 
 const funnelTop = {
