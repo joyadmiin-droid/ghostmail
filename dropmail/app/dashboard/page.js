@@ -1240,7 +1240,7 @@ Inbox limit: ${planInboxLimit}`,
               )}
 
               <button style={modalSecondaryBtn} onClick={() => setShowUpgrade(false)}>
-                Maybe later
+                Close
               </button>
             </div>
           </div>
