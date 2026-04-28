@@ -483,11 +483,11 @@ export default function AnalyticsAdminPage() {
             ) : (
               stats.topCountries.map(([country, count]) => (
                 <div key={country} style={{ ...row(t) }}>
-                  <span>
-                    {countryCodeToFlag(country)} {country}
-                  </span>
-                  <strong>{count}</strong>
-                </div>
+  <span style={{ color: t.text }}>
+    {countryCodeToFlag(country)} {country}
+  </span>
+  <strong style={{ color: t.text }}>{count}</strong>
+</div>
               ))
             )}
           </section>
@@ -503,9 +503,9 @@ export default function AnalyticsAdminPage() {
             ) : (
               stats.topPages.slice(0, 8).map(([path, count]) => (
                 <div key={path} style={{ ...row(t) }}>
-                  <span style={truncate}>{path}</span>
-                  <strong>{count}</strong>
-                </div>
+  <span style={{ ...truncate, color: t.text }}>{path}</span>
+  <strong style={{ color: t.text }}>{count}</strong>
+</div>
               ))
             )}
           </section>
@@ -1008,6 +1008,7 @@ const row = (t) => ({
   gap: 12,
   padding: '13px 0',
   borderBottom: `1px solid ${t.border}`,
+   color: t.text,
 });
 
 const searchInput = {
