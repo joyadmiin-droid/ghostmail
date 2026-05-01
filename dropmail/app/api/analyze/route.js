@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -13,6 +9,17 @@ const supabase = createClient(
 
 export async function POST(req) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'Missing OPENAI_API_KEY' },
+        { status: 500 }
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
     const { text } = await req.json();
 
     if (!text) {
@@ -58,7 +65,10 @@ Return ONLY JSON with:
     try {
       data = JSON.parse(aiText);
     } catch (err) {
-      return NextResponse.json({ error: 'AI response not valid JSON', raw: aiText });
+      return NextResponse.json({
+        error: 'AI response not valid JSON',
+        raw: aiText,
+      });
     }
 
     const { error } = await supabase.from('market_signals').insert([
@@ -79,12 +89,11 @@ Return ONLY JSON with:
     ]);
 
     if (error) {
-      return NextResponse.json({ error: error.message });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
-
   } catch (err) {
-    return NextResponse.json({ error: err.message });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
