@@ -7,7 +7,7 @@ import {
   getPlanConfig,
   normalizePlan,
   getPlanDisplayName,
-} from '../../lib/plans';
+} from '../lib/plans';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
