@@ -4,83 +4,62 @@ import { useState } from 'react';
 
 export default function Home() {
   const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  async function handleAnalyze() {
-    if (!text) return;
+  const analyze = async () => {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
 
-    setLoading(true);
-    setResult(null);
+    const data = await res.json();
 
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await res.json();
+    if (data.data) {
       setResult(data.data);
-    } catch (err) {
-      console.error(err);
     }
-
-    setLoading(false);
-  }
+  };
 
   return (
-    <main style={{ padding: '40px', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>
-        PrintTrend AI
-      </h1>
-
-      <p style={{ marginBottom: '30px', color: '#666' }}>
+    <main className="container">
+      <h1 className="title">PrintTrend AI</h1>
+      <p className="subtitle">
         Find what people actually want. Build it. Sell it.
       </p>
 
       <textarea
-        placeholder="Type something like: A ka ne Shkup maska per iPhone 13..."
+        className="textarea"
+        placeholder="Example: Dua nje mbajtese telefoni per makine..."
         value={text}
         onChange={(e) => setText(e.target.value)}
-        style={{
-          width: '100%',
-          height: '120px',
-          padding: '10px',
-          marginBottom: '20px',
-        }}
       />
 
-      <button
-        onClick={handleAnalyze}
-        style={{
-          padding: '10px 20px',
-          background: 'black',
-          color: 'white',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        {loading ? 'Analyzing...' : 'Analyze Demand'}
+      <button className="button" onClick={analyze}>
+        Analyze Demand
       </button>
 
       {result && (
-        <div style={{ marginTop: '30px' }}>
-          <h3>Result:</h3>
+        <div className="card">
+          <h2>{result.product_name}</h2>
+          <p>{result.reasoning}</p>
 
-          <pre
-            style={{
-              background: '#111',
-              color: '#0f0',
-              padding: '15px',
-              borderRadius: '8px',
-              overflow: 'auto',
-            }}
-          >
-            {JSON.stringify(result, null, 2)}
-          </pre>
+          <div style={{ marginTop: 10 }}>
+            <span className={`badge ${result.demand_score >= 4 ? 'high' : 'medium'}`}>
+              Demand: {result.demand_score}/5
+            </span>
+
+            <span className="badge">
+              {result.price_tier}
+            </span>
+
+            <span className="badge">
+              {result.expected_price_mkd} MKD
+            </span>
+
+            <span className="badge">
+              {result.difficulty}
+            </span>
+          </div>
         </div>
       )}
     </main>
