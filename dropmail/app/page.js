@@ -64,6 +64,7 @@ export default function Home() {
   const [ideas, setIdeas] = useState(demoIdeas);
   const [selected, setSelected] = useState(demoIdeas[0]);
   const [loading, setLoading] = useState(false);
+  const [activeView, setActiveView] = useState('ideas');
 
   async function analyzeDemand() {
     if (!text.trim()) return;
@@ -105,6 +106,7 @@ export default function Home() {
 
         setIdeas([newIdea, ...ideas]);
         setSelected(newIdea);
+        setActiveView('ideas');
         setText('');
       }
     } catch (err) {
@@ -114,23 +116,7 @@ export default function Home() {
     setLoading(false);
   }
 
-  return (
-    <main style={styles.app}>
-      <aside style={styles.sidebar}>
-        <div style={styles.logo}>🖨️ PrintTrend</div>
-
-        <div style={styles.menuTitle}>Market Intelligence</div>
-
-        <div style={styles.menuActive}>💡 Product Ideas</div>
-        <div
-  style={{
-  ...styles.menuItem,
-  cursor: 'pointer',
-  userSelect: 'none',
-  position: 'relative',
-  zIndex: 50,
-}}
-  onClick={async () => {
+  async function loadSavedIdeas() {
     try {
       const res = await fetch('/api/saved');
       const json = await res.json();
@@ -156,15 +142,62 @@ export default function Home() {
 
         setIdeas(savedIdeas);
         setSelected(savedIdeas[0] || null);
+        setActiveView('saved');
       }
     } catch (err) {
       console.error(err);
       alert('Error loading saved ideas');
     }
-  }}
->
-  ⭐ Saved Ideas
-</div>
+  }
+
+  async function saveIdea() {
+    if (!selected) return;
+
+    try {
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selected),
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        alert('Saved successfully');
+      } else {
+        alert(json.error || 'Error saving');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error saving');
+    }
+  }
+
+  return (
+    <main style={styles.app}>
+      <aside style={styles.sidebar}>
+        <div style={styles.logo}>🖨️ PrintTrend</div>
+
+        <div style={styles.menuTitle}>Market Intelligence</div>
+
+        <div
+          style={activeView === 'ideas' ? styles.menuActive : styles.menuItem}
+          onClick={() => {
+            setIdeas(demoIdeas);
+            setSelected(demoIdeas[0]);
+            setActiveView('ideas');
+          }}
+        >
+          💡 Product Ideas
+        </div>
+
+        <div
+          style={activeView === 'saved' ? styles.menuActive : styles.menuItem}
+          onClick={loadSavedIdeas}
+        >
+          ⭐ Saved Ideas
+        </div>
+
         <div style={styles.menuItem}>🔎 Sources</div>
         <div style={styles.menuItem}>📊 Demand Scores</div>
 
@@ -177,9 +210,13 @@ export default function Home() {
       <section style={styles.content}>
         <header style={styles.header}>
           <div>
-            <h1 style={styles.title}>AI Product Ideas</h1>
+            <h1 style={styles.title}>
+              {activeView === 'saved' ? 'Saved Ideas' : 'AI Product Ideas'}
+            </h1>
             <p style={styles.subtitle}>
-              Find products people already want before you waste time printing.
+              {activeView === 'saved'
+                ? 'Your saved product opportunities.'
+                : 'Find products people already want before you waste time printing.'}
             </p>
           </div>
 
@@ -275,25 +312,9 @@ export default function Home() {
             </p>
           </div>
 
-          <button
-  style={styles.saveButton}
-  onClick={async () => {
-    try {
-      await fetch('/api/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(selected),
-      });
-
-      alert('Saved successfully');
-    } catch (err) {
-      console.error(err);
-      alert('Error saving');
-    }
-  }}
->
-  Save Idea
-</button>
+          <button style={styles.saveButton} onClick={saveIdea}>
+            Save Idea
+          </button>
         </aside>
       )}
     </main>
@@ -344,11 +365,15 @@ const styles = {
     borderRadius: 12,
     fontWeight: 700,
     marginBottom: 8,
+    cursor: 'pointer',
+    userSelect: 'none',
   },
   menuItem: {
     padding: '12px 14px',
     color: '#475569',
     marginBottom: 6,
+    cursor: 'pointer',
+    userSelect: 'none',
   },
   sidebarBox: {
     marginTop: 40,
