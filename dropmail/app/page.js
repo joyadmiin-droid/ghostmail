@@ -122,7 +122,25 @@ export default function Home() {
         <div style={styles.menuTitle}>Market Intelligence</div>
 
         <div style={styles.menuActive}>💡 Product Ideas</div>
-        <div style={styles.menuItem}>⭐ Saved Ideas</div>
+        <div
+  style={styles.menuItem}
+  onClick={async () => {
+    try {
+      const res = await fetch('/api/saved');
+      const json = await res.json();
+
+      if (json.success) {
+        setIdeas(json.data);   // reuse your cards grid
+        setSelected(null);     // reset right panel
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error loading saved ideas');
+    }
+  }}
+>
+  ⭐ Saved Ideas
+</div>
         <div style={styles.menuItem}>🔎 Sources</div>
         <div style={styles.menuItem}>📊 Demand Scores</div>
 
