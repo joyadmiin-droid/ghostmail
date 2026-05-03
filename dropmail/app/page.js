@@ -123,7 +123,13 @@ export default function Home() {
 
         <div style={styles.menuActive}>💡 Product Ideas</div>
         <div
-  style={{ ...styles.menuItem, cursor: 'pointer' }}
+  style={{
+  ...styles.menuItem,
+  cursor: 'pointer',
+  userSelect: 'none',
+  position: 'relative',
+  zIndex: 50,
+}}
   onClick={async () => {
     try {
       const res = await fetch('/api/saved');
