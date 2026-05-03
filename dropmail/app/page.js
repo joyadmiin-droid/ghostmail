@@ -233,7 +233,25 @@ export default function Home() {
             </p>
           </div>
 
-          <button style={styles.saveButton}>Save Idea</button>
+          <button
+  style={styles.saveButton}
+  onClick={async () => {
+    try {
+      await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selected),
+      });
+
+      alert('Saved successfully');
+    } catch (err) {
+      console.error(err);
+      alert('Error saving');
+    }
+  }}
+>
+  Save Idea
+</button>
         </aside>
       )}
     </main>
