@@ -123,15 +123,33 @@ export default function Home() {
 
         <div style={styles.menuActive}>💡 Product Ideas</div>
         <div
-  style={styles.menuItem}
+  style={{ ...styles.menuItem, cursor: 'pointer' }}
   onClick={async () => {
     try {
       const res = await fetch('/api/saved');
       const json = await res.json();
 
       if (json.success) {
-        setIdeas(json.data);   // reuse your cards grid
-        setSelected(null);     // reset right panel
+        const savedIdeas = json.data.map((item) => ({
+          id: item.id,
+          title: item.title,
+          category: item.category,
+          image: '⭐',
+          source: item.source,
+          sourceIcon: item.source_icon,
+          demand: item.demand,
+          score: item.score,
+          priceRange: item.price_range,
+          printCost: item.print_cost,
+          weight: item.weight,
+          size: item.size,
+          market: item.market,
+          difficulty: item.difficulty,
+          reason: item.reason,
+        }));
+
+        setIdeas(savedIdeas);
+        setSelected(savedIdeas[0] || null);
       }
     } catch (err) {
       console.error(err);
