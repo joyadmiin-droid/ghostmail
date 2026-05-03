@@ -134,7 +134,7 @@ export default function Home() {
           id: item.id,
           title: item.title,
           category: item.category,
-          image: '⭐',
+          image: item.raw_data?.image || '💡',
           source: item.source,
           sourceIcon: item.source_icon,
           demand: item.demand,
