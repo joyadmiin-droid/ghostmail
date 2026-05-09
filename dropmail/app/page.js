@@ -320,15 +320,29 @@ export default function Home() {
       <section style={styles.content}>
         <header style={styles.header}>
           <div>
-            <h1 style={styles.title}>AI Idea Finder for 3D Products</h1>
+            <h1 style={styles.title}>3D Product Idea Finder</h1>
             <p style={styles.subtitle}>
-              Find useful parts people already need before you spend time printing.
+              Paste real comments. Get ranked printable product ideas.
             </p>
           </div>
-          <div style={styles.privateMode}>Private scan</div>
+          <div style={styles.privateMode}>Live AI scan</div>
         </header>
 
         <section style={styles.scanPanel}>
+          <div style={styles.scanHeader}>
+            <div>
+              <h2 style={styles.scanTitle}>Scan Demand</h2>
+              <p style={styles.scanHint}>
+                Best input: complaints, repair questions, reviews, and buying posts.
+              </p>
+            </div>
+            <div style={styles.scanStats}>
+              <Metric label="Avg score" value={`${stats.avg}/100`} />
+              <Metric label="High" value={stats.high} />
+              <Metric label="Easy" value={stats.easy} />
+            </div>
+          </div>
+
           <div style={styles.inputRow}>
             <label style={styles.label}>
               Source
@@ -354,7 +368,7 @@ export default function Home() {
             style={styles.textarea}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Paste posts, comments, reviews, or forum threads here..."
+            placeholder="Paste comments, posts, reviews, or forum threads here..."
           />
 
           <div style={styles.actionRow}>
@@ -367,11 +381,23 @@ export default function Home() {
             >
               Load Example
             </button>
-            <span style={styles.summary}>{summary}</span>
+            <button
+              style={styles.secondaryButton}
+              onClick={() => {
+                setText('');
+                setSummary('Paste comments or posts, then scan them for real buying intent.');
+              }}
+            >
+              Clear
+            </button>
           </div>
 
           {error && <div style={styles.error}>{error}</div>}
         </section>
+
+        <div style={styles.summaryBar}>
+          <strong>{summary}</strong>
+        </div>
 
         {activeView === 'sources' && (
           <section style={styles.infoPanel}>
@@ -404,12 +430,17 @@ export default function Home() {
           </section>
         )}
 
-        <div style={styles.grid}>
+        <div style={styles.resultsHeader}>
+          <h2 style={styles.sectionTitle}>Ranked Ideas</h2>
+          <span>{ideas.length} opportunities</span>
+        </div>
+
+        <div style={styles.resultsList}>
           {ideas.map((idea) => (
             <button
               key={idea.id}
               style={{
-                ...styles.card,
+                ...styles.resultRow,
                 border:
                   selected?.id === idea.id
                     ? '2px solid #16a34a'
@@ -417,35 +448,22 @@ export default function Home() {
               }}
               onClick={() => setSelected(idea)}
             >
-              <div style={styles.cardTop}>
-                <div style={styles.productMark}>{idea.image}</div>
-                <div style={styles.scorePill}>{idea.score}</div>
+              <div style={styles.rankBox}>
+                <strong>{idea.score}</strong>
+                <small>{idea.demand}</small>
               </div>
-
-              <div style={styles.cardBody}>
-                <div style={styles.row}>
+              <div style={styles.ideaMain}>
+                <div style={styles.rowCompact}>
                   <span style={styles.category}>{idea.category}</span>
-                  <span style={styles.demand}>{idea.demand}</span>
+                  <span style={styles.triggerText}>{idea.triggerPhrase}</span>
                 </div>
-
                 <h2 style={styles.cardTitle}>{idea.title}</h2>
                 <p style={styles.cardText}>{idea.reason}</p>
-
-                <div style={styles.signalBox}>
-                  <small>Trigger</small>
-                  <strong>{idea.triggerPhrase}</strong>
-                </div>
-
-                <div style={styles.cardStats}>
-                  <div>
-                    <small>Price</small>
-                    <strong>{idea.priceRange}</strong>
-                  </div>
-                  <div>
-                    <small>Cost</small>
-                    <strong>{idea.printCost}</strong>
-                  </div>
-                </div>
+              </div>
+              <div style={styles.resultMeta}>
+                <Info label="Price" value={idea.priceRange} />
+                <Info label="Cost" value={idea.printCost} />
+                <Info label="Difficulty" value={idea.difficulty} />
               </div>
             </button>
           ))}
@@ -458,7 +476,10 @@ export default function Home() {
             x
           </button>
 
-          <div style={styles.bigMark}>{selected.image}</div>
+          <div style={styles.detailScore}>
+            <strong>{selected.score}</strong>
+            <span>{selected.demand} demand</span>
+          </div>
           <div style={styles.detailMeta}>{selected.category}</div>
           <h2 style={styles.detailTitle}>{selected.title}</h2>
           <p style={styles.detailText}>{selected.reason}</p>
@@ -485,6 +506,13 @@ export default function Home() {
             <strong>Printable solution</strong>
             <p>{selected.printableSolution || selected.customerProblem}</p>
           </div>
+
+          {selected.customerProblem && (
+            <div style={styles.problemBox}>
+              <strong>Customer problem</strong>
+              <p>{selected.customerProblem}</p>
+            </div>
+          )}
 
           {selected.keywords?.length > 0 && (
             <div style={styles.keywordList}>
@@ -525,7 +553,7 @@ const styles = {
   app: {
     minHeight: '100vh',
     display: 'grid',
-    gridTemplateColumns: '220px minmax(0, 1fr) 340px',
+    gridTemplateColumns: '176px minmax(0, 1fr) 306px',
     background: '#f6f8fb',
     color: '#101827',
     fontFamily:
@@ -534,11 +562,11 @@ const styles = {
   sidebar: {
     background: '#ffffff',
     borderRight: '1px solid #dbe3ec',
-    padding: 20,
+    padding: 16,
   },
   logoMark: {
-    width: 42,
-    height: 42,
+    width: 34,
+    height: 34,
     borderRadius: 8,
     display: 'grid',
     placeItems: 'center',
@@ -548,9 +576,9 @@ const styles = {
     marginBottom: 10,
   },
   logoText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 900,
-    marginBottom: 30,
+    marginBottom: 26,
     color: '#15803d',
   },
   menuTitle: {
@@ -562,7 +590,7 @@ const styles = {
   },
   menuActive: {
     width: '100%',
-    padding: '12px 14px',
+    padding: '11px 12px',
     background: '#dcfce7',
     color: '#166534',
     border: 'none',
@@ -574,7 +602,7 @@ const styles = {
   },
   menuItem: {
     width: '100%',
-    padding: '12px 14px',
+    padding: '11px 12px',
     color: '#475569',
     background: 'transparent',
     border: 'none',
@@ -591,7 +619,7 @@ const styles = {
     borderRadius: 8,
   },
   content: {
-    padding: 28,
+    padding: 24,
     overflow: 'auto',
   },
   header: {
@@ -602,13 +630,14 @@ const styles = {
     marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 29,
     margin: 0,
     letterSpacing: 0,
   },
   subtitle: {
     marginTop: 6,
     color: '#64748b',
+    fontSize: 14,
   },
   privateMode: {
     color: '#15803d',
@@ -622,8 +651,31 @@ const styles = {
     background: '#ffffff',
     border: '1px solid #dbe3ec',
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 22,
+    padding: 14,
+    marginBottom: 12,
+  },
+  scanHeader: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(220px, 1fr) 280px',
+    gap: 14,
+    alignItems: 'start',
+    marginBottom: 12,
+  },
+  scanTitle: {
+    margin: 0,
+    fontSize: 18,
+    lineHeight: 1.2,
+  },
+  scanHint: {
+    margin: '5px 0 0',
+    color: '#64748b',
+    fontSize: 13,
+    lineHeight: 1.4,
+  },
+  scanStats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 8,
   },
   inputRow: {
     display: 'grid',
@@ -649,7 +701,7 @@ const styles = {
   },
   textarea: {
     width: '100%',
-    minHeight: 150,
+    minHeight: 116,
     border: '1px solid #cbd5e1',
     borderRadius: 8,
     padding: 12,
@@ -688,6 +740,15 @@ const styles = {
     color: '#64748b',
     fontSize: 13,
   },
+  summaryBar: {
+    background: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    color: '#14532d',
+    borderRadius: 8,
+    padding: '10px 12px',
+    marginBottom: 14,
+    fontSize: 13,
+  },
   error: {
     marginTop: 12,
     padding: 12,
@@ -704,8 +765,8 @@ const styles = {
     marginBottom: 22,
   },
   sectionTitle: {
-    margin: '0 0 14px',
-    fontSize: 20,
+    margin: 0,
+    fontSize: 18,
   },
   sourceGrid: {
     display: 'grid',
@@ -729,63 +790,61 @@ const styles = {
     background: '#f8fafc',
     border: '1px solid #e2e8f0',
     borderRadius: 8,
-    padding: 16,
+    padding: 10,
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 4,
   },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(210px, 1fr))',
-    gap: 16,
-  },
-  card: {
-    background: '#ffffff',
-    borderRadius: 8,
-    overflow: 'hidden',
-    textAlign: 'left',
-    cursor: 'pointer',
-    padding: 0,
-  },
-  cardTop: {
-    height: 118,
+  resultsHeader: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    background: '#edf2f7',
+    justifyContent: 'space-between',
+    color: '#475569',
+    margin: '0 0 10px',
+    fontSize: 13,
   },
-  productMark: {
-    width: 64,
-    height: 64,
+  resultsList: {
+    display: 'grid',
+    gap: 10,
+  },
+  resultRow: {
+    background: '#ffffff',
     borderRadius: 8,
+    textAlign: 'left',
+    cursor: 'pointer',
+    padding: 12,
+    display: 'grid',
+    gridTemplateColumns: '64px minmax(0, 1fr) 300px',
+    gap: 12,
+    alignItems: 'stretch',
+  },
+  rankBox: {
+    borderRadius: 8,
+    background: '#ecfdf5',
+    color: '#14532d',
     display: 'grid',
     placeItems: 'center',
-    background: '#ffffff',
-    border: '1px solid #dbe3ec',
-    color: '#15803d',
-    fontWeight: 900,
-    fontSize: 20,
+    alignContent: 'center',
+    minHeight: 82,
+    gap: 2,
   },
-  scorePill: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    borderRadius: 999,
-    background: '#dcfce7',
-    color: '#166534',
-    padding: '5px 9px',
+  ideaMain: {
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  rowCompact: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 7,
+    flexWrap: 'wrap',
+  },
+  triggerText: {
+    color: '#64748b',
     fontWeight: 900,
     fontSize: 12,
-  },
-  cardBody: {
-    padding: 16,
-  },
-  row: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 10,
   },
   category: {
     background: '#e0f2fe',
@@ -801,35 +860,25 @@ const styles = {
     fontSize: 12,
   },
   cardTitle: {
-    fontSize: 18,
-    margin: '0 0 8px',
+    fontSize: 17,
+    margin: '0 0 6px',
     lineHeight: 1.25,
   },
   cardText: {
     color: '#475569',
     lineHeight: 1.45,
     fontSize: 13,
-    minHeight: 74,
+    margin: 0,
   },
-  signalBox: {
-    marginTop: 12,
-    padding: 10,
-    background: '#f8fafc',
-    borderRadius: 8,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  cardStats: {
+  resultMeta: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 10,
-    marginTop: 12,
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: 8,
   },
   detailPanel: {
     background: '#ffffff',
     borderLeft: '1px solid #dbe3ec',
-    padding: 20,
+    padding: 18,
     position: 'relative',
     overflow: 'auto',
   },
@@ -845,16 +894,17 @@ const styles = {
     fontSize: 16,
     cursor: 'pointer',
   },
-  bigMark: {
-    height: 150,
-    display: 'grid',
-    placeItems: 'center',
-    fontSize: 38,
-    fontWeight: 900,
-    color: '#15803d',
-    background: '#f8fafc',
+  detailScore: {
+    minHeight: 88,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#14532d',
+    background: '#ecfdf5',
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 14,
+    gap: 3,
   },
   detailMeta: {
     color: '#075985',
@@ -863,7 +913,7 @@ const styles = {
     marginBottom: 8,
   },
   detailTitle: {
-    fontSize: 24,
+    fontSize: 22,
     margin: '0 0 8px',
     lineHeight: 1.2,
   },
@@ -889,7 +939,7 @@ const styles = {
     background: '#f8fafc',
     border: '1px solid #e2e8f0',
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
     display: 'flex',
     flexDirection: 'column',
     gap: 5,
@@ -900,6 +950,13 @@ const styles = {
     background: '#ecfdf5',
     borderRadius: 8,
     color: '#14532d',
+  },
+  problemBox: {
+    marginTop: 12,
+    padding: 14,
+    background: '#eff6ff',
+    borderRadius: 8,
+    color: '#1e3a8a',
   },
   keywordList: {
     display: 'flex',
