@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 const STATUSES = ['Found', 'Researching', 'Prototype', 'Test print', 'Listed', 'Rejected'];
+const REJECT_REASONS = ['Too hard to print', 'Too much competition', 'Not enough demand', 'Safety risk', 'Too cheap'];
 
 const defaultTasks = [
   'Search Etsy / Amazon',
@@ -56,7 +57,10 @@ const starterIdeas = [
     listingTitle: 'Dishwasher Rack Replacement Wheel Set',
     listingDescription: 'Small replacement wheels for old dishwasher racks. Useful when original rollers break or become hard to find.',
     status: 'Found',
+    rejectReason: '',
     notes: '',
+    conceptPrompt: '',
+    conceptImage: '',
   },
   {
     id: 2,
@@ -95,7 +99,10 @@ const starterIdeas = [
     listingTitle: 'Desk Cable Catcher Clip',
     listingDescription: 'Keeps charger cables from falling behind your desk. Available in simple colors and bundle packs.',
     status: 'Found',
+    rejectReason: '',
     notes: '',
+    conceptPrompt: '',
+    conceptImage: '',
   },
   {
     id: 3,
@@ -134,7 +141,10 @@ const starterIdeas = [
     listingTitle: 'Shower Hose Wall Guard',
     listingDescription: 'A small bathroom guide that keeps shower hoses from scratching walls or tiles.',
     status: 'Found',
+    rejectReason: '',
     notes: '',
+    conceptPrompt: '',
+    conceptImage: '',
   },
 ];
 
@@ -194,8 +204,31 @@ function normalizeIdea(idea, index, source) {
     listingTitle: idea.listing_title || idea.product_name || '',
     listingDescription: idea.listing_description || '',
     status: idea.status || 'Found',
+    rejectReason: '',
     notes: '',
+    conceptPrompt: idea.concept_prompt || '',
+    conceptImage: '',
   };
+}
+
+function csvEscape(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function researchQuery(idea) {
+  return encodeURIComponent([idea.title, ...(idea.keywords || [])].join(' '));
+}
+
+function listingText(idea) {
+  return [
+    idea.listingTitle || idea.title,
+    '',
+    idea.listingDescription || idea.reason,
+    '',
+    `Price: ${idea.priceRange}`,
+    `Material: ${idea.material}`,
+    `Keywords: ${(idea.keywords || []).join(', ')}`,
+  ].join('\n');
 }
 
 export default function Home() {
@@ -206,6 +239,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState(starterIdeas[0].id);
   const [loading, setLoading] = useState(false);
   const [briefLoading, setBriefLoading] = useState(false);
+  const [conceptLoading, setConceptLoading] = useState(false);
   const [activeView, setActiveView] = useState('finder');
   const [statusFilter, setStatusFilter] = useState('All');
   const [summary, setSummary] = useState('Paste comments or posts, then scan them for real buying intent.');
@@ -230,6 +264,36 @@ export default function Home() {
     const checked = selected.checkedTasks || [];
     const next = checked.includes(task) ? checked.filter((item) => item !== task) : [...checked, task];
     updateIdea(selected.id, { checkedTasks: next });
+  }
+
+  function exportCsv() {
+    const rows = [
+      ['product name', 'score', 'price', 'print cost', 'material', 'status', 'reject reason', 'notes'],
+      ...ideas.map((idea) => [
+        idea.title,
+        idea.score,
+        idea.priceRange,
+        idea.printCost,
+        idea.material,
+        idea.status,
+        idea.rejectReason,
+        idea.notes,
+      ]),
+    ];
+    const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'printtrend-ideas.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    setSummary('Exported ideas to CSV.');
+  }
+
+  async function copyListing() {
+    if (!selected) return;
+    await navigator.clipboard.writeText(listingText(selected));
+    setSummary(`Copied listing for "${selected.title}".`);
   }
 
   async function analyzeDemand() {
@@ -298,6 +362,33 @@ export default function Home() {
     }
 
     setBriefLoading(false);
+  }
+
+  async function generateConcept() {
+    if (!selected) return;
+    setConceptLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/concept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea: selected }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Could not generate concept');
+
+      updateIdea(selected.id, {
+        conceptPrompt: json.data.prompt || selected.conceptPrompt,
+        conceptImage: json.data.image || selected.conceptImage,
+      });
+      setSummary(`Concept generated for "${selected.title}".`);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Concept generation failed.');
+    }
+
+    setConceptLoading(false);
   }
 
   async function loadSavedIdeas() {
@@ -394,6 +485,7 @@ export default function Home() {
             <button style={styles.button} onClick={analyzeDemand} disabled={loading}>{loading ? 'Scanning...' : 'Scan Demand'}</button>
             <button style={styles.secondaryButton} onClick={() => setText(sampleText)}>Load Example</button>
             <button style={styles.secondaryButton} onClick={() => setText('')}>Clear</button>
+            <button style={styles.secondaryButton} onClick={exportCsv}>Export CSV</button>
           </div>
           {error && <div style={styles.error}>{error}</div>}
         </section>
@@ -422,10 +514,13 @@ export default function Home() {
 
         <div style={styles.resultsHeader}>
           <h2 style={styles.sectionTitle}>Ranked Ideas</h2>
-          <select style={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option>All</option>
-            {STATUSES.map((status) => <option key={status}>{status}</option>)}
-          </select>
+          <div style={styles.headerTools}>
+            <button style={styles.secondaryButton} onClick={exportCsv}>Export</button>
+            <select style={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option>All</option>
+              {STATUSES.map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </div>
         </div>
 
         <div style={styles.resultsList}>
@@ -455,10 +550,24 @@ export default function Home() {
           <p style={styles.detailText}>{selected.reason}</p>
 
           <label style={styles.label}>Status
-            <select style={styles.input} value={selected.status} onChange={(e) => updateIdea(selected.id, { status: e.target.value })}>
+            <select style={styles.input} value={selected.status} onChange={(e) => updateIdea(selected.id, { status: e.target.value, rejectReason: e.target.value === 'Rejected' ? selected.rejectReason : '' })}>
               {STATUSES.map((status) => <option key={status}>{status}</option>)}
             </select>
           </label>
+
+          {selected.status === 'Rejected' && (
+            <label style={styles.label}>Reject reason
+              <select style={styles.input} value={selected.rejectReason || ''} onChange={(e) => updateIdea(selected.id, { rejectReason: e.target.value })}>
+                <option value="">Choose reason</option>
+                {REJECT_REASONS.map((reason) => <option key={reason}>{reason}</option>)}
+              </select>
+            </label>
+          )}
+
+          <div style={styles.quickActions}>
+            <button style={styles.secondaryButton} onClick={copyListing}>Copy listing</button>
+            <button style={styles.secondaryButton} onClick={saveIdea}>Save</button>
+          </div>
 
           <div style={styles.detailGrid}>
             <Info label="Material" value={selected.material} />
@@ -488,6 +597,16 @@ export default function Home() {
             </div>
           </Panel>
 
+          <Panel title="Research Links">
+            <div style={styles.linkGrid}>
+              <a style={styles.linkButton} href={`https://www.google.com/search?q=${researchQuery(selected)}`} target="_blank">Google</a>
+              <a style={styles.linkButton} href={`https://www.etsy.com/search?q=${researchQuery(selected)}`} target="_blank">Etsy</a>
+              <a style={styles.linkButton} href={`https://www.aliexpress.com/wholesale?SearchText=${researchQuery(selected)}`} target="_blank">AliExpress</a>
+              <a style={styles.linkButton} href={`https://www.printables.com/search/models?q=${researchQuery(selected)}`} target="_blank">Printables</a>
+              <a style={styles.linkButton} href={`https://www.thingiverse.com/search?q=${researchQuery(selected)}&type=things`} target="_blank">Thingiverse</a>
+            </div>
+          </Panel>
+
           <Panel title="Prototype Brief">
             <button style={styles.buttonFull} onClick={generateBrief} disabled={briefLoading}>{briefLoading ? 'Generating...' : 'Make Prototype Brief'}</button>
             <List title="Steps" items={selected.prototypeSteps} />
@@ -495,7 +614,14 @@ export default function Home() {
             {selected.cadBrief && <p style={styles.textBlock}>{selected.cadBrief}</p>}
           </Panel>
 
+          <Panel title="Product Concept">
+            <button style={styles.buttonFull} onClick={generateConcept} disabled={conceptLoading}>{conceptLoading ? 'Generating...' : 'Generate Concept Image'}</button>
+            {selected.conceptImage && <img style={styles.conceptImage} src={selected.conceptImage} alt={`${selected.title} concept`} />}
+            {selected.conceptPrompt && <p style={styles.textBlock}>{selected.conceptPrompt}</p>}
+          </Panel>
+
           <Panel title="Listing Draft">
+            <button style={styles.copyButton} onClick={copyListing}>Copy Facebook listing</button>
             <input style={styles.input} value={selected.listingTitle || ''} onChange={(e) => updateIdea(selected.id, { listingTitle: e.target.value })} placeholder="Listing title" />
             <textarea style={styles.smallTextarea} value={selected.listingDescription || ''} onChange={(e) => updateIdea(selected.id, { listingDescription: e.target.value })} placeholder="Listing description" />
           </Panel>
@@ -583,6 +709,7 @@ const styles = {
   metricGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 12 },
   metric: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 4 },
   resultsHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#475569', margin: '0 0 10px', fontSize: 13 },
+  headerTools: { display: 'flex', alignItems: 'center', gap: 8 },
   resultsList: { display: 'grid', gap: 10 },
   resultRow: { background: '#ffffff', borderRadius: 8, textAlign: 'left', cursor: 'pointer', padding: 12, display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr) 300px', gap: 12, alignItems: 'stretch' },
   rankBox: { borderRadius: 8, background: '#ecfdf5', color: '#14532d', display: 'grid', placeItems: 'center', alignContent: 'center', minHeight: 82, gap: 2 },
@@ -601,14 +728,19 @@ const styles = {
   detailGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 },
   infoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 5 },
   panel: { marginTop: 12, padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, color: '#263244' },
+  quickActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 },
   checkList: { display: 'grid', gap: 8, marginTop: 10 },
   checkItem: { display: 'flex', alignItems: 'center', gap: 8, color: '#334155', fontSize: 13, fontWeight: 700 },
+  linkGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 },
+  linkButton: { display: 'grid', placeItems: 'center', minHeight: 36, borderRadius: 8, background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', textDecoration: 'none', fontWeight: 800, fontSize: 13 },
   bars: { display: 'grid', gap: 8, marginTop: 10 },
   barRow: { display: 'grid', gridTemplateColumns: '76px 1fr 34px', gap: 8, alignItems: 'center', fontSize: 12 },
   barTrack: { height: 8, borderRadius: 999, background: '#e2e8f0', overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 999, background: '#16a34a' },
   listBlock: { marginTop: 10 },
   textBlock: { margin: '10px 0 0', color: '#334155', lineHeight: 1.45 },
+  conceptImage: { width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', marginTop: 10 },
+  copyButton: { width: '100%', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', padding: '10px 12px', borderRadius: 8, fontWeight: 900, cursor: 'pointer', margin: '10px 0' },
   keywordList: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   saveButton: { marginTop: 16, width: '100%', padding: 13, borderRadius: 8, border: 'none', background: '#111827', color: '#ffffff', fontWeight: 900, cursor: 'pointer' },
 };

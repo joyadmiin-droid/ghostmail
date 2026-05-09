@@ -9,6 +9,29 @@ const supabase = createClient(
 export async function POST(req) {
   try {
     const idea = await req.json();
+    const rawData = {
+      ...idea,
+      saved_version: 2,
+      saved_at_client: new Date().toISOString(),
+      workflow: {
+        status: idea.status,
+        reject_reason: idea.rejectReason,
+        notes: idea.notes,
+        checked_tasks: idea.checkedTasks || [],
+      },
+      listing: {
+        title: idea.listingTitle,
+        description: idea.listingDescription,
+      },
+      validation: {
+        tasks: idea.validationTasks || [],
+        keywords: idea.keywords || [],
+      },
+      concept: {
+        prompt: idea.conceptPrompt,
+        image: idea.conceptImage,
+      },
+    };
 
     const { error } = await supabase.from('saved_ideas').insert([
       {
@@ -24,8 +47,10 @@ export async function POST(req) {
         size: idea.size,
         market: idea.market,
         difficulty: idea.difficulty,
-        reason: idea.reason,
-        raw_data: idea,
+        reason: idea.rejectReason
+          ? `${idea.reason} Rejected: ${idea.rejectReason}`
+          : idea.reason,
+        raw_data: rawData,
       },
     ]);
 
