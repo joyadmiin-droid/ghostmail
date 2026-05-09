@@ -231,6 +231,16 @@ function listingText(idea) {
   ].join('\n');
 }
 
+function ideaFingerprint(idea) {
+  return String(idea.title || (idea.keywords || []).slice(0, 2).join(' '))
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(' ')
+    .filter((word) => word.length > 3)
+    .slice(0, 4)
+    .join(' ');
+}
+
 export default function Home() {
   const [text, setText] = useState(sampleText);
   const [source, setSource] = useState('Reddit / comments');
@@ -242,11 +252,40 @@ export default function Home() {
   const [conceptLoading, setConceptLoading] = useState(false);
   const [activeView, setActiveView] = useState('finder');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [materialFilter, setMaterialFilter] = useState('All');
+  const [minScoreFilter, setMinScoreFilter] = useState('0');
+  const [duplicatesOnly, setDuplicatesOnly] = useState(false);
   const [summary, setSummary] = useState('Paste comments or posts, then scan them for real buying intent.');
   const [error, setError] = useState('');
 
   const selected = ideas.find((idea) => idea.id === selectedId) || ideas[0] || null;
-  const visibleIdeas = statusFilter === 'All' ? ideas : ideas.filter((idea) => idea.status === statusFilter);
+  const duplicateCounts = useMemo(() => {
+    const counts = new Map();
+    ideas.forEach((idea) => {
+      const key = ideaFingerprint(idea);
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return counts;
+  }, [ideas]);
+  const categoryOptions = useMemo(() => ['All', ...new Set(ideas.map((idea) => idea.category).filter(Boolean))], [ideas]);
+  const materialOptions = useMemo(() => ['All', ...new Set(ideas.map((idea) => idea.material).filter(Boolean))], [ideas]);
+  const visibleIdeas = useMemo(() => {
+    const query = catalogueSearch.trim().toLowerCase();
+    return ideas.filter((idea) => {
+      const duplicateCount = duplicateCounts.get(ideaFingerprint(idea)) || 0;
+      const haystack = [idea.title, idea.category, idea.material, idea.status, idea.notes, ...(idea.keywords || [])].join(' ').toLowerCase();
+      return (
+        (statusFilter === 'All' || idea.status === statusFilter) &&
+        (categoryFilter === 'All' || idea.category === categoryFilter) &&
+        (materialFilter === 'All' || idea.material === materialFilter) &&
+        Number(idea.score || 0) >= Number(minScoreFilter || 0) &&
+        (!query || haystack.includes(query)) &&
+        (!duplicatesOnly || duplicateCount > 1)
+      );
+    });
+  }, [ideas, statusFilter, categoryFilter, materialFilter, minScoreFilter, catalogueSearch, duplicatesOnly, duplicateCounts]);
 
   const stats = useMemo(() => {
     const high = ideas.filter((idea) => idea.score >= 80).length;
@@ -391,7 +430,7 @@ export default function Home() {
     setConceptLoading(false);
   }
 
-  async function loadSavedIdeas() {
+  async function loadSavedIdeas(nextView = 'saved') {
     setError('');
     try {
       const res = await fetch('/api/saved');
@@ -399,7 +438,6 @@ export default function Home() {
       if (!json.success) throw new Error(json.error || 'Could not load saved ideas');
 
       const savedIdeas = json.data.map((item) => ({
-        ...starterIdeas[0],
         ...(item.raw_data || {}),
         id: item.id,
         title: item.title,
@@ -413,16 +451,25 @@ export default function Home() {
         market: item.market,
         difficulty: item.difficulty,
         reason: item.reason,
+        material: item.raw_data?.material || 'Unknown',
+        status: item.raw_data?.status || item.raw_data?.workflow?.status || 'Found',
+        rejectReason: item.raw_data?.rejectReason || item.raw_data?.workflow?.reject_reason || '',
+        notes: item.raw_data?.notes || item.raw_data?.workflow?.notes || '',
+        checkedTasks: item.raw_data?.checkedTasks || item.raw_data?.workflow?.checked_tasks || [],
       }));
 
       setIdeas(savedIdeas);
       setSelectedId(savedIdeas[0]?.id || null);
       setSummary(savedIdeas.length ? `Loaded ${savedIdeas.length} saved opportunities.` : 'No saved ideas yet.');
-      setActiveView('saved');
+      setActiveView(nextView);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Error loading saved ideas');
     }
+  }
+
+  async function openCatalogue() {
+    await loadSavedIdeas('catalogue');
   }
 
   async function saveIdea() {
@@ -450,6 +497,7 @@ export default function Home() {
         <div style={styles.menuTitle}>Market Intelligence</div>
         <NavButton active={activeView === 'finder'} onClick={() => setActiveView('finder')}>Idea Finder</NavButton>
         <NavButton active={activeView === 'saved'} onClick={loadSavedIdeas}>Saved Ideas</NavButton>
+        <NavButton active={activeView === 'catalogue'} onClick={openCatalogue}>Catalogue</NavButton>
         <NavButton active={activeView === 'sources'} onClick={() => setActiveView('sources')}>Sources</NavButton>
         <NavButton active={activeView === 'scores'} onClick={() => setActiveView('scores')}>Demand Scores</NavButton>
         <div style={styles.sidebarBox}><strong>{ideas.length}</strong><span> ideas found</span></div>
@@ -512,9 +560,38 @@ export default function Home() {
           </section>
         )}
 
+        {activeView === 'catalogue' && (
+          <section style={styles.cataloguePanel}>
+            <div>
+              <h2 style={styles.sectionTitle}>Catalogue Builder</h2>
+              <p style={styles.scanHint}>Search, filter, and spot duplicate ideas before the list grows too big.</p>
+            </div>
+            <div style={styles.catalogueGrid}>
+              <input style={styles.input} value={catalogueSearch} onChange={(e) => setCatalogueSearch(e.target.value)} placeholder="Search product, keyword, note..." />
+              <select style={styles.input} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+              </select>
+              <select style={styles.input} value={materialFilter} onChange={(e) => setMaterialFilter(e.target.value)}>
+                {materialOptions.map((material) => <option key={material}>{material}</option>)}
+              </select>
+              <select style={styles.input} value={minScoreFilter} onChange={(e) => setMinScoreFilter(e.target.value)}>
+                <option value="0">Any score</option>
+                <option value="60">60+</option>
+                <option value="75">75+</option>
+                <option value="85">85+</option>
+              </select>
+            </div>
+            <label style={styles.inlineCheck}>
+              <input type="checkbox" checked={duplicatesOnly} onChange={(e) => setDuplicatesOnly(e.target.checked)} />
+              Show likely duplicates only
+            </label>
+          </section>
+        )}
+
         <div style={styles.resultsHeader}>
-          <h2 style={styles.sectionTitle}>Ranked Ideas</h2>
+          <h2 style={styles.sectionTitle}>{activeView === 'catalogue' ? 'Catalogue Results' : 'Ranked Ideas'}</h2>
           <div style={styles.headerTools}>
+            <span>{visibleIdeas.length} shown</span>
             <button style={styles.secondaryButton} onClick={exportCsv}>Export</button>
             <select style={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option>All</option>
@@ -528,7 +605,14 @@ export default function Home() {
             <button key={idea.id} style={{ ...styles.resultRow, border: selected?.id === idea.id ? '2px solid #16a34a' : '1px solid #dbe3ec' }} onClick={() => setSelectedId(idea.id)}>
               <div style={styles.rankBox}><strong>{idea.score}</strong><small>{idea.demand}</small></div>
               <div style={styles.ideaMain}>
-                <div style={styles.rowCompact}><span style={styles.category}>{idea.category}</span><span style={styles.triggerText}>{idea.status}</span><span style={styles.triggerText}>{idea.material}</span></div>
+                <div style={styles.rowCompact}>
+                  <span style={styles.category}>{idea.category}</span>
+                  <span style={styles.triggerText}>{idea.status}</span>
+                  <span style={styles.triggerText}>{idea.material}</span>
+                  {(duplicateCounts.get(ideaFingerprint(idea)) || 0) > 1 && (
+                    <span style={styles.duplicateBadge}>similar x{duplicateCounts.get(ideaFingerprint(idea))}</span>
+                  )}
+                </div>
                 <h2 style={styles.cardTitle}>{idea.title}</h2>
                 <p style={styles.cardText}>{idea.reason}</p>
               </div>
@@ -703,6 +787,9 @@ const styles = {
   summaryBar: { background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#14532d', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 13 },
   error: { marginTop: 12, padding: 12, background: '#fee2e2', color: '#991b1b', borderRadius: 8, fontWeight: 700 },
   infoPanel: { background: '#ffffff', border: '1px solid #dbe3ec', borderRadius: 8, padding: 16, marginBottom: 22 },
+  cataloguePanel: { background: '#ffffff', border: '1px solid #dbe3ec', borderRadius: 8, padding: 14, marginBottom: 14 },
+  catalogueGrid: { display: 'grid', gridTemplateColumns: 'minmax(180px, 1.4fr) repeat(3, minmax(120px, 1fr))', gap: 10, marginTop: 12 },
+  inlineCheck: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: '#334155', fontWeight: 800, fontSize: 13 },
   sectionTitle: { margin: 0, fontSize: 18 },
   sourceGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(160px, 1fr))', gap: 10, marginTop: 12 },
   sourceCard: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, color: '#334155', fontWeight: 700 },
@@ -716,6 +803,7 @@ const styles = {
   ideaMain: { minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' },
   rowCompact: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' },
   triggerText: { color: '#64748b', fontWeight: 900, fontSize: 12 },
+  duplicateBadge: { color: '#7c2d12', background: '#ffedd5', borderRadius: 999, padding: '4px 7px', fontWeight: 900, fontSize: 11 },
   category: { background: '#e0f2fe', color: '#075985', padding: '5px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800 },
   cardTitle: { fontSize: 17, margin: '0 0 6px', lineHeight: 1.25 },
   cardText: { color: '#475569', lineHeight: 1.45, fontSize: 13, margin: 0 },
