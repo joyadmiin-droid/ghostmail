@@ -113,7 +113,28 @@ Return ONLY valid JSON with this exact shape:
       "difficulty": "Easy",
       "profit_potential": "Medium",
       "why_it_can_sell": "",
-      "validation_keywords": []
+      "material": "PETG",
+      "risk_level": "Low",
+      "risk_reason": "",
+      "print_time_estimate": "1-2 hours",
+      "competition_level": "Medium",
+      "repeat_buyer_potential": "Low",
+      "score_breakdown": {
+        "demand": 1,
+        "print_difficulty": 1,
+        "profit": 1,
+        "competition": 1,
+        "shipping": 1,
+        "repeat_buyers": 1
+      },
+      "validation_keywords": [],
+      "validation_tasks": [],
+      "prototype_steps": [],
+      "measurements_needed": [],
+      "cad_brief": "",
+      "listing_title": "",
+      "listing_description": "",
+      "status": "Found"
     }
   ]
 }
