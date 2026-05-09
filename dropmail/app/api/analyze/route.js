@@ -1,13 +1,51 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const DEMAND_PHRASES = [
+  'i need',
+  'i wish there was',
+  'i hate when',
+  'any solution for',
+  'where can i buy',
+  'i struggle with',
+  'does anyone know',
+  'looking for',
+  'recommend me',
+  'need a replacement',
+  'broke',
+  'keeps falling',
+  'does not fit',
+  'holder for',
+  'adapter for',
+  'mount for',
+  'clip for',
+];
+
+function findSignals(text) {
+  const lower = text.toLowerCase();
+  return DEMAND_PHRASES.filter((phrase) => lower.includes(phrase));
+}
+
+function safeJson(raw) {
+  const cleaned = raw
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+
+  if (start === -1 || end === -1) {
+    throw new Error('No JSON object returned');
+  }
+
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
 
 export async function POST(req) {
   try {
-    const { text } = await req.json();
+    const { text, source = 'Manual scan', niche = '3D printed products' } =
+      await req.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json({ error: 'Missing text' }, { status: 400 });
@@ -20,34 +58,80 @@ export async function POST(req) {
       );
     }
 
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const localSignals = findSignals(text);
+
     const response = await client.responses.create({
       model: 'gpt-5.5',
       input: `
-You are Printora Radar, an AI that finds 3D-printable product ideas from social media comments.
+You are PrintTrend Radar, an AI product researcher for a small 3D printing business.
 
-Analyze this text:
-"${text}"
+Goal:
+Find real product demand inside posts, comments, reviews, and forum text. The best ideas are small physical objects that can be 3D printed and sold locally or online: replacement parts, clips, brackets, adapters, holders, mounts, covers, knobs, spacers, organizers, bathroom/kitchen fixes, appliance parts, hobby parts, and machine accessories.
 
-Return ONLY valid JSON with this shape:
+Scan for buying/problem phrases such as:
+"I need", "I wish there was", "I hate when", "any solution for", "where can I buy", "I struggle with", "does anyone know", "looking for", "recommend me", "need a replacement", "broke", "keeps falling", "does not fit", "holder for", "adapter for", "mount for", "clip for".
+
+Rules:
+- Return only ideas that are realistic to 3D print.
+- Ignore software, food, clothing, services, medical devices, weapons, copyrighted character products, and items that need certified safety testing.
+- Prefer boring useful parts over novelty items.
+- If the text contains no good 3D-printable demand, return an empty ideas array and explain why in summary.
+- Use Macedonian denar pricing when estimating.
+- Demand score is 1-100 and should reward repeated mentions, pain/urgency, clear buyer intent, small size, low print cost, and poor availability.
+
+Source: ${source}
+Niche: ${niche}
+Signals found by keyword scan: ${localSignals.join(', ') || 'none'}
+
+Text to analyze:
+${text}
+
+Return ONLY valid JSON with this exact shape:
 {
-  "product_name": "",
-  "category": "",
-  "demand_score": 1,
-  "can_3d_print": true,
-  "expected_price_mkd": 0,
-  "difficulty": "",
-  "profit_potential": "",
-  "city": "",
-  "reasoning": ""
+  "summary": "",
+  "signals_found": [],
+  "ideas": [
+    {
+      "product_name": "",
+      "category": "",
+      "demand_score": 1,
+      "confidence": "Low",
+      "can_3d_print": true,
+      "trigger_phrase": "",
+      "problem_quote": "",
+      "customer_problem": "",
+      "printable_solution": "",
+      "expected_price_mkd": "150-400 MKD",
+      "estimated_print_cost_mkd": "25-80 MKD",
+      "estimated_weight": "30-70g",
+      "estimated_size": "8cm x 5cm",
+      "market": "",
+      "difficulty": "Easy",
+      "profit_potential": "Medium",
+      "why_it_can_sell": "",
+      "validation_keywords": []
+    }
+  ]
 }
       `,
     });
 
-    const raw = response.output_text;
-    const cleaned = raw.replace(/```json|```/g, '').trim();
-    const data = JSON.parse(cleaned);
+    const data = safeJson(response.output_text);
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({
+      success: true,
+      data: {
+        summary: data.summary || '',
+        signals_found: Array.isArray(data.signals_found)
+          ? data.signals_found
+          : localSignals,
+        ideas: Array.isArray(data.ideas) ? data.ideas : [],
+      },
+    });
   } catch (err) {
     console.error('Analyze error:', err);
 
