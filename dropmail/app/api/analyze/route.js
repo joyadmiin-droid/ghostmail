@@ -77,6 +77,8 @@ Scan for buying/problem phrases such as:
 
 Rules:
 - Return only ideas that are realistic to 3D print.
+- Group similar comments into the same product opportunity whenever possible.
+- Use a specific product name, not a vague category. Example: "Dishwasher Rack Wheel Replacement", not "Kitchen Part".
 - Ignore software, food, clothing, services, medical devices, weapons, copyrighted character products, and items that need certified safety testing.
 - Prefer boring useful parts over novelty items.
 - If the text contains no good 3D-printable demand, return an empty ideas array and explain why in summary.
@@ -134,7 +136,9 @@ Return ONLY valid JSON with this exact shape:
       "cad_brief": "",
       "listing_title": "",
       "listing_description": "",
-      "status": "Found"
+      "status": "Found",
+      "evidence_count": 1,
+      "merged_phrases": []
     }
   ]
 }

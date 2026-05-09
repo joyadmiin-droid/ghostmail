@@ -61,6 +61,8 @@ const starterIdeas = [
     notes: '',
     conceptPrompt: '',
     conceptImage: '',
+    evidenceCount: 2,
+    mergedPhrases: ['where can I buy', 'need a replacement'],
   },
   {
     id: 2,
@@ -103,6 +105,8 @@ const starterIdeas = [
     notes: '',
     conceptPrompt: '',
     conceptImage: '',
+    evidenceCount: 1,
+    mergedPhrases: ['I need'],
   },
   {
     id: 3,
@@ -145,6 +149,8 @@ const starterIdeas = [
     notes: '',
     conceptPrompt: '',
     conceptImage: '',
+    evidenceCount: 1,
+    mergedPhrases: ['I hate when'],
   },
 ];
 
@@ -163,6 +169,74 @@ function normalizeBreakdown(raw = {}, fallbackScore) {
     shipping: Number(raw.shipping || 50),
     repeatBuyers: Number(raw.repeat_buyers || raw.repeatBuyers || 50),
   };
+}
+
+function opportunityKey(idea) {
+  const text = [
+    idea.title,
+    idea.product_name,
+    idea.category,
+    ...(idea.keywords || idea.validation_keywords || []),
+  ]
+    .join(' ')
+    .toLowerCase()
+    .replace(/replacement|holder|clip|mount|adapter|organizer|part|for|the|and|with/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ');
+
+  return text
+    .split(' ')
+    .filter((word) => word.length > 3)
+    .slice(0, 5)
+    .sort()
+    .join('-');
+}
+
+function mergeIdeas(rawIdeas) {
+  const groups = new Map();
+
+  rawIdeas.forEach((idea) => {
+    const key = opportunityKey(idea) || `${idea.category}-${idea.title}`;
+    const existing = groups.get(key);
+
+    if (!existing) {
+      groups.set(key, {
+        ...idea,
+        evidenceCount: Number(idea.evidenceCount || idea.evidence_count || 1),
+        mergedPhrases: [
+          idea.problemQuote,
+          idea.triggerPhrase,
+          ...(idea.mergedPhrases || idea.merged_phrases || []),
+        ].filter(Boolean),
+        keywords: [...new Set(idea.keywords || [])],
+      });
+      return;
+    }
+
+    const evidenceCount = existing.evidenceCount + Number(idea.evidenceCount || idea.evidence_count || 1);
+    const bestScoreIdea = Number(idea.score || 0) > Number(existing.score || 0) ? idea : existing;
+
+    groups.set(key, {
+      ...existing,
+      ...bestScoreIdea,
+      evidenceCount,
+      score: Math.min(100, Math.max(existing.score || 0, idea.score || 0) + Math.min(12, (evidenceCount - 1) * 4)),
+      demand: demandLabel(Math.min(100, Math.max(existing.score || 0, idea.score || 0) + Math.min(12, (evidenceCount - 1) * 4))),
+      mergedPhrases: [
+        ...(existing.mergedPhrases || []),
+        idea.problemQuote,
+        idea.triggerPhrase,
+        ...(idea.mergedPhrases || []),
+      ].filter(Boolean).slice(0, 8),
+      keywords: [...new Set([...(existing.keywords || []), ...(idea.keywords || [])])],
+      reason: `${bestScoreIdea.reason} Repeated demand signals: ${evidenceCount}.`,
+    });
+  });
+
+  return [...groups.values()].sort((a, b) => {
+    const scoreA = Number(a.score || 0) + Number(a.evidenceCount || 1) * 2;
+    const scoreB = Number(b.score || 0) + Number(b.evidenceCount || 1) * 2;
+    return scoreB - scoreA;
+  });
 }
 
 function normalizeIdea(idea, index, source) {
@@ -208,6 +282,8 @@ function normalizeIdea(idea, index, source) {
     notes: '',
     conceptPrompt: idea.concept_prompt || '',
     conceptImage: '',
+    evidenceCount: Number(idea.evidence_count || 1),
+    mergedPhrases: Array.isArray(idea.merged_phrases) ? idea.merged_phrases : [],
   };
 }
 
@@ -350,8 +426,15 @@ export default function Home() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Analysis failed');
 
-      const newIdeas = (json.data?.ideas || []).map((idea, index) => normalizeIdea(idea, index, source));
-      setSummary(json.data?.summary || (newIdeas.length ? `Found ${newIdeas.length} product opportunities.` : 'No strong 3D-printable demand found in this text.'));
+      const rawIdeas = (json.data?.ideas || []).map((idea, index) => normalizeIdea(idea, index, source));
+      const newIdeas = mergeIdeas(rawIdeas);
+      const mergedAway = Math.max(0, rawIdeas.length - newIdeas.length);
+      setSummary(
+        json.data?.summary ||
+          (newIdeas.length
+            ? `Found ${newIdeas.length} ranked opportunities${mergedAway ? ` after merging ${mergedAway} duplicate signals` : ''}.`
+            : 'No strong 3D-printable demand found in this text.')
+      );
 
       if (newIdeas.length) {
         setIdeas(newIdeas);
@@ -609,6 +692,7 @@ export default function Home() {
                   <span style={styles.category}>{idea.category}</span>
                   <span style={styles.triggerText}>{idea.status}</span>
                   <span style={styles.triggerText}>{idea.material}</span>
+                  <span style={styles.signalBadge}>{idea.evidenceCount || 1} signals</span>
                   {(duplicateCounts.get(ideaFingerprint(idea)) || 0) > 1 && (
                     <span style={styles.duplicateBadge}>similar x{duplicateCounts.get(ideaFingerprint(idea))}</span>
                   )}
@@ -656,6 +740,7 @@ export default function Home() {
           <div style={styles.detailGrid}>
             <Info label="Material" value={selected.material} />
             <Info label="Risk" value={selected.riskLevel} />
+            <Info label="Signals" value={selected.evidenceCount || 1} />
             <Info label="Print time" value={selected.printTime} />
             <Info label="Competition" value={selected.competition} />
             <Info label="Profit" value={selected.profitPotential} />
@@ -667,6 +752,11 @@ export default function Home() {
           </Panel>
 
           {selected.problemQuote && <Panel title="People are saying"><p>{selected.problemQuote}</p></Panel>}
+          {selected.mergedPhrases?.length > 0 && (
+            <Panel title="Grouped Signals">
+              <div style={styles.keywordList}>{selected.mergedPhrases.map((phrase) => <span key={phrase}>{phrase}</span>)}</div>
+            </Panel>
+          )}
           <Panel title="Printable Solution"><p>{selected.printableSolution || selected.customerProblem}</p></Panel>
           <Panel title="Risk Reason"><p>{selected.riskReason}</p></Panel>
 
@@ -803,6 +893,7 @@ const styles = {
   ideaMain: { minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' },
   rowCompact: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' },
   triggerText: { color: '#64748b', fontWeight: 900, fontSize: 12 },
+  signalBadge: { color: '#14532d', background: '#dcfce7', borderRadius: 999, padding: '4px 7px', fontWeight: 900, fontSize: 11 },
   duplicateBadge: { color: '#7c2d12', background: '#ffedd5', borderRadius: 999, padding: '4px 7px', fontWeight: 900, fontSize: 11 },
   category: { background: '#e0f2fe', color: '#075985', padding: '5px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800 },
   cardTitle: { fontSize: 17, margin: '0 0 6px', lineHeight: 1.25 },
