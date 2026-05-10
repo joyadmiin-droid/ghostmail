@@ -239,6 +239,27 @@ function mergeIdeas(rawIdeas) {
   });
 }
 
+function chunkText(input, maxChars = 6000) {
+  const lines = input
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const chunks = [];
+  let current = '';
+
+  lines.forEach((line) => {
+    if ((current + '\n' + line).length > maxChars && current) {
+      chunks.push(current);
+      current = line;
+      return;
+    }
+    current = current ? `${current}\n${line}` : line;
+  });
+
+  if (current) chunks.push(current);
+  return chunks.length ? chunks : [input];
+}
+
 function normalizeIdea(idea, index, source) {
   const score = Number(idea.demand_score || idea.score || 50);
   return {
@@ -324,6 +345,8 @@ export default function Home() {
   const [ideas, setIdeas] = useState(starterIdeas);
   const [selectedId, setSelectedId] = useState(starterIdeas[0].id);
   const [loading, setLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [saveAllLoading, setSaveAllLoading] = useState(false);
   const [briefLoading, setBriefLoading] = useState(false);
   const [conceptLoading, setConceptLoading] = useState(false);
   const [activeView, setActiveView] = useState('finder');
@@ -449,6 +472,77 @@ export default function Home() {
     }
 
     setLoading(false);
+  }
+
+  async function scanChunk(chunk, chunkIndex = 0) {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: chunk,
+        source: `${source} batch ${chunkIndex + 1}`,
+        niche,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Analysis failed');
+    return (json.data?.ideas || []).map((idea, index) =>
+      normalizeIdea(idea, `${chunkIndex}-${index}`, source)
+    );
+  }
+
+  async function bulkScan() {
+    if (!text.trim()) return;
+
+    const chunks = chunkText(text);
+    setBulkLoading(true);
+    setError('');
+    setSummary(`Bulk scanning ${chunks.length} text chunk${chunks.length === 1 ? '' : 's'}...`);
+
+    try {
+      const scannedIdeas = [];
+
+      for (let index = 0; index < chunks.length; index += 1) {
+        setSummary(`Scanning batch ${index + 1} of ${chunks.length}...`);
+        const chunkIdeas = await scanChunk(chunks[index], index);
+        scannedIdeas.push(...chunkIdeas);
+      }
+
+      const merged = mergeIdeas(scannedIdeas);
+      setIdeas(merged);
+      setSelectedId(merged[0]?.id || null);
+      setActiveView('finder');
+      setStatusFilter('All');
+      setSummary(`Bulk scan found ${merged.length} ranked opportunities from ${scannedIdeas.length} raw signals.`);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Bulk scan failed.');
+      setSummary('Bulk scan did not complete.');
+    }
+
+    setBulkLoading(false);
+  }
+
+  async function saveAllIdeas() {
+    if (!ideas.length) return;
+    setSaveAllLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/save-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideas }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Bulk save failed');
+      setSummary(`Saved ${json.count} ideas to the catalogue.`);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Bulk save failed.');
+    }
+
+    setSaveAllLoading(false);
   }
 
   async function generateBrief() {
@@ -614,9 +708,11 @@ export default function Home() {
           <textarea style={styles.textarea} value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste comments, posts, reviews, or forum threads here..." />
           <div style={styles.actionRow}>
             <button style={styles.button} onClick={analyzeDemand} disabled={loading}>{loading ? 'Scanning...' : 'Scan Demand'}</button>
+            <button style={styles.buttonAlt} onClick={bulkScan} disabled={bulkLoading}>{bulkLoading ? 'Bulk scanning...' : 'Bulk Scan'}</button>
             <button style={styles.secondaryButton} onClick={() => setText(sampleText)}>Load Example</button>
             <button style={styles.secondaryButton} onClick={() => setText('')}>Clear</button>
             <button style={styles.secondaryButton} onClick={exportCsv}>Export CSV</button>
+            <button style={styles.secondaryButton} onClick={saveAllIdeas} disabled={saveAllLoading}>{saveAllLoading ? 'Saving...' : 'Save All'}</button>
           </div>
           {error && <div style={styles.error}>{error}</div>}
         </section>
@@ -676,6 +772,7 @@ export default function Home() {
           <div style={styles.headerTools}>
             <span>{visibleIdeas.length} shown</span>
             <button style={styles.secondaryButton} onClick={exportCsv}>Export</button>
+            <button style={styles.secondaryButton} onClick={saveAllIdeas} disabled={saveAllLoading}>Save all</button>
             <select style={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option>All</option>
               {STATUSES.map((status) => <option key={status}>{status}</option>)}
@@ -872,6 +969,7 @@ const styles = {
   smallTextarea: { width: '100%', minHeight: 78, border: '1px solid #cbd5e1', borderRadius: 8, padding: 10, fontSize: 13, resize: 'vertical', color: '#101827', marginTop: 8 },
   actionRow: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' },
   button: { background: '#16a34a', border: 'none', color: '#ffffff', padding: '12px 18px', borderRadius: 8, fontWeight: 900, cursor: 'pointer' },
+  buttonAlt: { background: '#0f766e', border: 'none', color: '#ffffff', padding: '12px 18px', borderRadius: 8, fontWeight: 900, cursor: 'pointer' },
   buttonFull: { width: '100%', background: '#16a34a', border: 'none', color: '#ffffff', padding: '11px 14px', borderRadius: 8, fontWeight: 900, cursor: 'pointer', marginTop: 10 },
   secondaryButton: { background: '#eef2f7', border: '1px solid #dbe3ec', color: '#101827', padding: '11px 14px', borderRadius: 8, fontWeight: 800, cursor: 'pointer' },
   summaryBar: { background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#14532d', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 13 },
