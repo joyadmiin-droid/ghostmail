@@ -330,7 +330,10 @@ function imageQuery(idea) {
 }
 
 function photoUrl(idea, width = 220, height = 150) {
-  return `https://loremflickr.com/${width}/${height}/${imageQuery(idea)}`;
+  const prompt = encodeURIComponent(
+    `realistic product photo of ${idea.title}, ${idea.category}, useful small 3D printable part, plain light background, no text`
+  );
+  return `https://image.pollinations.ai/prompt/${prompt}?width=${width}&height=${height}&nologo=true&enhance=true`;
 }
 
 function listingText(idea) {
