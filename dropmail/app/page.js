@@ -453,7 +453,9 @@ export default function Home() {
       const newIdeas = mergeIdeas(rawIdeas);
       const mergedAway = Math.max(0, rawIdeas.length - newIdeas.length);
       setSummary(
-        json.data?.summary ||
+        json.data?.fallback
+          ? `${json.data.summary} (${newIdeas.length} draft ideas)`
+          : json.data?.summary ||
           (newIdeas.length
             ? `Found ${newIdeas.length} ranked opportunities${mergedAway ? ` after merging ${mergedAway} duplicate signals` : ''}.`
             : 'No strong 3D-printable demand found in this text.')
@@ -486,9 +488,10 @@ export default function Home() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Analysis failed');
-    return (json.data?.ideas || []).map((idea, index) =>
+    const ideas = (json.data?.ideas || []).map((idea, index) =>
       normalizeIdea(idea, `${chunkIndex}-${index}`, source)
     );
+    return { ideas, fallback: Boolean(json.data?.fallback) };
   }
 
   async function bulkScan() {
@@ -504,8 +507,8 @@ export default function Home() {
 
       for (let index = 0; index < chunks.length; index += 1) {
         setSummary(`Scanning batch ${index + 1} of ${chunks.length}...`);
-        const chunkIdeas = await scanChunk(chunks[index], index);
-        scannedIdeas.push(...chunkIdeas);
+        const chunkResult = await scanChunk(chunks[index], index);
+        scannedIdeas.push(...chunkResult.ideas);
       }
 
       const merged = mergeIdeas(scannedIdeas);

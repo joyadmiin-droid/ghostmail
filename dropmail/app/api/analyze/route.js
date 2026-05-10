@@ -26,6 +26,99 @@ function findSignals(text) {
   return DEMAND_PHRASES.filter((phrase) => lower.includes(phrase));
 }
 
+function titleCase(text) {
+  return text
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 7)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function fallbackIdeas(text, source) {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines
+    .map((line) => {
+      const lower = line.toLowerCase();
+      const signal = DEMAND_PHRASES.find((phrase) => lower.includes(phrase));
+      if (!signal) return null;
+
+      const clean = lower
+        .replace(signal, '')
+        .replace(/where can i buy|does anyone know|any solution for|looking for|recommend me/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .trim();
+      const productName = titleCase(clean || line);
+      const isKitchen = /dishwasher|kitchen|cabinet|sponge|fridge|drawer/.test(lower);
+      const isBathroom = /shower|bathroom|toilet|sink|hose/.test(lower);
+      const isCable = /cable|charger|desk|wire/.test(lower);
+      const category = isKitchen
+        ? 'Kitchen Repair Part'
+        : isBathroom
+        ? 'Bathroom Part'
+        : isCable
+        ? 'Desk Organizer'
+        : '3D Printable Part';
+
+      return {
+        product_name: productName,
+        category,
+        demand_score: signal.includes('buy') || signal.includes('need') ? 76 : 66,
+        confidence: 'Medium',
+        can_3d_print: true,
+        trigger_phrase: signal,
+        problem_quote: line,
+        customer_problem: line,
+        printable_solution: `A small 3D printed ${productName.toLowerCase()} designed to solve this exact complaint.`,
+        expected_price_mkd: '150-500 MKD',
+        estimated_print_cost_mkd: '20-90 MKD',
+        estimated_weight: '20-80g',
+        estimated_size: 'Measure needed',
+        market: 'Local + online',
+        difficulty: 'Medium',
+        profit_potential: 'Medium',
+        why_it_can_sell: 'Detected from a direct problem/buying phrase. Validate demand before printing.',
+        material: isBathroom || isKitchen ? 'PETG' : 'PLA',
+        risk_level: 'Medium',
+        risk_reason: 'Fallback estimate. Needs measurement and real-world fit testing.',
+        print_time_estimate: '1-2 hours',
+        competition_level: 'Unknown',
+        repeat_buyer_potential: 'Unknown',
+        score_breakdown: {
+          demand: 70,
+          print_difficulty: 65,
+          profit: 60,
+          competition: 50,
+          shipping: 85,
+          repeat_buyers: 35,
+        },
+        validation_keywords: productName.toLowerCase().split(' ').slice(0, 4),
+        validation_tasks: [
+          'Search Etsy / Amazon',
+          'Search AliExpress',
+          'Search Thingiverse / Printables',
+          'Check Facebook Marketplace',
+          'Measure real part',
+        ],
+        prototype_steps: ['Measure the real problem area', 'Sketch simple shape', 'Print first small test', 'Check fit'],
+        measurements_needed: ['Main width', 'Main height', 'Attachment point', 'Clearance'],
+        cad_brief: `Design a simple printable ${productName.toLowerCase()} based on the quote: ${line}`,
+        listing_title: productName,
+        listing_description: `Useful 3D printed part for: ${line}`,
+        status: 'Found',
+        evidence_count: 1,
+        merged_phrases: [signal],
+        source,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 function safeJson(raw) {
   const cleaned = raw
     .replace(/```json/gi, '')
@@ -43,9 +136,13 @@ function safeJson(raw) {
 }
 
 export async function POST(req) {
+  let text = '';
+  let source = 'Manual scan';
   try {
-    const { text, source = 'Manual scan', niche = '3D printed products' } =
-      await req.json();
+    const body = await req.json();
+    text = body.text || '';
+    source = body.source || 'Manual scan';
+    const niche = body.niche || '3D printed products';
 
     if (!text || !text.trim()) {
       return NextResponse.json({ error: 'Missing text' }, { status: 400 });
@@ -159,10 +256,20 @@ Return ONLY valid JSON with this exact shape:
     });
   } catch (err) {
     console.error('Analyze error:', err);
+    const fallback = fallbackIdeas(text, source);
 
-    return NextResponse.json(
-      { error: 'AI analysis failed' },
-      { status: 500 }
-    );
+    if (fallback.length) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          summary: 'AI response failed, so fallback keyword analysis created draft opportunities. Validate these more carefully.',
+          signals_found: findSignals(text),
+          ideas: fallback,
+          fallback: true,
+        },
+      });
+    }
+
+    return NextResponse.json({ error: `AI analysis failed: ${err.message}` }, { status: 500 });
   }
 }
