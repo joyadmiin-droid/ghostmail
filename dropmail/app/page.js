@@ -61,6 +61,7 @@ const starterIdeas = [
     notes: '',
     conceptPrompt: '',
     conceptImage: '',
+    imageUrl: '',
     evidenceCount: 2,
     mergedPhrases: ['where can I buy', 'need a replacement'],
   },
@@ -105,6 +106,7 @@ const starterIdeas = [
     notes: '',
     conceptPrompt: '',
     conceptImage: '',
+    imageUrl: '',
     evidenceCount: 1,
     mergedPhrases: ['I need'],
   },
@@ -149,6 +151,7 @@ const starterIdeas = [
     notes: '',
     conceptPrompt: '',
     conceptImage: '',
+    imageUrl: '',
     evidenceCount: 1,
     mergedPhrases: ['I hate when'],
   },
@@ -303,6 +306,7 @@ function normalizeIdea(idea, index, source) {
     notes: '',
     conceptPrompt: idea.concept_prompt || '',
     conceptImage: '',
+    imageUrl: idea.image_url || '',
     evidenceCount: Number(idea.evidence_count || 1),
     mergedPhrases: Array.isArray(idea.merged_phrases) ? idea.merged_phrases : [],
   };
@@ -314,6 +318,19 @@ function csvEscape(value) {
 
 function researchQuery(idea) {
   return encodeURIComponent([idea.title, ...(idea.keywords || [])].join(' '));
+}
+
+function imageQuery(idea) {
+  return encodeURIComponent(
+    [idea.title, idea.category, ...(idea.keywords || [])]
+      .join(' ')
+      .replace(/replacement|3d printed|printable/gi, '')
+      .trim()
+  );
+}
+
+function photoUrl(idea, width = 220, height = 150) {
+  return `https://loremflickr.com/${width}/${height}/${imageQuery(idea)}`;
 }
 
 function listingText(idea) {
@@ -787,6 +804,7 @@ export default function Home() {
           {visibleIdeas.map((idea) => (
             <button key={idea.id} style={{ ...styles.resultRow, border: selected?.id === idea.id ? '2px solid #16a34a' : '1px solid #dbe3ec' }} onClick={() => setSelectedId(idea.id)}>
               <div style={styles.rankBox}><strong>{idea.score}</strong><small>{idea.demand}</small></div>
+              <img style={styles.thumbImage} src={idea.imageUrl || photoUrl(idea, 180, 120)} alt={`${idea.title} reference`} loading="lazy" />
               <div style={styles.ideaMain}>
                 <div style={styles.rowCompact}>
                   <span style={styles.category}>{idea.category}</span>
@@ -812,6 +830,7 @@ export default function Home() {
 
       {selected && (
         <aside style={styles.detailPanel}>
+          <img style={styles.heroImage} src={selected.imageUrl || photoUrl(selected, 420, 260)} alt={`${selected.title} reference`} />
           <div style={styles.detailScore}><strong>{selected.score}</strong><span>{selected.demand} demand</span></div>
           <div style={styles.detailMeta}>{selected.category}</div>
           <h2 style={styles.detailTitle}>{selected.title}</h2>
@@ -874,6 +893,7 @@ export default function Home() {
           <Panel title="Research Links">
             <div style={styles.linkGrid}>
               <a style={styles.linkButton} href={`https://www.google.com/search?q=${researchQuery(selected)}`} target="_blank">Google</a>
+              <a style={styles.linkButton} href={`https://www.google.com/search?tbm=isch&q=${researchQuery(selected)}`} target="_blank">Images</a>
               <a style={styles.linkButton} href={`https://www.etsy.com/search?q=${researchQuery(selected)}`} target="_blank">Etsy</a>
               <a style={styles.linkButton} href={`https://www.aliexpress.com/wholesale?SearchText=${researchQuery(selected)}`} target="_blank">AliExpress</a>
               <a style={styles.linkButton} href={`https://www.printables.com/search/models?q=${researchQuery(selected)}`} target="_blank">Printables</a>
@@ -989,8 +1009,9 @@ const styles = {
   resultsHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#475569', margin: '0 0 10px', fontSize: 13 },
   headerTools: { display: 'flex', alignItems: 'center', gap: 8 },
   resultsList: { display: 'grid', gap: 10 },
-  resultRow: { background: '#ffffff', borderRadius: 8, textAlign: 'left', cursor: 'pointer', padding: 12, display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr) 300px', gap: 12, alignItems: 'stretch' },
+  resultRow: { background: '#ffffff', borderRadius: 8, textAlign: 'left', cursor: 'pointer', padding: 12, display: 'grid', gridTemplateColumns: '64px 112px minmax(0, 1fr) 300px', gap: 12, alignItems: 'stretch' },
   rankBox: { borderRadius: 8, background: '#ecfdf5', color: '#14532d', display: 'grid', placeItems: 'center', alignContent: 'center', minHeight: 82, gap: 2 },
+  thumbImage: { width: '100%', height: 82, objectFit: 'cover', borderRadius: 8, border: '1px solid #dbe3ec', background: '#eef2f7' },
   ideaMain: { minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' },
   rowCompact: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' },
   triggerText: { color: '#64748b', fontWeight: 900, fontSize: 12 },
@@ -1001,6 +1022,7 @@ const styles = {
   cardText: { color: '#475569', lineHeight: 1.45, fontSize: 13, margin: 0 },
   resultMeta: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 },
   detailPanel: { background: '#ffffff', borderLeft: '1px solid #dbe3ec', padding: 18, overflow: 'auto' },
+  heroImage: { width: '100%', height: 150, objectFit: 'cover', borderRadius: 8, border: '1px solid #dbe3ec', background: '#eef2f7', marginBottom: 12 },
   detailScore: { minHeight: 82, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#14532d', background: '#ecfdf5', borderRadius: 8, marginBottom: 14, gap: 3 },
   detailMeta: { color: '#075985', fontWeight: 900, fontSize: 12, marginBottom: 8 },
   detailTitle: { fontSize: 22, margin: '0 0 8px', lineHeight: 1.2 },
