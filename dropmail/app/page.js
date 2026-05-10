@@ -335,11 +335,16 @@ function imageSeed(idea) {
     .reduce((total, char) => total + char.charCodeAt(0), 0);
 }
 
-function productImageUrl(idea, width = 240, height = 160) {
+function productImageUrl(idea, width = 240, height = 160, variant = 'photo') {
+  const productWords = [idea.title, ...(idea.keywords || [])].filter(Boolean).join(', ');
+  const style = variant === 'render'
+    ? 'clean studio 3D render, useful small 3D printed replacement part'
+    : 'realistic studio product photo, useful small replacement part';
   const prompt = encodeURIComponent(
-    `single realistic product photo of ${idea.title}, ${idea.category}, useful 3D printed practical part, isolated on clean white background, no text, no logo, no people`
+    `${style}, ${productWords}, isolated on white background, no text, no logo, no people`
   );
-  return `https://image.pollinations.ai/prompt/${prompt}?width=${width}&height=${height}&seed=${imageSeed(idea)}&nologo=true&enhance=true`;
+  const seedOffset = variant === 'render' ? 77 : 0;
+  return `https://image.pollinations.ai/prompt/${prompt}?width=${width}&height=${height}&seed=${imageSeed(idea) + seedOffset}&nologo=true&enhance=true&model=flux`;
 }
 
 function listingText(idea) {
@@ -362,6 +367,39 @@ function ideaFingerprint(idea) {
     .filter((word) => word.length > 3)
     .slice(0, 4)
     .join(' ');
+}
+
+function ProductImage({ idea, kind = 'thumb' }) {
+  const width = kind === 'hero' ? 360 : 240;
+  const height = kind === 'hero' ? 210 : 160;
+  const imageKey = `${idea.id}-${idea.title}-${kind}`;
+  const sources = [
+    idea.imageUrl,
+    productImageUrl(idea, width, height, 'photo'),
+    productImageUrl(idea, width, height, 'render'),
+  ].filter(Boolean);
+  const [imageState, setImageState] = useState({ key: imageKey, sourceIndex: 0 });
+  const sourceIndex = imageState.key === imageKey ? imageState.sourceIndex : 0;
+
+  if (!sources[sourceIndex]) {
+    return (
+      <a style={kind === 'hero' ? styles.imageFallbackHero : styles.imageFallback} href={`https://www.google.com/search?tbm=isch&q=${imageQuery(idea)}`} target="_blank">
+        <strong>Find image</strong>
+        <span>{idea.title}</span>
+      </a>
+    );
+  }
+
+  return (
+    <img
+      key={`${idea.id}-${sourceIndex}-${kind}`}
+      style={kind === 'hero' ? styles.heroImage : styles.thumbImage}
+      src={sources[sourceIndex]}
+      alt=""
+      loading={kind === 'hero' ? 'eager' : 'lazy'}
+      onError={() => setImageState({ key: imageKey, sourceIndex: sourceIndex + 1 })}
+    />
+  );
 }
 
 export default function Home() {
@@ -813,7 +851,7 @@ export default function Home() {
           {visibleIdeas.map((idea) => (
             <button key={idea.id} style={{ ...styles.resultRow, border: selected?.id === idea.id ? '2px solid #16a34a' : '1px solid #dbe3ec' }} onClick={() => setSelectedId(idea.id)}>
               <div style={styles.rankBox}><strong>{idea.score}</strong><small>{idea.demand}</small></div>
-              <img style={styles.thumbImage} src={idea.imageUrl || productImageUrl(idea, 240, 160)} alt={`${idea.title} visual`} loading="lazy" />
+              <ProductImage idea={idea} />
               <div style={styles.ideaMain}>
                 <div style={styles.rowCompact}>
                   <span style={styles.category}>{idea.category}</span>
@@ -838,8 +876,8 @@ export default function Home() {
       </section>
 
       {selected && (
-        <aside style={styles.detailPanel}>
-          <img style={styles.heroImage} src={selected.imageUrl || productImageUrl(selected, 520, 320)} alt={`${selected.title} visual`} />
+        <aside key={selected.id} style={styles.detailPanel}>
+          <ProductImage idea={selected} kind="hero" />
           <div style={styles.detailScore}><strong>{selected.score}</strong><span>{selected.demand} demand</span></div>
           <div style={styles.detailMeta}>{selected.category}</div>
           <h2 style={styles.detailTitle}>{selected.title}</h2>
@@ -1021,6 +1059,7 @@ const styles = {
   resultRow: { background: '#ffffff', borderRadius: 8, textAlign: 'left', cursor: 'pointer', padding: 12, display: 'grid', gridTemplateColumns: '64px 112px minmax(0, 1fr) 300px', gap: 12, alignItems: 'stretch' },
   rankBox: { borderRadius: 8, background: '#ecfdf5', color: '#14532d', display: 'grid', placeItems: 'center', alignContent: 'center', minHeight: 82, gap: 2 },
   thumbImage: { width: '100%', height: 82, objectFit: 'cover', borderRadius: 8, border: '1px solid #dbe3ec', background: '#eef2f7' },
+  imageFallback: { width: '100%', height: 82, borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', display: 'grid', placeItems: 'center', alignContent: 'center', gap: 4, padding: 8, color: '#0f766e', textDecoration: 'none', textAlign: 'center', overflow: 'hidden' },
   ideaMain: { minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' },
   rowCompact: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, flexWrap: 'wrap' },
   triggerText: { color: '#64748b', fontWeight: 900, fontSize: 12 },
@@ -1032,6 +1071,7 @@ const styles = {
   resultMeta: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 },
   detailPanel: { background: '#ffffff', borderLeft: '1px solid #dbe3ec', padding: 18, overflow: 'auto' },
   heroImage: { width: '100%', height: 150, objectFit: 'cover', borderRadius: 8, border: '1px solid #dbe3ec', background: '#eef2f7', marginBottom: 12 },
+  imageFallbackHero: { width: '100%', height: 150, borderRadius: 8, border: '1px solid #cbd5e1', background: '#f8fafc', display: 'grid', placeItems: 'center', alignContent: 'center', gap: 6, padding: 12, color: '#0f766e', textDecoration: 'none', textAlign: 'center', marginBottom: 12, overflow: 'hidden' },
   detailScore: { minHeight: 82, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#14532d', background: '#ecfdf5', borderRadius: 8, marginBottom: 14, gap: 3 },
   detailMeta: { color: '#075985', fontWeight: 900, fontSize: 12, marginBottom: 8 },
   detailTitle: { fontSize: 22, margin: '0 0 8px', lineHeight: 1.2 },
